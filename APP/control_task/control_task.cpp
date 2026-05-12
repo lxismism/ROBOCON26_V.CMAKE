@@ -16,6 +16,7 @@
 #include "topics.hpp"
 #include "bsp_usart.h"
 #include "tracking.h"
+#include <cmath>
 
 osThreadId_t ControlTaskHandle;
 
@@ -26,6 +27,20 @@ pub_chassis_cmd chassis_cmd{};
 /* 订阅xbox遥控控制信息 */
 static TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox",8);
 pub_Xbox_Data control_xbox_cmd{};
+
+/* 订阅IMU姿态传感器数据 */
+static TypedTopicSubscriber<pub_imu_data> imu_data_sub("imu_data", 8);
+pub_imu_data imu_data{};
+
+//测试时发现陀螺仪有绝对正向，故在此以上电时的正向为相对正向
+static bool headless_ref_ready = false;
+static float ref_yaw_rad = 0.0f;
+
+
+
+//陀螺仪的超时常量
+static TickType_t last_imu_tick = 0;
+static constexpr TickType_t kImuTimeoutTicks = pdMS_TO_TICKS(200);
 
 // 处理xbox数据，处理为底盘控制指令
 void Xbox_Data_Process()
@@ -56,6 +71,23 @@ void Xbox_Data_Process()
   {
     chassis_cmd.omega_ = 0.0f;
   }
+
+    // 无头模式：将场地坐标系速度旋转为车身坐标系速度
+  {
+    float delta_yaw = imu_data.yaw_rad - ref_yaw_rad;
+    float cos_yaw = cosf(delta_yaw);
+    float sin_yaw = sinf(delta_yaw);
+
+
+    float vx_field = chassis_cmd.linear_x_;
+    float vy_field = chassis_cmd.linear_y_;
+
+    chassis_cmd.linear_x_ =  vx_field * cos_yaw + vy_field * sin_yaw;
+    chassis_cmd.linear_y_ = -vx_field * sin_yaw + vy_field * cos_yaw;
+    // omega_ 不变 —— 自转始终绕车身中心，不需要变换
+  }
+
+
 }
 
 void controlInit() { 
@@ -67,6 +99,11 @@ void controlInit() {
     // 订阅失败
     return;
   }
+
+  if (!imu_data_sub.IsValid()) {
+    return;
+  }
+
 }
 
 void controlTask(void *argument) {
@@ -75,6 +112,19 @@ void controlTask(void *argument) {
   controlInit();
   for (;;) {
     
+    /* 不断获取最新的IMU数据，保持imu_data为最新值 */
+    if (imu_data_sub.TryGet(&imu_data)) {
+      last_imu_tick = xTaskGetTickCount();
+      if (!headless_ref_ready) {
+        ref_yaw_rad = imu_data.yaw_rad;
+        headless_ref_ready = true;
+      }
+    } else if ((xTaskGetTickCount() - last_imu_tick) > kImuTimeoutTicks) {
+      imu_data.yaw_rad = 0.0f;
+    }
+
+
+
     /* 从xbox数据订阅者中获取数据 */
     if (control_xbox_sub.TryGet(&control_xbox_cmd)) {
       Xbox_Data_Process();

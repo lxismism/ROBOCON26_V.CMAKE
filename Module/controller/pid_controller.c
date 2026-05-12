@@ -57,7 +57,7 @@ void PID_Init(PID_t *pid)
     pid->Output = 0;
 }// 误差计算
 
-PID_ITCM_FUNC float PID_Calculate(PID_t *pid, float measure, float ref)
+float PID_Calculate(PID_t *pid, float measure, float ref)
 {
     uint8_t use_increment_output = 0;
     uint8_t use_feedforward = 0;

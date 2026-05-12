@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:wit-motion.yuque.com)"
+    ]
+  }
+}

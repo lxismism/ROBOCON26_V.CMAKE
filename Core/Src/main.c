@@ -30,6 +30,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "robot.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -104,10 +105,12 @@ int main(void)
   MX_FDCAN3_Init();
   MX_USART3_UART_Init();
   MX_TIM2_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  // MX_USB_DEVICE_Init();//要放前面，因为usb设备调用的HAL tick 来自 TIM6 中断，而 TIM6 中断优先级较低，如果放在后面，可能会因为任务启动阶段有临界区/屏蔽中断导致tick不走进而导致 USB 设备初始化失败。
-  // osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
-  Robot_Init();
+  MX_USB_DEVICE_Init();//要放前面，因为usb设备调用的HAL tick 来自 TIM6 中断，而 TIM6 中断优先级较低，如果放在后面，可能会因为任务启动阶段有临界区/屏蔽中断导致tick不走进而导致 USB 设备初始化失败。
+   Robot_Init(); 
+  osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
+
   /* USER CODE END 2 */
 
   /* Init scheduler */

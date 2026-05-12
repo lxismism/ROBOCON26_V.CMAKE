@@ -37,8 +37,8 @@ public:
 		float track_width_m;// 轮距
 		float wheel_base_m;// 轴距
 
-		Geometry(float wheel_diameter = 0.15378f, float track_width = 0.44f,
-		         float wheel_base = 0.38f)
+		Geometry(float wheel_diameter = 0.15378f, float track_width = 0.698f,
+		         float wheel_base = 0.698f)
 		    : wheel_diameter_m(wheel_diameter), track_width_m(track_width),
 		      wheel_base_m(wheel_base) {}
 	};
@@ -65,7 +65,7 @@ public:
 								 const Geometry &geometry = Geometry())
 			: motors_{&motor_lu, &motor_ru, &motor_ld, &motor_rd},
 				geometry_(geometry) {
-		setWheelDirectionSign({1.0f, -1.0f, 1.0f, -1.0f});// 默认方向符号，兼容常见装配方式
+		setWheelDirectionSign({1.0f, 1.0f, 1.0f, 1.0f});// 默认方向符号，兼容常见装配方式
 		configureSpeedPid(pid_params);
 	}
 
@@ -75,7 +75,7 @@ public:
 								 const SpeedPidParam &pid_param = SpeedPidParam())
 			: motors_{&motor_lu, &motor_ru, &motor_ld, &motor_rd},
 				geometry_(geometry) {
-		setWheelDirectionSign({1.0f, -1.0f, 1.0f, -1.0f});// 默认方向符号，兼容常见装配方式
+		setWheelDirectionSign({1.0f, 1.0f, 1.0f, 1.0f});// 默认方向符号，兼容常见装配方式
 		configureSpeedPid(pid_param);
 	}
 
@@ -111,16 +111,19 @@ public:
 
 	std::array<float, 4> solveWheelRpm(const pub_chassis_cmd &cmd) const {// 运动学解算，输入底盘速度命令，输出每个轮子的目标转速（RPM）
 		const float vx = cmd.linear_x_;
-		const float vy = cmd.linear_y_;
-		const float wz = cmd.omega_;
+    	const float vy = cmd.linear_y_;
+   	 	const float wz = cmd.omega_;
 
-		const float rotation_term =
-				(geometry_.track_width_m + geometry_.wheel_base_m) * 0.5f * wz;
+    	constexpr float cos45 = 0.70710678f;
 
-		const float v_lu = vx - vy - rotation_term;
-		const float v_ru = vx + vy + rotation_term;
-		const float v_ld = vx + vy - rotation_term;
-		const float v_rd = vx - vy + rotation_term;
+		//全向轮底盘的一半
+    	const float L = 
+				(geometry_.track_width_m + geometry_.wheel_base_m) * 0.5f * cos45;
+
+    	const float v_lu = ( vx + vy) * cos45 + wz * L;
+    	const float v_ru = ( vx - vy) * cos45 + wz * L;
+    	const float v_ld = ( -vx + vy) * cos45 + wz * L;
+    	const float v_rd = ( -vx - vy) * cos45 + wz * L;
 
 		const float mps_to_rpm = 60.0f / (kPi * geometry_.wheel_diameter_m);
 		return {v_lu * mps_to_rpm, v_ru * mps_to_rpm, v_ld * mps_to_rpm,

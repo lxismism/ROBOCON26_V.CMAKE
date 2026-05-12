@@ -50,6 +50,14 @@ typedef struct {
 
 } pub_Xbox_Data;
 
+// IMU姿态传感器数据 —— 无头模式用
+typedef struct {
+  float yaw_rad;   // 偏航角，单位：弧度，范围 -π ~ +π
+  float pitch_rad; // 俯仰角
+  float roll_rad;  // 滚转角
+} pub_imu_data;
+
+
 // 底盘运动指令
 typedef struct {
   float linear_x_;

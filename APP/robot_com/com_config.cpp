@@ -24,9 +24,11 @@
 #include "UartPort.hpp"
 #include "UsbPort.hpp"
 #include "XboxRemote.hpp"
+#include "WitMotionImu.hpp"
 #include "topics.hpp"
 #include "topic_pool.h"
 #include "usart.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -35,6 +37,7 @@
 osThreadId_t CAN1_Send_TaskHandle;
 osThreadId_t CAN2_Send_TaskHandle;
 osThreadId_t CAN3_Send_TaskHandle;
+osThreadId_t uart2ProcessTaskHandle;
 osThreadId_t uart3ProcessTaskHandle;
 osThreadId_t usbcdcProcessTaskHandle;
 
@@ -65,6 +68,7 @@ void onUart3RxCb(const uint8_t *data, size_t len, void *user);
 
 void onUsbRxCb(const uint8_t *data, size_t len, void *user);
 
+extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
 
 DMA_BUFFER_ATTR static uint8_t uart3_rx_dma[64];
@@ -72,6 +76,20 @@ DMA_BUFFER_ATTR static uint8_t uart3_tx_dma[64];
 UartPort uart3_port(&huart3, uart3_rx_dma, sizeof(uart3_rx_dma), uart3_tx_dma,
                     sizeof(uart3_tx_dma), onUart3RxCb, nullptr);
 osSemaphoreId_t uart3_rx_semphore = NULL;
+
+// IMU姿态传感器（USART2）
+void onUart2RxCb(const uint8_t *data, size_t len, void *user);
+
+DMA_BUFFER_ATTR static uint8_t uart2_rx_dma[128];
+DMA_BUFFER_ATTR static uint8_t uart2_tx_dma[64];
+UartPort uart2_port(&huart2, uart2_rx_dma, sizeof(uart2_rx_dma), uart2_tx_dma,
+                    sizeof(uart2_tx_dma), onUart2RxCb, nullptr);
+osSemaphoreId_t uart2_rx_semphore = NULL;
+
+// IMU姿态传感器解析器 及 Topic发布者
+WitMotionImu wit_imu;
+TypedTopicPublisher<pub_imu_data> imu_data_pub("imu_data");
+pub_imu_data imu_msg{};
 
 // Xbox控制器（基于uart3）
 XboxRemote xbox_remote(uart3_port);
@@ -122,6 +140,9 @@ uint8_t comServiceInit() {
   uart3_rx_semphore = osSemaphoreNew(1, 0, NULL);
   uart3_port.startRxDmaIdle();
 
+  uart2_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  uart2_port.startRxDmaIdle();
+
   // Xbox控制器初始化
   xbox_remote.init();
 
@@ -136,6 +157,13 @@ void onUart3RxCb(const uint8_t *data, size_t len, void *user) {
   (void)user;
   if (data != nullptr && len > 0 && uart3_rx_semphore != NULL) {
     (void)osSemaphoreRelease(uart3_rx_semphore);
+  }
+}
+
+void onUart2RxCb(const uint8_t *data, size_t len, void *user) {
+  (void)user;
+  if (data != nullptr && len > 0 && uart2_rx_semphore != NULL) {
+    (void)osSemaphoreRelease(uart2_rx_semphore);
   }
 }
 
@@ -269,5 +297,30 @@ void usbCdcProcessTask(void *argument) {
         }
       }
     }
+  }
+}
+
+void uart2RxProcessTask(void *argument) {
+  (void)argument;
+
+  for (;;) {
+    (void)osSemaphoreAcquire(uart2_rx_semphore, osWaitForever);
+
+    UartPort::Packet packet{};
+    while (uart2_port.Read(packet)) {
+      // 逐字节喂给IMU协议解析器
+      for (uint16_t i = 0; i < packet.len; ++i) {
+        uint8_t frame_type = wit_imu.processByte(packet.data[i]);
+        if (frame_type == 0x53) {
+          // 一帧角度数据解析完毕，发布到Topic总线
+          const auto &data = wit_imu.getImuData();
+          imu_msg.yaw_rad = data.yaw_rad;
+          imu_msg.pitch_rad = data.pitch_rad;
+          imu_msg.roll_rad = data.roll_rad;
+          imu_data_pub.Publish(imu_msg);
+        }
+      }
+    }
+
   }
 }
