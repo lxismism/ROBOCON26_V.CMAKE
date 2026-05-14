@@ -65,4 +65,18 @@ typedef struct {
   float omega_;
 } pub_chassis_cmd;
 
+//Position模块数据结构体
+typedef struct {
+  uint8_t frame_id;
+  uint8_t payload_length;
+  uint32_t frame_count;
+  float x;
+  float y;
+  float yaw;
+  float yaw_speed;
+  float reserve_0;
+  float reserve_1;
+} pub_Position_Data;
+
+
 #pragma pack()
