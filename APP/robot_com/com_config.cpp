@@ -20,6 +20,7 @@
 
 #include "Canbus.hpp"
 #include "Motor.hpp"
+#include "Position.hpp"
 #include "ROSCom.hpp"
 #include "UartPort.hpp"
 #include "UsbPort.hpp"
@@ -39,6 +40,7 @@ osThreadId_t CAN2_Send_TaskHandle;
 osThreadId_t CAN3_Send_TaskHandle;
 osThreadId_t uart2ProcessTaskHandle;
 osThreadId_t uart3ProcessTaskHandle;
+osThreadId_t uart4ProcessTaskHandle;
 osThreadId_t usbcdcProcessTaskHandle;
 
 extern FDCAN_HandleTypeDef hfdcan1;
@@ -70,6 +72,7 @@ void onUsbRxCb(const uint8_t *data, size_t len, void *user);
 
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
+extern UART_HandleTypeDef huart4;
 
 DMA_BUFFER_ATTR static uint8_t uart3_rx_dma[64];
 DMA_BUFFER_ATTR static uint8_t uart3_tx_dma[64];
@@ -86,6 +89,15 @@ UartPort uart2_port(&huart2, uart2_rx_dma, sizeof(uart2_rx_dma), uart2_tx_dma,
                     sizeof(uart2_tx_dma), onUart2RxCb, nullptr);
 osSemaphoreId_t uart2_rx_semphore = NULL;
 
+// Position（USART4）
+void onUart4RxCb(const uint8_t *data, size_t len, void *user);
+
+DMA_BUFFER_ATTR static uint8_t uart4_rx_dma[128];
+DMA_BUFFER_ATTR static uint8_t uart4_tx_dma[64];
+UartPort uart4_port(&huart4, uart4_rx_dma, sizeof(uart4_rx_dma), uart4_tx_dma,
+                    sizeof(uart4_tx_dma), onUart4RxCb, nullptr);
+osSemaphoreId_t uart4_rx_semphore = NULL;
+
 // IMU姿态传感器解析器 及 Topic发布者
 WitMotionImu wit_imu;
 TypedTopicPublisher<pub_imu_data> imu_data_pub("imu_data");
@@ -95,6 +107,11 @@ pub_imu_data imu_msg{};
 XboxRemote xbox_remote(uart3_port);
 TypedTopicPublisher<pub_Xbox_Data> xbox_data_pub("xbox");
 pub_Xbox_Data xbox_msg;
+
+// Position模块（基于uart4）
+Position Position;
+TypedTopicPublisher<pub_Position_Data> Position_data_pub("Position");
+pub_Position_Data Position_msg{};
 
 // usb
 osSemaphoreId_t usbcdc_rx_semphore = NULL;
@@ -140,17 +157,30 @@ uint8_t comServiceInit() {
   uart3_rx_semphore = osSemaphoreNew(1, 0, NULL);
   uart3_port.startRxDmaIdle();
 
+  uart4_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  uart4_port.startRxDmaIdle();
+
   uart2_rx_semphore = osSemaphoreNew(1, 0, NULL);
   uart2_port.startRxDmaIdle();
 
   // Xbox控制器初始化
   xbox_remote.init();
 
+  // Position模块初始化
+  Position.init();
+
   // usb 外设
   usbcdc_rx_semphore = osSemaphoreNew(1, 0, NULL);
   ros_protocol.init();
   UsbPort::Instance().SetRxCallback(onUsbRxCb, NULL);
   return 0;
+}
+
+void onUart4RxCb(const uint8_t *data, size_t len, void *user) {
+  (void)user;
+  if (data != nullptr && len > 0 && uart4_rx_semphore != NULL) {
+    (void)osSemaphoreRelease(uart4_rx_semphore);
+  }
 }
 
 void onUart3RxCb(const uint8_t *data, size_t len, void *user) {
@@ -322,5 +352,34 @@ void uart2RxProcessTask(void *argument) {
       }
     }
 
+  }
+}
+
+void uart4RxProcessTask(void *argument) {
+  (void)argument;
+  if (!Position_data_pub.IsValid()) {
+    return;
+  }
+
+  for (;;) {
+    (void)osSemaphoreAcquire(uart4_rx_semphore, osWaitForever);
+
+    UartPort::Packet packet{};
+    while (uart4_port.Read(packet)) {
+      for (uint16_t i = 0; i < packet.len; ++i) {
+        uint8_t frame_id = Position.processByte(packet.data[i]);
+        if (frame_id != 0) {
+          const auto &pos_data = Position.getData();
+          Position_msg.frame_id = pos_data.frame_id;
+          Position_msg.payload_length = pos_data.payload_length;
+          Position_msg.frame_count = pos_data.frame_count;
+          Position_msg.x = pos_data.x;
+          Position_msg.y = pos_data.y;
+          Position_msg.yaw = pos_data.yaw;
+          Position_msg.yaw_speed = pos_data.yaw_speed;
+          Position_data_pub.Publish(Position_msg);
+        }
+      }
+    }
   }
 }
