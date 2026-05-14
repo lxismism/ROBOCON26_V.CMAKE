@@ -35,6 +35,7 @@ void can3SendTask(void *argument);
 void uart2RxProcessTask(void *argument);
 void uart3RxProcessTask(void *argument);
 void usbCdcProcessTask(void *argument);
+void posCtrlTask(void *argument);
 
 #ifdef __cplusplus
 }

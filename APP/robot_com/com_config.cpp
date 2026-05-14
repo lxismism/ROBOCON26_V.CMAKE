@@ -201,7 +201,7 @@ void can2SendTask(void *argument) {
     commands[2] = static_cast<int16_t>(0); // 0x203
     commands[3] = static_cast<int16_t>(0); // 0x204
     packDJIMotorCanMsg(pack.id, arm_motor_ids, commands, 4, pack.data, len);
-    // fdcan2_bus.addCanMsg(pack);
+    fdcan2_bus.addCanMsg(pack);
 
     vTaskDelayUntil(&currentTime, 1); // 每1ms执行一次发送任务
   }

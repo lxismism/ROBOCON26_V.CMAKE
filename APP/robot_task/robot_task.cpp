@@ -37,6 +37,8 @@ extern osThreadId_t Debug_TaskHandle;
 extern osThreadId_t ChassisTaskHandle;
 extern osThreadId_t ControlTaskHandle;
 extern osThreadId_t usbcdcProcessTaskHandle;
+extern osThreadId_t PosCtrlTaskHandle;
+
 
 void osTaskInit(void) {
   const osThreadAttr_t CAN1_SendTaskHandle_attributes = {
@@ -85,6 +87,16 @@ void osTaskInit(void) {
   };
   ControlTaskHandle =
       osThreadNew(controlTask, NULL, &ControlTaskHandle_attributes);
+
+      //3508电机位置环控制任务
+  const osThreadAttr_t PosCtrlTaskHandle_attributes = {
+      .name = "PosCtrl_TaskHandle",
+      .stack_size = 256 * 4,
+      .priority = (osPriority_t)osPriorityNormal,
+  };
+  PosCtrlTaskHandle =
+      osThreadNew(posCtrlTask, NULL, &PosCtrlTaskHandle_attributes);
+
 
       //uart2用于同IMU串口通信
   const osThreadAttr_t Uart2ProcessTaskHandle_attributes = {
