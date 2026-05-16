@@ -339,13 +339,15 @@ void DebugSerialTask(void *argument) {
   static uint8_t data[4];
   for(;;)
   {
+    TickType_t currentTime = xTaskGetTickCount();
     uint32_t row_data = HAL_GetTick();
     data[0] = row_data>>24;
     data[1] = (row_data>>16) & 0xFF;
     data[2] = (row_data>>8) & 0xFF;
     data[3] = row_data & 0xFF;
+    //txDMA缓冲区大小为uint8_t[128]
     uart5_port.writeDma(data, sizeof(data));
-    osDelay(100);
+    vTaskDelayUntil(&currentTime, 1);//1ms发送一次
   }
 }
 
