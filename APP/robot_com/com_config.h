@@ -35,8 +35,10 @@ void can3SendTask(void *argument);
 void uart2RxProcessTask(void *argument);
 void uart3RxProcessTask(void *argument);
 void uart4RxProcessTask(void *argument);
+void uart5RxProcessTask(void *argument);
 void usbCdcProcessTask(void *argument);
 void posCtrlTask(void *argument);
+void DebugSerialTask(void *argument);
 
 #ifdef __cplusplus
 }

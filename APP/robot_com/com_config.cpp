@@ -15,6 +15,7 @@
 #include "FreeRTOS.h"
 #include "cmsis_os2.h"
 #include "portmacro.h"
+#include "stm32h7xx_hal.h"
 #include "stm32h7xx_hal_uart.h"
 #include "task.h"
 
@@ -41,7 +42,9 @@ osThreadId_t CAN3_Send_TaskHandle;
 osThreadId_t uart2ProcessTaskHandle;
 osThreadId_t uart3ProcessTaskHandle;
 osThreadId_t uart4ProcessTaskHandle;
+osThreadId_t uart5ProcessTaskHandle;
 osThreadId_t usbcdcProcessTaskHandle;
+osThreadId_t DebugSerialTaskHandle;
 
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
@@ -73,6 +76,7 @@ void onUsbRxCb(const uint8_t *data, size_t len, void *user);
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
 extern UART_HandleTypeDef huart4;
+extern UART_HandleTypeDef huart5;
 
 DMA_BUFFER_ATTR static uint8_t uart3_rx_dma[64];
 DMA_BUFFER_ATTR static uint8_t uart3_tx_dma[64];
@@ -97,6 +101,15 @@ DMA_BUFFER_ATTR static uint8_t uart4_tx_dma[64];
 UartPort uart4_port(&huart4, uart4_rx_dma, sizeof(uart4_rx_dma), uart4_tx_dma,
                     sizeof(uart4_tx_dma), onUart4RxCb, nullptr);
 osSemaphoreId_t uart4_rx_semphore = NULL;
+
+//debug串口
+void onUart5RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例化不报错
+
+DMA_BUFFER_ATTR static uint8_t uart5_rx_dma[64];
+DMA_BUFFER_ATTR static uint8_t uart5_tx_dma[128];
+UartPort uart5_port(&huart5, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
+                    sizeof(uart5_tx_dma), onUart5RxCb, nullptr);
+osSemaphoreId_t uart5_rx_semphore = NULL;
 
 // IMU姿态传感器解析器 及 Topic发布者
 WitMotionImu wit_imu;
@@ -154,6 +167,9 @@ uint8_t comServiceInit() {
   fdcan2_bus.registerDevice(&arm4310_motor);
 
   // 串口外设
+  uart5_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  uart5_port.startRxDmaIdle();
+
   uart3_rx_semphore = osSemaphoreNew(1, 0, NULL);
   uart3_port.startRxDmaIdle();
 
@@ -174,6 +190,13 @@ uint8_t comServiceInit() {
   ros_protocol.init();
   UsbPort::Instance().SetRxCallback(onUsbRxCb, NULL);
   return 0;
+}
+
+void onUart5RxCb(const uint8_t *data, size_t len, void *user) {
+  (void)user;
+  if (data != nullptr && len > 0 && uart5_rx_semphore != NULL) {
+    (void)osSemaphoreRelease(uart5_rx_semphore);
+  }
 }
 
 void onUart4RxCb(const uint8_t *data, size_t len, void *user) {
@@ -302,6 +325,31 @@ void uart3RxProcessTask(void *argument) {
   }
 }
 
+//暂时先做发
+void uart5RxProcessTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
+  }
+}
+
+void DebugSerialTask(void *argument) {
+  (void)argument;
+  static uint8_t data[4];
+  for(;;)
+  {
+    TickType_t currentTime = xTaskGetTickCount();
+    uint32_t row_data = HAL_GetTick();
+    data[0] = row_data>>24;
+    data[1] = (row_data>>16) & 0xFF;
+    data[2] = (row_data>>8) & 0xFF;
+    data[3] = row_data & 0xFF;
+    //txDMA缓冲区大小为uint8_t[128]
+    uart5_port.writeDma(data, sizeof(data));
+    vTaskDelayUntil(&currentTime, 1);//1ms发送一次
+  }
+}
 
 void usbCdcProcessTask(void *argument) {
 
