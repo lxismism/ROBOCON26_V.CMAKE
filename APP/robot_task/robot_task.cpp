@@ -34,11 +34,14 @@ extern osThreadId_t CAN3_Send_TaskHandle;
 extern osThreadId_t uart2ProcessTaskHandle;
 extern osThreadId_t uart3ProcessTaskHandle;
 extern osThreadId_t uart4ProcessTaskHandle;
+extern osThreadId_t uart5ProcessTaskHandle;
 extern osThreadId_t Debug_TaskHandle;
 extern osThreadId_t ChassisTaskHandle;
 extern osThreadId_t ControlTaskHandle;
 extern osThreadId_t usbcdcProcessTaskHandle;
 extern osThreadId_t PosCtrlTaskHandle;
+extern osThreadId_t DebugSerialTaskHandle;
+
 
 
 void osTaskInit(void) {
@@ -102,7 +105,7 @@ void osTaskInit(void) {
       //uart2用于同IMU串口通信
   const osThreadAttr_t Uart2ProcessTaskHandle_attributes = {
       .name = "Uart2Process_TaskHandle",
-      .stack_size = 256 * 4,
+      .stack_size = 256 * 8,
       .priority = (osPriority_t)osPriorityNormal,
   };
   uart2ProcessTaskHandle =
@@ -119,11 +122,19 @@ void osTaskInit(void) {
 
 const osThreadAttr_t Uart4ProcessTaskHandle_attributes = {
       .name = "Uart4Process_TaskHandle",
-      .stack_size = 256 * 4,
+      .stack_size = 256 * 8,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   uart4ProcessTaskHandle =
       osThreadNew(uart4RxProcessTask, NULL, &Uart4ProcessTaskHandle_attributes);
+
+  const osThreadAttr_t Uart5ProcessTaskHandle_attributes = {
+      .name = "Uart5Process_TaskHandle",
+      .stack_size = 256 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart5ProcessTaskHandle =
+      osThreadNew(uart5RxProcessTask, NULL, &Uart5ProcessTaskHandle_attributes);
 
   const osThreadAttr_t UsbcdcProcessTaskHandle_attributes = {
       .name = "UsbcdcProcess_TaskHandle",
@@ -132,4 +143,12 @@ const osThreadAttr_t Uart4ProcessTaskHandle_attributes = {
   };
   usbcdcProcessTaskHandle =
       osThreadNew(usbCdcProcessTask, NULL, &UsbcdcProcessTaskHandle_attributes);
+
+  const osThreadAttr_t DebugSerialTaskHandle_attributes = {
+      .name = "DebugSerial_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  DebugSerialTaskHandle =
+      osThreadNew(DebugSerialTask, NULL, &DebugSerialTaskHandle_attributes);
 }

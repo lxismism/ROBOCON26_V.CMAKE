@@ -33,13 +33,12 @@ static TypedTopicSubscriber<pub_chassis_cmd> chassis_cmd_sub("chassis_cmd", 8);
 pub_chassis_cmd chassis_chassis_cmd{};
 
 //底盘解算器实例声明
-namespace {
-MecanumChassis chassis_solver(chassis_motor1, chassis_motor2, chassis_motor3,
+namespace {//mecanum底盘解算器实例
+MecanumChassis Mecanumchassis_solver(chassis_motor1, chassis_motor2, chassis_motor3,
                 chassis_motor4);
-
 // 每个轮子的PID参数配置
-const std::array<MecanumChassis::SpeedPidParam, MecanumChassis::kWheelCount>
-  kWheelPidParams = {
+const std::array<MecanumChassis::SpeedPidParam, MecanumChassis::kMecanumWheelCount>
+  kMecanumWheelPidParams = {
     MecanumChassis::SpeedPidParam(105.0f, 75.0f, 0.20f, 20000.0f, 0.3f,
                     NONE), // 左上
     MecanumChassis::SpeedPidParam(100.0f, 72.0f, 0.15f, 20000.0f, 0.3f,
@@ -49,12 +48,25 @@ const std::array<MecanumChassis::SpeedPidParam, MecanumChassis::kWheelCount>
     MecanumChassis::SpeedPidParam(102.0f, 74.0f, 0.18f, 20000.0f, 0.3f,
                     NONE), // 右下
   };
-} // namespace
+}
+namespace {//omni底盘解算器实例
+OmniChassis Omnichassis_solver(chassis_motor1, chassis_motor2, chassis_motor3,
+                chassis_motor4);
+// 每个轮子的PID参数配置
+const std::array<OmniChassis::SpeedPidParam, OmniChassis::kOmniWheelCount>
+  kOmniWheelPidParams = {
+    OmniChassis::SpeedPidParam(100.0f, 0.01f, 0.05f, 8000.0f, 0.5f, NONE), // 左上
+    OmniChassis::SpeedPidParam(100.0f, 0.01f, 0.05f, 8000.0f, 0.5f, NONE), // 右上
+    OmniChassis::SpeedPidParam(100.0f, 0.01f, 0.05f, 8000.0f, 0.5f, NONE), // 左下
+    OmniChassis::SpeedPidParam(100.0f, 0.01f, 0.05f, 8000.0f, 0.5f, NONE), // 右下
+  };
+}
 
 // 用到的初始化
 static inline void chassisInit() {
   // 每个电机使用独立 PID 参数
-  chassis_solver.configureSpeedPid(kWheelPidParams);
+// Mecanumchassis_solver.configureSpeedPid(kMecanumWheelPidParams);
+  Omnichassis_solver.configureSpeedPid(kOmniWheelPidParams);
 
   // 底盘控制命令订阅初始化
   if (!chassis_cmd_sub.IsValid()) {
@@ -74,7 +86,7 @@ void chassisTask(void *argument) {
       // Process the received chassis command
     }
     // 进行解算并控制电机
-    chassis_solver.run(chassis_chassis_cmd);
+    Omnichassis_solver.run(chassis_chassis_cmd);
     vTaskDelayUntil(&currentTime, 5); // 每1ms执行一次发送任务
   }
 }
