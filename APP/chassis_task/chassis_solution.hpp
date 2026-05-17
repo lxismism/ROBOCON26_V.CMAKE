@@ -182,8 +182,8 @@ public:
 		float track_width_m;// 轮距
 		float wheel_base_m;// 轴距
 
-		Geometry(float wheel_diameter = 0.15378f, float track_width = 0.44f,
-		         float wheel_base = 0.38f)
+		Geometry(float wheel_diameter = 0.16f, float track_width = 1.025f,
+		         float wheel_base = 1.025f)
 		    : wheel_diameter_m(wheel_diameter), track_width_m(track_width),
 		      wheel_base_m(wheel_base) {}
 	};
@@ -210,7 +210,7 @@ public:
 								 const Geometry &geometry = Geometry())
 			: motors_{&motor_lu, &motor_ru, &motor_ld, &motor_rd},
 				geometry_(geometry) {
-		setWheelDirectionSign({1.0f, 1.0f, 1.0f, 1.0f});// 默认方向符号，兼容常见装配方式
+		setWheelDirectionSign({-1.0f, -1.0f, -1.0f, -1.0f});// 默认方向符号，兼容常见装配方式
 		configureSpeedPid(pid_params);
 	}
 
@@ -219,7 +219,7 @@ public:
 								 const SpeedPidParam &pid_param = SpeedPidParam())
 			: motors_{&motor_lu, &motor_ru, &motor_ld, &motor_rd},
 				geometry_(geometry) {
-		setWheelDirectionSign({1.0f, 1.0f, 1.0f, 1.0f});// 默认方向符号，兼容常见装配方式
+		setWheelDirectionSign({-1.0f, -1.0f, -1.0f, -1.0f});// 默认方向符号，兼容常见装配方式
 		configureSpeedPid(pid_param);
 	}
 
@@ -259,13 +259,13 @@ public:
 			const float wz = cmd.omega_;
 
 		const float rotation_term =
-				(geometry_.track_width_m + geometry_.wheel_base_m) * 0.5f * wz;
+				geometry_.track_width_m * 0.5f * wz;
 
 			const float sqrt2 = std::sqrt(2.0f);
-			const float v_lu = ( vx + vy) / sqrt2 + rotation_term;
-			const float v_ru = ( vx - vy) / sqrt2 + rotation_term;
-			const float v_ld = (-vx + vy) / sqrt2 + rotation_term;
-			const float v_rd = (-vx - vy) / sqrt2 + rotation_term;
+			const float v_lu = (-vx - vy) / sqrt2 + rotation_term;
+			const float v_ru = (-vx + vy) / sqrt2 + rotation_term;
+			const float v_ld = ( vx - vy) / sqrt2 + rotation_term;
+			const float v_rd = ( vx + vy) / sqrt2 + rotation_term;
 
 			const float mps_to_rad_s = 2.0f / geometry_.wheel_diameter_m;
 			return {v_lu * mps_to_rad_s, v_ru * mps_to_rad_s, v_ld * mps_to_rad_s,
@@ -277,7 +277,7 @@ public:
 			target_rad_s_ = solveWheelRadPerSec(cmd);
 			for (size_t i = 0; i < motors_.size(); ++i) {
 				target_rad_s_[i] *= direction_sign_[i];
-				pid_output_[i] = PID_Calculate(&speed_pid_[i], motors_[i]->getRawCurrentSpeed(),
+				pid_output_[i] = PID_Calculate(&speed_pid_[i], motors_[i]->getCurrentSpeed(),//输出轴角速度(rad/s)
 																			 target_rad_s_[i]);
 				motors_[i]->setMotorCmd(pid_output_[i]);
 			}

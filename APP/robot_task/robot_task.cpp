@@ -42,7 +42,7 @@ extern osThreadId_t usbcdcProcessTaskHandle;
 void osTaskInit(void) {
   const osThreadAttr_t CAN1_SendTaskHandle_attributes = {
       .name = "CAN1_Send_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 128 * 8,
       .priority = (osPriority_t)osPriorityNormal,
   };
   CAN1_Send_TaskHandle =
@@ -50,7 +50,7 @@ void osTaskInit(void) {
 
   const osThreadAttr_t CAN2_SendTaskHandle_attributes = {
       .name = "CAN2_Send_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 128 * 8,
       .priority = (osPriority_t)osPriorityNormal,
   };
   CAN2_Send_TaskHandle =
@@ -58,7 +58,7 @@ void osTaskInit(void) {
 
   const osThreadAttr_t CAN3_SendTaskHandle_attributes = {
       .name = "CAN3_Send_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 128 * 8,
       .priority = (osPriority_t)osPriorityNormal,
   };
   CAN3_Send_TaskHandle =
@@ -66,14 +66,14 @@ void osTaskInit(void) {
 
   const osThreadAttr_t DebugTaskHandle_attributes = {
       .name = "Debug_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 128 * 8,
       .priority = (osPriority_t)osPriorityNormal,
   };
 //   Debug_TaskHandle = osThreadNew(debugTask, NULL, &DebugTaskHandle_attributes);
 
   const osThreadAttr_t ChassisTaskHandle_attributes = {
       .name = "Chassis_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 128 * 8,
       .priority = (osPriority_t)osPriorityNormal,
   };
   ChassisTaskHandle =
@@ -81,7 +81,7 @@ void osTaskInit(void) {
 
   const osThreadAttr_t ControlTaskHandle_attributes = {
       .name = "Control_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 128 * 8,
       .priority = (osPriority_t)osPriorityBelowNormal7,
   };
   ControlTaskHandle =
@@ -90,7 +90,7 @@ void osTaskInit(void) {
       //uart2用于同IMU串口通信
   const osThreadAttr_t Uart2ProcessTaskHandle_attributes = {
       .name = "Uart2Process_TaskHandle",
-      .stack_size = 256 * 4,
+      .stack_size = 256 * 8,
       .priority = (osPriority_t)osPriorityNormal,
   };
   uart2ProcessTaskHandle =
@@ -99,7 +99,7 @@ void osTaskInit(void) {
       //uart3用于同ESP32串口通信
   const osThreadAttr_t Uart3ProcessTaskHandle_attributes = {
       .name = "Uart3Process_TaskHandle",
-      .stack_size = 256 * 4,
+      .stack_size = 256 * 8,
       .priority = (osPriority_t)osPriorityNormal,
   };
   uart3ProcessTaskHandle =
@@ -107,7 +107,7 @@ void osTaskInit(void) {
 
 const osThreadAttr_t Uart4ProcessTaskHandle_attributes = {
       .name = "Uart4Process_TaskHandle",
-      .stack_size = 256 * 4,
+      .stack_size = 256 * 8,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   uart4ProcessTaskHandle =
@@ -115,7 +115,7 @@ const osThreadAttr_t Uart4ProcessTaskHandle_attributes = {
 
   const osThreadAttr_t UsbcdcProcessTaskHandle_attributes = {
       .name = "UsbcdcProcess_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 128 * 8,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   usbcdcProcessTaskHandle =

@@ -34,7 +34,6 @@
 #include <cstdint>
 #include <cstring>
 
-
 osThreadId_t CAN1_Send_TaskHandle;
 osThreadId_t CAN2_Send_TaskHandle;
 osThreadId_t CAN3_Send_TaskHandle;
@@ -110,7 +109,7 @@ pub_Xbox_Data xbox_msg;
 
 // Position模块（基于uart4）
 Position Position;
-TypedTopicPublisher<pub_Position_Data> Position_data_pub("Position");
+TypedTopicPublisher<pub_Position_Data> Position_data_pub("position");
 pub_Position_Data Position_msg{};
 
 // usb
@@ -155,13 +154,19 @@ uint8_t comServiceInit() {
 
   // 串口外设
   uart3_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  uart3_port.startRxDmaIdle();
+  if (uart3_rx_semphore == NULL || uart3_port.startRxDmaIdle() != HAL_OK) {
+    return 1;
+  }
 
   uart4_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  uart4_port.startRxDmaIdle();
+  if (uart4_rx_semphore == NULL || uart4_port.startRxDmaIdle() != HAL_OK) {
+    return 1;
+  }
 
   uart2_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  uart2_port.startRxDmaIdle();
+  if (uart2_rx_semphore == NULL || uart2_port.startRxDmaIdle() != HAL_OK) {
+    return 1;
+  }
 
   // Xbox控制器初始化
   xbox_remote.init();
@@ -171,6 +176,9 @@ uint8_t comServiceInit() {
 
   // usb 外设
   usbcdc_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  if (usbcdc_rx_semphore == NULL) {
+    return 1;
+  }
   ros_protocol.init();
   UsbPort::Instance().SetRxCallback(onUsbRxCb, NULL);
   return 0;
