@@ -14,6 +14,7 @@
 #include "com_config.h"
 #include "FreeRTOS.h"
 #include "cmsis_os2.h"
+#include "pid_controller.h"
 #include "portmacro.h"
 #include "stm32h7xx_hal.h"
 #include "stm32h7xx_hal_uart.h"
@@ -31,9 +32,12 @@
 #include "topic_pool.h"
 #include "usart.h"
 
+#include "chassis_solution.hpp" //访问底盘控制器用于串口调参
+
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <stdio.h>
 
 osThreadId_t CAN1_Send_TaskHandle;
 osThreadId_t CAN2_Send_TaskHandle;
@@ -344,17 +348,21 @@ void uart5RxProcessTask(void *argument) {
 
 void DebugSerialTask(void *argument) {
   (void)argument;
-  static uint8_t data[4];
+  static char debug_buffer[100];
+
+  extern OmniChassis Omnichassis_solver;
+  OmniChassis::WheelIndex motor = OmniChassis::kLeftUp;
+
+  const PID_t& pid_LU = Omnichassis_solver.pid(motor);
+
+  TickType_t currentTime = xTaskGetTickCount();
+
   for(;;)
   {
-    TickType_t currentTime = xTaskGetTickCount();
-    uint32_t row_data = HAL_GetTick();
-    data[0] = row_data>>24;
-    data[1] = (row_data>>16) & 0xFF;
-    data[2] = (row_data>>8) & 0xFF;
-    data[3] = row_data & 0xFF;
-    //txDMA缓冲区大小为uint8_t[128]
-    uart5_port.writeDma(data, sizeof(data));
+    float target = pid_LU.Ref * 100;
+    float actual = pid_LU.Measure * 100;
+    snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d, %d.%02d\r\n", static_cast<int>(target/100), static_cast<int>(target % 100), static_cast<int>(actual/100), static_cast<int>(actual % 100));
+    uart5_port.writeDma(reinterpret_cast<uint8_t*>(debug_buffer), sizeof(debug_buffer));
     vTaskDelayUntil(&currentTime, 1);//1ms发送一次
   }
 }
