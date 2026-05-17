@@ -351,9 +351,11 @@ void DebugSerialTask(void *argument) {
   static char debug_buffer[100];
 
   extern OmniChassis Omnichassis_solver;
-  OmniChassis::WheelIndex motor = OmniChassis::kLeftUp;
 
-  const PID_t& pid_LU = Omnichassis_solver.pid(motor);
+  const PID_t& pid_LU = Omnichassis_solver.pid(OmniChassis::kLeftUp);
+  const PID_t& pid_RU = Omnichassis_solver.pid(OmniChassis::kRightUp);
+  const PID_t& pid_LD = Omnichassis_solver.pid(OmniChassis::kLeftDown);
+  const PID_t& pid_RD = Omnichassis_solver.pid(OmniChassis::kRightDown);
 
   TickType_t currentTime = xTaskGetTickCount();
 
@@ -361,7 +363,16 @@ void DebugSerialTask(void *argument) {
   {
     float target = pid_LU.Ref * 100;
     float actual = pid_LU.Measure * 100;
-    snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d, %d.%02d\r\n", static_cast<int>(target/100), static_cast<int>(target % 100), static_cast<int>(actual/100), static_cast<int>(actual % 100));
+    snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d, %d.%02d, %d.%02d, %d.%02d\r\n",
+                                              static_cast<int>(pid_LU.Ref), static_cast<int>(pid_LU.LU * 100),
+                                              static_cast<int>(pid_LU.Measure), static_cast<int>(pid_LU.Measure * 100),
+                                              static_cast<int>(pid_RU.Ref), static_cast<int>(pid_RU.RU * 100),
+                                              static_cast<int>(pid_RU.Measure), static_cast<int>(pid_RU.Measure * 100),
+                                              static_cast<int>(pid_LD.Ref), static_cast<int>(pid_LD.Measure * 100),
+                                              static_cast<int>(pid_LD.Measure), static_cast<int>(pid_LD.Measure * 100),
+                                              static_cast<int>(pid_RD.Ref), static_cast<int>(pid_RD.RD * 100),
+                                              static_cast<int>(pid_RD.Measure), static_cast<int>(pid_RD.Measure * 100),
+    )
     uart5_port.writeDma(reinterpret_cast<uint8_t*>(debug_buffer), sizeof(debug_buffer));
     vTaskDelayUntil(&currentTime, 1);//1ms发送一次
   }
