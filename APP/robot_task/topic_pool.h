@@ -29,16 +29,19 @@ typedef struct {
 typedef struct {
   bool btnY;
   bool btnA;
+  bool btnB;
+  bool btnX;
   bool btnLB;
   bool btnRB;
+  bool btnLS;
+  bool btnRS;
   uint16_t trigLT;
   uint16_t trigRT;
   bool btnDirUp;
   bool btnDirDown;
   bool btnDirLeft;
   bool btnDirRight;
-  bool btnB;
-  bool btnX;
+  
   uint16_t joyLHori;
   uint16_t joyLVert;
   uint16_t joyRHori;

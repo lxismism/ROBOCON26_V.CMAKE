@@ -55,10 +55,10 @@ OmniChassis Omnichassis_solver(chassis_motor1, chassis_motor2, chassis_motor3,
 // 每个轮子的PID参数配置
 const std::array<OmniChassis::SpeedPidParam, OmniChassis::kOmniWheelCount>
   kOmniWheelPidParams = {
-    OmniChassis::SpeedPidParam(100.0f, 0.01f, 0.05f, 8000.0f, 0.5f, NONE), // 左上
-    OmniChassis::SpeedPidParam(100.0f, 0.01f, 0.05f, 8000.0f, 0.5f, NONE), // 右上
-    OmniChassis::SpeedPidParam(100.0f, 0.01f, 0.05f, 8000.0f, 0.5f, NONE), // 左下
-    OmniChassis::SpeedPidParam(100.0f, 0.01f, 0.05f, 8000.0f, 0.5f, NONE), // 右下
+    OmniChassis::SpeedPidParam(245.0f, 0.01f, 0.32f, 16000.0f, 0.5f, NONE), // 左上
+    OmniChassis::SpeedPidParam(245.0f, 0.01f, 0.32f, 16000.0f, 0.5f, NONE), // 右上
+    OmniChassis::SpeedPidParam(245.0f, 0.01f, 0.32f, 16000.0f, 0.5f, NONE), // 左下
+    OmniChassis::SpeedPidParam(245.0f, 0.01f, 0.32f, 16000.0f, 0.5f, NONE), // 右下
   };
 }
 

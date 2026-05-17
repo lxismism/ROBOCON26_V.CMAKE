@@ -28,6 +28,7 @@ pub_chassis_cmd xbox_cmd{};
 /* 订阅xbox遥控控制信息 */
 static TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox",8);
 pub_Xbox_Data control_xbox_cmd{};
+pub_Xbox_Data control_xbox_cmd_Last{};
 
 /* 订阅IMU姿态传感器数据 */
 // static TypedTopicSubscriber<pub_imu_data> imu_data_sub("imu_data", 8);
@@ -50,6 +51,9 @@ static uint8_t control_position_frame_id = 0;
 float xbox_angle_rad ;
 float V_aim ;
 
+bool headless_xy_mode = true;//无头模式标志位，默认开启
+bool headless_omega_mode = true;//无头模式标志位，默认开启
+
 float_t error_x;
 float_t error_y;
 float_t State_xy_error;
@@ -68,8 +72,8 @@ pub_chassis_cmd State_Aim_cmd{
 };
 
 //车体目标角度环pid
-PID_t Linear{.Kp = 16.8f,.Ki = 1.0f,.Kd = 0.000032f,.MaxOut = MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-PID_t Deg{.Kp = 3.0f,.Ki = 0.5f,.Kd = 0.0002f,.MaxOut = MAX_VELOCITY_ANGULAR*90.0/M_PI,.DeadBand = 1.0f,.Improve = NONE};
+PID_t Linear{.Kp = 26.8f,.Ki = 0.5f,.Kd = 0.00022f,.MaxOut = MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+PID_t Deg{.Kp = 12.0f,.Ki = 0.8f,.Kd = 0.0024f,.MaxOut = MAX_VELOCITY_ANGULAR*90.0/M_PI,.DeadBand = 1.0f,.Improve = NONE};
 
 // //陀螺仪的超时常量
 // static TickType_t last_imu_tick = 0;
@@ -114,8 +118,27 @@ void Xbox_Data_Process()
 
     // 无头模式：将场地坐标系速度旋转为车身坐标系速度
   {
+    //切换xy模式
+    if(control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS)
+    {
+      if(control_xbox_cmd.btnLS == true){
+        headless_xy_mode = !headless_xy_mode;
+      }
+    }
+    control_xbox_cmd_Last.btnLS = control_xbox_cmd.btnLS;
+    
+    //切换omega模式
+    if(control_xbox_cmd.btnRS != control_xbox_cmd_Last.btnRS)
+    {
+      if(control_xbox_cmd.btnRS == true){
+        headless_omega_mode = !headless_omega_mode;
+      }
+    }
+    control_xbox_cmd_Last.btnRS = control_xbox_cmd.btnRS;
 
-    if(xbox_cmd.omega_ != 0.0f || xbox_cmd.linear_x_ != 0.0f )
+
+    // if(xbox_cmd.linear_y_ != 0.0f || xbox_cmd.linear_x_ != 0.0f )
+    if(headless_xy_mode)
     {
       // 直接使用摇杆输入的角控制，优先级高于定位姿态控制
       xbox_angle_rad = atan2(xbox_cmd.linear_y_,xbox_cmd.linear_x_)/(M_PI/180.0f);
@@ -155,7 +178,9 @@ void Xbox_Data_Process()
       Robot_v_Aim_cmd.linear_y_  = xy_pid_output * sin((State_xy_angle_rad - control_position_yaw)*(M_PI/180.0f));
     }
 
-    if(xbox_cmd.omega_ != 0.0f){
+    // if(xbox_cmd.omega_ != 0.0f)
+    if(headless_omega_mode)
+    {
       Robot_v_Aim_cmd.omega_ = xbox_cmd.omega_;
       State_Aim_cmd.omega_ = control_position_yaw ;
     }
