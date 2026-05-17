@@ -109,7 +109,7 @@ osSemaphoreId_t uart4_rx_semphore = NULL;
 void onUart5RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例化不报错
 
 DMA_BUFFER_ATTR static uint8_t uart5_rx_dma[64];
-DMA_BUFFER_ATTR static uint8_t uart5_tx_dma[128];
+DMA_BUFFER_ATTR static uint8_t uart5_tx_dma[512];
 UartPort uart5_port(&huart5, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
                     sizeof(uart5_tx_dma), onUart5RxCb, nullptr);
 osSemaphoreId_t uart5_rx_semphore = NULL;
@@ -348,7 +348,7 @@ void uart5RxProcessTask(void *argument) {
 
 void DebugSerialTask(void *argument) {
   (void)argument;
-  static char debug_buffer[100];
+  static char debug_buffer[256];
 
   extern OmniChassis Omnichassis_solver;
 
@@ -362,18 +362,19 @@ void DebugSerialTask(void *argument) {
   for(;;)
   {
     currentTime = xTaskGetTickCount();
-    snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d, %d.%02d, %d.%02d, %d.%02d\r\n",
-                                              static_cast<int>(pid_LU.Ref), static_cast<int>(pid_LU.Ref * 100),
-                                              static_cast<int>(pid_LU.Measure), static_cast<int>(pid_LU.Measure * 100),
-                                              static_cast<int>(pid_RU.Ref), static_cast<int>(pid_RU.Ref * 100),
-                                              static_cast<int>(pid_RU.Measure), static_cast<int>(pid_RU.Measure * 100),
-                                              static_cast<int>(pid_LD.Ref), static_cast<int>(pid_LD.Ref * 100),
-                                              static_cast<int>(pid_LD.Measure), static_cast<int>(pid_LD.Measure * 100),
-                                              static_cast<int>(pid_RD.Ref), static_cast<int>(pid_RD.Ref * 100),
-                                              static_cast<int>(pid_RD.Measure), static_cast<int>(pid_RD.Measure * 100)
+    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
+                                              static_cast<int>(pid_LU.Ref), static_cast<int>(abs(pid_LU.Ref * 100)),
+                                              static_cast<int>(pid_LU.Measure), static_cast<int>(abs(pid_LU.Measure * 100)),
+                                              static_cast<int>(pid_RU.Ref), static_cast<int>(abs(pid_RU.Ref * 100)),
+                                              static_cast<int>(pid_RU.Measure), static_cast<int>(abs(pid_RU.Measure * 100)),
+                                              static_cast<int>(pid_LD.Ref), static_cast<int>(abs(pid_LD.Ref * 100)),
+                                              static_cast<int>(pid_LD.Measure), static_cast<int>(abs(pid_LD.Measure * 100)),
+                                              static_cast<int>(pid_RD.Ref), static_cast<int>(abs(pid_RD.Ref * 100)),
+                                              static_cast<int>(pid_RD.Measure), static_cast<int>(abs(pid_RD.Measure * 100))
     );
-    uart5_port.writeDma(reinterpret_cast<uint8_t*>(debug_buffer), sizeof(debug_buffer));
-    vTaskDelayUntil(&currentTime, 5);//1ms发送一次
+    // HAL_UART_Transmit_DMA(&huart5, (const uint8_t *)debug_buffer, sizeof(debug_buffer));
+    uart5_port.writeDma(reinterpret_cast<const uint8_t*>(debug_buffer), len);
+    vTaskDelayUntil(&currentTime, 25);//1ms发送一次
   }
 }
 
