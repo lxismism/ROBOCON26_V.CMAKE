@@ -2,4 +2,5 @@ MDK-ARM
 build
 .clangd
 .vscode
-.settin
+.settings
+[Hh]7_一键启动OpenOCD.bat

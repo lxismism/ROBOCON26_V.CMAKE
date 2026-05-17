@@ -35,18 +35,18 @@ pub_Xbox_Data control_xbox_cmd_Last{};
 // pub_imu_data imu_data{};
 
 /* 订阅Position定位信息 */
-static TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
+static TypedTopicSubscriber<pub_Position_Data> control_position_sub("Position", 8);
 pub_Position_Data control_position_msg{};
 
 // //测试时发现陀螺仪有绝对正向，故在此以上电时的正向为相对正向
 // static bool headless_ref_ready = false;
 // static float ref_yaw_rad = 0.0f;
 
-static float control_position_x = 0.0f;
-static float control_position_y = 0.0f;
-static float control_position_yaw = 0.0f;
-static float control_position_yaw_speed = 0.0f;
-static uint8_t control_position_frame_id = 0;
+float control_position_x = 0.0f;
+float control_position_y = 0.0f;
+float control_position_yaw = 0.0f;
+float control_position_yaw_speed = 0.0f;
+uint8_t control_position_frame_id = 0;
 
 float xbox_angle_rad ;
 float V_aim ;
@@ -268,6 +268,8 @@ void controlTask(void *argument) {
       Xbox_Data_Process();
       chassis_data_pub.Publish(Robot_v_Aim_cmd);
     }
+
+
     vTaskDelayUntil(&currentTime, 5);
   }
 }

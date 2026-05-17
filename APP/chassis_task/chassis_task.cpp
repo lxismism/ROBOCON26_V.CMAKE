@@ -49,9 +49,12 @@ const std::array<MecanumChassis::SpeedPidParam, MecanumChassis::kMecanumWheelCou
                     NONE), // 右下
   };
 }
-namespace {//omni底盘解算器实例
+//将实例移出命名空间以在debug处访问
 OmniChassis Omnichassis_solver(chassis_motor1, chassis_motor2, chassis_motor3,
                 chassis_motor4);
+namespace {//omni底盘解算器实例
+// OmniChassis Omnichassis_solver(chassis_motor1, chassis_motor2, chassis_motor3,
+//                 chassis_motor4);
 // 每个轮子的PID参数配置
 const std::array<OmniChassis::SpeedPidParam, OmniChassis::kOmniWheelCount>
   kOmniWheelPidParams = {
