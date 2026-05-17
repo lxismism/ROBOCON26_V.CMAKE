@@ -146,8 +146,8 @@ const osThreadAttr_t Uart4ProcessTaskHandle_attributes = {
 
   const osThreadAttr_t DebugSerialTaskHandle_attributes = {
       .name = "DebugSerial_TaskHandle",
-      .stack_size = 128 * 4,
-      .priority = (osPriority_t)osPriorityNormal1,
+      .stack_size = 256 * 6,
+      .priority = (osPriority_t)osPriorityNormal,
   };
   DebugSerialTaskHandle =
       osThreadNew(DebugSerialTask, NULL, &DebugSerialTaskHandle_attributes);

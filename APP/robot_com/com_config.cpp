@@ -361,20 +361,19 @@ void DebugSerialTask(void *argument) {
 
   for(;;)
   {
-    float target = pid_LU.Ref * 100;
-    float actual = pid_LU.Measure * 100;
+    currentTime = xTaskGetTickCount();
     snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d, %d.%02d, %d.%02d, %d.%02d\r\n",
-                                              static_cast<int>(pid_LU.Ref), static_cast<int>(pid_LU.LU * 100),
+                                              static_cast<int>(pid_LU.Ref), static_cast<int>(pid_LU.Ref * 100),
                                               static_cast<int>(pid_LU.Measure), static_cast<int>(pid_LU.Measure * 100),
-                                              static_cast<int>(pid_RU.Ref), static_cast<int>(pid_RU.RU * 100),
+                                              static_cast<int>(pid_RU.Ref), static_cast<int>(pid_RU.Ref * 100),
                                               static_cast<int>(pid_RU.Measure), static_cast<int>(pid_RU.Measure * 100),
-                                              static_cast<int>(pid_LD.Ref), static_cast<int>(pid_LD.Measure * 100),
+                                              static_cast<int>(pid_LD.Ref), static_cast<int>(pid_LD.Ref * 100),
                                               static_cast<int>(pid_LD.Measure), static_cast<int>(pid_LD.Measure * 100),
-                                              static_cast<int>(pid_RD.Ref), static_cast<int>(pid_RD.RD * 100),
-                                              static_cast<int>(pid_RD.Measure), static_cast<int>(pid_RD.Measure * 100),
-    )
+                                              static_cast<int>(pid_RD.Ref), static_cast<int>(pid_RD.Ref * 100),
+                                              static_cast<int>(pid_RD.Measure), static_cast<int>(pid_RD.Measure * 100)
+    );
     uart5_port.writeDma(reinterpret_cast<uint8_t*>(debug_buffer), sizeof(debug_buffer));
-    vTaskDelayUntil(&currentTime, 1);//1ms发送一次
+    vTaskDelayUntil(&currentTime, 5);//1ms发送一次
   }
 }
 
