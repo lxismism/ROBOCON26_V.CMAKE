@@ -28,8 +28,7 @@ public:
   uint8_t processByte(uint8_t byte);
 
   const Data &getData() const { return data_; }
-  bool frameReady() const { return frame_ready_; }
-  void clearFrameReady() { frame_ready_ = false; }
+
   void resetState();
 
 private:
@@ -57,5 +56,5 @@ private:
   uint8_t payload_index_{0};
   uint8_t crc_[2]{};
   Data data_{};
-  bool frame_ready_{false};
+
 };

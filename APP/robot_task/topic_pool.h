@@ -77,8 +77,7 @@ typedef struct {
   float y;
   float yaw;
   float yaw_speed;
-  float reserve_0;
-  float reserve_1;
+
 } pub_Position_Data;
 
 
