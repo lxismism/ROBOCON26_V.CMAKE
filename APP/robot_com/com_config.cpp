@@ -14,6 +14,7 @@
 #include "com_config.h"
 #include "FreeRTOS.h"
 #include "cmsis_os2.h"
+#include "pid_controller.h"
 #include "portmacro.h"
 #include "stm32h7xx_hal.h"
 #include "stm32h7xx_hal_uart.h"
@@ -31,9 +32,12 @@
 #include "topic_pool.h"
 #include "usart.h"
 
+#include "chassis_solution.hpp" //访问底盘控制器用于串口调参
+
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <stdio.h>
 
 osThreadId_t CAN1_Send_TaskHandle;
 osThreadId_t CAN2_Send_TaskHandle;
@@ -105,7 +109,7 @@ osSemaphoreId_t uart4_rx_semphore = NULL;
 void onUart5RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例化不报错
 
 DMA_BUFFER_ATTR static uint8_t uart5_rx_dma[64];
-DMA_BUFFER_ATTR static uint8_t uart5_tx_dma[128];
+DMA_BUFFER_ATTR static uint8_t uart5_tx_dma[512];
 UartPort uart5_port(&huart5, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
                     sizeof(uart5_tx_dma), onUart5RxCb, nullptr);
 osSemaphoreId_t uart5_rx_semphore = NULL;
@@ -314,16 +318,18 @@ void uart3RxProcessTask(void *argument) {
           const auto &ctrl_data = xbox_remote.getControllerData();
           xbox_msg.btnY = ctrl_data.btnY;
           xbox_msg.btnA = ctrl_data.btnA;
+          xbox_msg.btnB = ctrl_data.btnB;
+          xbox_msg.btnX = ctrl_data.btnX;
           xbox_msg.btnLB = ctrl_data.btnLB;
           xbox_msg.btnRB = ctrl_data.btnRB;
+          xbox_msg.btnLS = ctrl_data.btnLS;
+          xbox_msg.btnRS = ctrl_data.btnRS;
           xbox_msg.trigLT = ctrl_data.trigLT;
           xbox_msg.trigRT = ctrl_data.trigRT;
           xbox_msg.btnDirUp = ctrl_data.btnDirUp;
           xbox_msg.btnDirDown = ctrl_data.btnDirDown;
           xbox_msg.btnDirLeft = ctrl_data.btnDirLeft;
           xbox_msg.btnDirRight = ctrl_data.btnDirRight;
-          xbox_msg.btnB = ctrl_data.btnB;
-          xbox_msg.btnX = ctrl_data.btnX;
           xbox_msg.joyLHori = ctrl_data.joyLHori;
           xbox_msg.joyLVert = ctrl_data.joyLVert;
           xbox_msg.joyRHori = ctrl_data.joyRHori;
@@ -346,18 +352,38 @@ void uart5RxProcessTask(void *argument) {
 
 void DebugSerialTask(void *argument) {
   (void)argument;
-  static uint8_t data[4];
+  static char debug_buffer[256];
+
+  extern OmniChassis Omnichassis_solver;
+  extern pub_chassis_cmd State_Aim_cmd;
+  extern pub_Position_Data control_position_msg;
+
+  const PID_t& pid_LU = Omnichassis_solver.pid(OmniChassis::kLeftUp);
+  const PID_t& pid_RU = Omnichassis_solver.pid(OmniChassis::kRightUp);
+  const PID_t& pid_LD = Omnichassis_solver.pid(OmniChassis::kLeftDown);
+  const PID_t& pid_RD = Omnichassis_solver.pid(OmniChassis::kRightDown);
+
+  TickType_t currentTime = xTaskGetTickCount();
+
   for(;;)
   {
-    TickType_t currentTime = xTaskGetTickCount();
-    uint32_t row_data = HAL_GetTick();
-    data[0] = row_data>>24;
-    data[1] = (row_data>>16) & 0xFF;
-    data[2] = (row_data>>8) & 0xFF;
-    data[3] = row_data & 0xFF;
-    //txDMA缓冲区大小为uint8_t[128]
-    uart5_port.writeDma(data, sizeof(data));
-    vTaskDelayUntil(&currentTime, 1);//1ms发送一次
+    currentTime = xTaskGetTickCount();
+    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%03d,%d.%03d,%d.%02d\n",
+                                              static_cast<int>(pid_LU.Ref), (static_cast<int>(abs(pid_LU.Ref * 100)))%100,
+                                              static_cast<int>(pid_LU.Measure), (static_cast<int>(abs(pid_LU.Measure * 100)))%100,
+                                              static_cast<int>(pid_RU.Ref), (static_cast<int>(abs(pid_RU.Ref * 100)))%100,
+                                              static_cast<int>(pid_RU.Measure), (static_cast<int>(abs(pid_RU.Measure * 100)))%100,
+                                              static_cast<int>(pid_LD.Ref), (static_cast<int>(abs(pid_LD.Ref * 100)))%100,
+                                              static_cast<int>(pid_LD.Measure), (static_cast<int>(abs(pid_LD.Measure * 100)))%100,
+                                              static_cast<int>(pid_RD.Ref), (static_cast<int>(abs(pid_RD.Ref * 100)))%100,
+                                              static_cast<int>(pid_RD.Measure), (static_cast<int>(abs(pid_RD.Measure * 100)))%100,
+                                              static_cast<int>(control_position_msg.x), (static_cast<int>(abs(control_position_msg.x * 1000)))%1000,
+                                              static_cast<int>(control_position_msg.y), (static_cast<int>(abs(control_position_msg.y * 1000)))%1000,
+                                              static_cast<int>(control_position_msg.yaw), (static_cast<int>(abs(control_position_msg.yaw * 100)))%100
+    );
+    // HAL_UART_Transmit_DMA(&huart5, (const uint8_t *)debug_buffer, sizeof(debug_buffer));
+    uart5_port.writeDma(reinterpret_cast<const uint8_t*>(debug_buffer), len);
+    vTaskDelayUntil(&currentTime, 10);//10ms发送一次
   }
 }
 

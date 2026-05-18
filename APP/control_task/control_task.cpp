@@ -28,6 +28,7 @@ static pub_chassis_cmd xbox_cmd{};
 /* 订阅xbox遥控控制信息 */
 static TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox", 8);
 static pub_Xbox_Data control_xbox_cmd{};
+static pub_Xbox_Data control_xbox_cmd_Last{};
 
 /* 订阅Position定位信息 */
 static TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
@@ -41,6 +42,9 @@ static uint8_t control_position_frame_id = 0;
 
 static float xbox_angle_deg;
 static float v_aim;
+  
+bool headless_xy_mode = true;//无头模式标志位，默认开启
+bool headless_omega_mode = true;//无头模式标志位，默认开启
 
 static float error_x;
 static float error_y;
@@ -59,16 +63,9 @@ static pub_chassis_cmd state_aim_cmd{
     .omega_ = 0.0f
 };
 
-// 位置环PID（控制距离）
-static PID_t linear_pid{
-    .Kp = 16.8f, .Ki = 1.0f, .Kd = 0.000032f,
-    .MaxOut = MAX_VELOCITY_LINEAR, .DeadBand = 0.005f, .Improve = NONE
-};
-// 角度环PID（控制方向）
-static PID_t angle_pid{
-    .Kp = 3.0f, .Ki = 0.5f, .Kd = 0.0002f,
-    .MaxOut = MAX_VELOCITY_ANGULAR * 90.0f / M_PI, .DeadBand = 1.0f, .Improve = NONE
-};
+//车体目标角度环pid
+static PID_t linear{.Kp = 1.68f,.Ki = 0.5f,.Kd = 0.0022f,.MaxOut = MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = Derivative_On_Measurement};
+static PID_t deg{.Kp = 3.0f,.Ki = 0.8f,.Kd = 0.024f,.MaxOut = MAX_VELOCITY_ANGULAR*180.0/M_PI,.DeadBand = 0.3f,.Improve = Derivative_On_Measurement};
 
 // 摇杆常量
 static constexpr uint16_t kJoyCenter = 32767;
@@ -86,8 +83,56 @@ static int8_t sign(double value) {
 // 处理xbox数据，处理为底盘控制指令
 void Xbox_Data_Process()
 {
-    // X轴（左右方向）
-    if (ABS(control_xbox_cmd.joyLHori - kJoyCenter) > kJoyDeadZoneLeft)
+  if (ABS(control_xbox_cmd.joyLHori - kJoyCenter) > kJoyDeadZoneLeft)
+  {
+    xbox_cmd.linear_x_ = (int)(control_xbox_cmd.joyLHori - kJoyCenter - sign(control_xbox_cmd.joyLHori - kJoyCenter)*kJoyDeadZoneLeft) / ((float)(kJoyCenter - kJoyDeadZoneLeft)) * MAX_VELOCITY_LINEAR;
+  }
+  else
+  {
+    xbox_cmd.linear_x_ = 0.0f;
+  }
+
+  if (ABS(control_xbox_cmd.joyLVert - kJoyCenter) > kJoyDeadZoneLeft)
+  {
+    xbox_cmd.linear_y_ = -(int)(control_xbox_cmd.joyLVert - kJoyCenter - sign(control_xbox_cmd.joyLVert - kJoyCenter)*kJoyDeadZoneLeft) / ((float)(kJoyCenter - kJoyDeadZoneLeft)) * MAX_VELOCITY_LINEAR;
+  }
+  else
+  {
+    xbox_cmd.linear_y_ = 0.0f;
+  }
+
+  if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > kJoyDeadZoneRight)
+  {
+    xbox_cmd.omega_ = -(int)(control_xbox_cmd.joyRHori - kJoyCenter - sign(control_xbox_cmd.joyRHori - kJoyCenter)*kJoyDeadZoneRight) / ((float)(kJoyCenter - kJoyDeadZoneLeft)) * MAX_VELOCITY_ANGULAR;
+  }
+  else
+  {
+    xbox_cmd.omega_ = 0.0f;
+  }
+
+    // 无头模式：将场地坐标系速度旋转为车身坐标系速度
+  {
+    //切换xy模式
+    if(control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS)
+    {
+      if(control_xbox_cmd.btnLS == true){
+        headless_xy_mode = !headless_xy_mode;
+      }
+    }
+    control_xbox_cmd_Last.btnLS = control_xbox_cmd.btnLS;
+    
+    //切换omega模式
+    if(control_xbox_cmd.btnRS != control_xbox_cmd_Last.btnRS)
+    {
+      if(control_xbox_cmd.btnRS == true){
+        headless_omega_mode = !headless_omega_mode;
+      }
+    }
+    control_xbox_cmd_Last.btnRS = control_xbox_cmd.btnRS;
+
+
+    // if(xbox_cmd.linear_y_ != 0.0f || xbox_cmd.linear_x_ != 0.0f )
+    if(headless_xy_mode)
     {
         xbox_cmd.linear_x_ = (int)(control_xbox_cmd.joyLHori - kJoyCenter
             - sign(control_xbox_cmd.joyLHori - kJoyCenter) * kJoyDeadZoneLeft)
@@ -98,12 +143,11 @@ void Xbox_Data_Process()
         xbox_cmd.linear_x_ = 0.0f;
     }
 
-    // Y轴（前后方向）
-    if (ABS(control_xbox_cmd.joyLVert - kJoyCenter) > kJoyDeadZoneLeft)
+    // if(xbox_cmd.omega_ != 0.0f)
+    if(headless_omega_mode)
     {
-        xbox_cmd.linear_y_ = -(int)(control_xbox_cmd.joyLVert - kJoyCenter
-            - sign(control_xbox_cmd.joyLVert - kJoyCenter) * kJoyDeadZoneLeft)
-            / (float)(kJoyCenter - kJoyDeadZoneLeft) * MAX_VELOCITY_LINEAR;
+      robot_v_Aim_cmd.omega_ = xbox_cmd.omega_;
+      state_Aim_cmd.omega_ = control_position_yaw ;
     }
     else
     {
