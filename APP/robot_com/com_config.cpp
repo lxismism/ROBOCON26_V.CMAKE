@@ -121,7 +121,7 @@ TypedTopicPublisher<pub_Xbox_Data> xbox_data_pub("xbox");
 pub_Xbox_Data xbox_msg;
 
 // Position模块（基于uart4）
-Position Position;
+Position position;
 TypedTopicPublisher<pub_Position_Data> Position_data_pub("position");
 pub_Position_Data Position_msg{};
 
@@ -167,7 +167,9 @@ uint8_t comServiceInit() {
 
   // 串口外设
   uart5_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  uart5_port.startRxDmaIdle();
+  if (uart5_rx_semphore == NULL || uart5_port.startRxDmaIdle() != HAL_OK) {
+    return 1;
+  }
 
   uart3_rx_semphore = osSemaphoreNew(1, 0, NULL);
   if (uart3_rx_semphore == NULL || uart3_port.startRxDmaIdle() != HAL_OK) {
@@ -187,8 +189,8 @@ uint8_t comServiceInit() {
   // Xbox控制器初始化
   xbox_remote.init();
 
-  // Position模块初始化
-  Position.init();
+  // position模块初始化
+  position.init();
 
   // usb 外设
   usbcdc_rx_semphore = osSemaphoreNew(1, 0, NULL);
@@ -333,7 +335,7 @@ void uart3RxProcessTask(void *argument) {
   }
 }
 
-//暂时先做发
+//暂时先做发送
 void uart5RxProcessTask(void *argument) {
   (void)argument;
   for(;;)
@@ -423,9 +425,9 @@ void uart4RxProcessTask(void *argument) {
     UartPort::Packet packet{};
     while (uart4_port.Read(packet)) {
       for (uint16_t i = 0; i < packet.len; ++i) {
-        uint8_t frame_id = Position.processByte(packet.data[i]);
+        uint8_t frame_id = position.processByte(packet.data[i]);
         if (frame_id != 0) {
-          const auto &pos_data = Position.getData();
+          const auto &pos_data = position.getData();
           Position_msg.frame_id = pos_data.frame_id;
           Position_msg.payload_length = pos_data.payload_length;
           Position_msg.frame_count = pos_data.frame_count;

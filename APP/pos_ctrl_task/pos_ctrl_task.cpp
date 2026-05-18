@@ -11,7 +11,7 @@
  */
 #include "pos_ctrl_task.hpp"
 
-#include "com_config.h"
+
 
 #include "FreeRTOS.h"
 #include "cmsis_os2.h"
@@ -54,7 +54,7 @@ static bool pos_inited_2006 = false;        // 2006电机首次初始化标志
 static constexpr uint16_t kTriggerThreshold = 512;
 static constexpr float kStepAngle = 60.0f;
 
-float debug_current_angle = 0.0f;
+static float debug_current_angle = 0.0f;
 
 void posCtrlTask(void *argument) {
   (void)argument;
