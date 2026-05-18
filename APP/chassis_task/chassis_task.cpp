@@ -38,7 +38,7 @@ namespace {//omni底盘解算器实例
 // OmniChassis Omnichassis_solver(chassis_motor1, chassis_motor2, chassis_motor3,
 //                 chassis_motor4);
 // 每个轮子的PID参数配置
-const std::array<OmniChassis::SpeedPidParam, OmniChassis::kOmniWheelCount>
+const std::array<OmniChassis::SpeedPidParam, OmniChassis::kWheelCount>
   kOmniWheelPidParams = {
     // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 左上
     // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 右上
@@ -52,8 +52,7 @@ const std::array<OmniChassis::SpeedPidParam, OmniChassis::kOmniWheelCount>
 }
 
 static inline void chassisInit() {
-    chassis_solver.configureSpeedPid(kWheelPidParams);
-
+    Omnichassis_solver.configureSpeedPid(kOmniWheelPidParams);
     if (!chassis_cmd_sub.IsValid()) {
         return;
     }
@@ -65,9 +64,11 @@ void chassisTask(void *argument) {
     chassisInit();
 
     for (;;) {
-        if (chassis_cmd_sub.TryGet(&chassis_chassis_cmd)) {
-          // 进行解算并控制电机
-          Omnichassis_solver.run(chassis_chassis_cmd);
-          vTaskDelayUntil(&currentTime, 1); // 每1ms执行一次发送任务
-  }
+      if (chassis_cmd_sub.TryGet(&chassis_chassis_cmd)) {
+      // 仅更新命令
+      }
+      // 无论有没有新命令，都持续执行解算
+      Omnichassis_solver.run(chassis_chassis_cmd);
+      vTaskDelayUntil(&currentTime, 1);
+    }
 }

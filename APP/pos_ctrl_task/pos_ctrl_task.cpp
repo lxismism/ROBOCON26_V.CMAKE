@@ -71,9 +71,9 @@ void posCtrlTask(void *argument) {
 
     // 2006电机 PID 参数初始化
   PID_Init(&pos_pid_2006);
-  pos_pid_2006.Kp = 8.0f;
-  pos_pid_2006.Ki = 2.0f;
-  pos_pid_2006.Kd = 0.3f;
+  pos_pid_2006.Kp = 40.0f;
+  pos_pid_2006.Ki = 40.0f;
+  pos_pid_2006.Kd = 6.0f;
   pos_pid_2006.MaxOut = 5000.0f;
   pos_pid_2006.IntegralLimit = 3000.0f;
   pos_pid_2006.DeadBand = 0.5f;

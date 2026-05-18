@@ -22,17 +22,17 @@
 osThreadId_t ControlTaskHandle;
 
 // 发布底盘控制指令
-TypedTopicPublisher<pub_chassis_cmd> chassis_data_pub("chassis_cmd");
+static TypedTopicPublisher<pub_chassis_cmd> chassis_data_pub("chassis_cmd");
 static pub_chassis_cmd xbox_cmd{};
 
 /* 订阅xbox遥控控制信息 */
 static TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox", 8);
-static pub_Xbox_Data control_xbox_cmd{};
-static pub_Xbox_Data control_xbox_cmd_Last{};
+pub_Xbox_Data control_xbox_cmd{};
+pub_Xbox_Data control_xbox_cmd_Last{};
 
 /* 订阅Position定位信息 */
 static TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
-static pub_Position_Data control_position_msg{};
+pub_Position_Data control_position_msg{};
 
 static float control_position_x = 0.0f;
 static float control_position_y = 0.0f;
@@ -43,8 +43,8 @@ static uint8_t control_position_frame_id = 0;
 static float xbox_angle_deg;
 static float v_aim;
   
-bool headless_xy_mode = true;//无头模式标志位，默认开启
-bool headless_omega_mode = true;//无头模式标志位，默认开启
+static bool headless_xy_mode = true;//无头模式标志位，默认开启
+static bool headless_omega_mode = true;//无头模式标志位，默认开启
 
 static float error_x;
 static float error_y;
@@ -83,6 +83,7 @@ static int8_t sign(double value) {
 // 处理xbox数据，处理为底盘控制指令
 void Xbox_Data_Process()
 {
+  // ===== 第1步：解析摇杆 → xbox_cmd（场地坐标系下的速度指令） =====
   if (ABS(control_xbox_cmd.joyLHori - kJoyCenter) > kJoyDeadZoneLeft)
   {
     xbox_cmd.linear_x_ = (int)(control_xbox_cmd.joyLHori - kJoyCenter - sign(control_xbox_cmd.joyLHori - kJoyCenter)*kJoyDeadZoneLeft) / ((float)(kJoyCenter - kJoyDeadZoneLeft)) * MAX_VELOCITY_LINEAR;
@@ -103,16 +104,16 @@ void Xbox_Data_Process()
 
   if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > kJoyDeadZoneRight)
   {
-    xbox_cmd.omega_ = -(int)(control_xbox_cmd.joyRHori - kJoyCenter - sign(control_xbox_cmd.joyRHori - kJoyCenter)*kJoyDeadZoneRight) / ((float)(kJoyCenter - kJoyDeadZoneLeft)) * MAX_VELOCITY_ANGULAR;
+    xbox_cmd.omega_ = -(int)(control_xbox_cmd.joyRHori - kJoyCenter - sign(control_xbox_cmd.joyRHori - kJoyCenter)*kJoyDeadZoneRight) / ((float)(kJoyCenter - kJoyDeadZoneRight)) * MAX_VELOCITY_ANGULAR;
   }
   else
   {
     xbox_cmd.omega_ = 0.0f;
   }
 
-    // 无头模式：将场地坐标系速度旋转为车身坐标系速度
+    // ===== 第2步：无头模式切换 + 坐标系旋转 =====
   {
-    //切换xy模式
+    //切换xy模式（按下左摇杆LS切换）
     if(control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS)
     {
       if(control_xbox_cmd.btnLS == true){
@@ -121,7 +122,7 @@ void Xbox_Data_Process()
     }
     control_xbox_cmd_Last.btnLS = control_xbox_cmd.btnLS;
     
-    //切换omega模式
+    //切换omega模式（按下右摇杆RS切换）
     if(control_xbox_cmd.btnRS != control_xbox_cmd_Last.btnRS)
     {
       if(control_xbox_cmd.btnRS == true){
@@ -131,115 +132,83 @@ void Xbox_Data_Process()
     control_xbox_cmd_Last.btnRS = control_xbox_cmd.btnRS;
 
 
-    // if(xbox_cmd.linear_y_ != 0.0f || xbox_cmd.linear_x_ != 0.0f )
+    // ----- XY方向控制 -----
     if(headless_xy_mode)
     {
-        xbox_cmd.linear_x_ = (int)(control_xbox_cmd.joyLHori - kJoyCenter
-            - sign(control_xbox_cmd.joyLHori - kJoyCenter) * kJoyDeadZoneLeft)
-            / (float)(kJoyCenter - kJoyDeadZoneLeft) * MAX_VELOCITY_LINEAR;
+      // 无头模式：将场地坐标系速度旋转为车身坐标系速度
+      xbox_angle_deg = atan2(xbox_cmd.linear_y_,xbox_cmd.linear_x_)/kDegToRad;
+      v_aim = sqrt(xbox_cmd.linear_x_ * xbox_cmd.linear_x_ + xbox_cmd.linear_y_ * xbox_cmd.linear_y_);
+
+      robot_v_aim_cmd.linear_x_ = v_aim * cos((xbox_angle_deg - control_position_yaw)*kDegToRad);
+      robot_v_aim_cmd.linear_y_ = v_aim * sin((xbox_angle_deg - control_position_yaw)*kDegToRad);
+      
+      //覆盖定位信息（有摇杆输入时，目标位置跟踪当前实际位置，避免松开摇杆后回弹）
+      state_aim_cmd.linear_x_ = control_position_x;
+      state_aim_cmd.linear_y_ = control_position_y;
     }
     else
     {
-        xbox_cmd.linear_x_ = 0.0f;
+      // 摇杆归零，进入目标点位置环PID自动导航
+      if(control_xbox_cmd.btnY == 1){
+        state_aim_cmd.linear_x_ = 0.0f;
+        state_aim_cmd.linear_y_ = 0.0f;
+      }else if(control_xbox_cmd.btnX == 1){
+        state_aim_cmd.linear_x_ = 0.0f;
+        state_aim_cmd.linear_y_ = 0.5f;
+      }else if(control_xbox_cmd.btnA == 1){
+        state_aim_cmd.linear_x_ = 0.0f;
+        state_aim_cmd.linear_y_ = 1.0f;
+      }else if(control_xbox_cmd.btnB == 1){
+        state_aim_cmd.linear_x_ = 0.0f;
+        state_aim_cmd.linear_y_ = 1.5f;
+      }
+
+      error_x            = state_aim_cmd.linear_x_ - control_position_x;
+      error_y            = state_aim_cmd.linear_y_ - control_position_y;
+      state_xy_error     = sqrt(error_x*error_x + error_y*error_y);
+      state_xy_angle_deg = atan2(error_y,error_x)/kDegToRad;
+      xy_pid_output      = PID_Calculate(&linear,0.0f,state_xy_error);
+      robot_v_aim_cmd.linear_x_  = xy_pid_output * cos((state_xy_angle_deg - control_position_yaw)*kDegToRad);
+      robot_v_aim_cmd.linear_y_  = xy_pid_output * sin((state_xy_angle_deg - control_position_yaw)*kDegToRad);
     }
 
-    // if(xbox_cmd.omega_ != 0.0f)
+    // ----- Omega旋转控制 -----
     if(headless_omega_mode)
     {
-      robot_v_Aim_cmd.omega_ = xbox_cmd.omega_;
-      state_Aim_cmd.omega_ = control_position_yaw ;
+      // 无头模式：摇杆直通
+      robot_v_aim_cmd.omega_ = xbox_cmd.omega_;
+      state_aim_cmd.omega_ = control_position_yaw ;
     }
     else
     {
-        xbox_cmd.linear_y_ = 0.0f;
+      // 摇杆归零，进入目标角度环PID
+      if(control_xbox_cmd.btnY == 1){
+        state_aim_cmd.omega_ = 0.0f;
+      }else if(control_xbox_cmd.btnX == 1){
+        state_aim_cmd.omega_ = 90.0f;
+      }else if(control_xbox_cmd.btnA == 1){
+        state_aim_cmd.omega_ = 180.0f;
+      }else if(control_xbox_cmd.btnB == 1){
+        state_aim_cmd.omega_ = -90.0f;
+      }
+      //计算角度误差并进行PID控制
+      float error_dir = state_aim_cmd.omega_ - control_position_yaw;
+      if (fabs(error_dir) < 1.5f){
+        error_dir = 0.0f;
+      }else if(fabs(error_dir) > 180.0 ){
+        if(error_dir > 0) error_dir = error_dir - 360.0 ;
+        else error_dir = error_dir + 360.0 ;
+      }
+
+      // PID输出为度/s，转换为rad/s后发布
+      robot_v_aim_cmd.omega_ = kDegToRad*PID_Calculate(&deg,control_position_yaw,control_position_yaw + error_dir);
     }
 
-    // 旋转
-    if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > kJoyDeadZoneRight)
-    {
-        xbox_cmd.omega_ = -(int)(control_xbox_cmd.joyRHori - kJoyCenter
-            - sign(control_xbox_cmd.joyRHori - kJoyCenter) * kJoyDeadZoneRight)
-            / (float)(kJoyCenter - kJoyDeadZoneRight) * MAX_VELOCITY_ANGULAR;
-    }
-    else
-    {
-        xbox_cmd.omega_ = 0.0f;
-    }
+  }
 
-    // 场地坐标系 → 车身坐标系 转换
-    {
-        if (xbox_cmd.omega_ != 0.0f || xbox_cmd.linear_x_ != 0.0f)
-        {
-            // 摇杆有输入：直接遥控，同时更新目标位置为当前位置
-            xbox_angle_deg = atan2(xbox_cmd.linear_y_, xbox_cmd.linear_x_) / kDegToRad;
-            v_aim = sqrt(xbox_cmd.linear_x_ * xbox_cmd.linear_x_
-                       + xbox_cmd.linear_y_ * xbox_cmd.linear_y_);
 
-            robot_v_aim_cmd.linear_x_ = v_aim * cos((xbox_angle_deg - control_position_yaw) * kDegToRad);
-            robot_v_aim_cmd.linear_y_ = v_aim * sin((xbox_angle_deg - control_position_yaw) * kDegToRad);
-
-            state_aim_cmd.linear_x_ = control_position_x;
-            state_aim_cmd.linear_y_ = control_position_y;
-        }
-        else
-        {
-            // 摇杆归零：按键选择目标点，位置环PID自动导航
-            if (control_xbox_cmd.btnY == 1) {
-                state_aim_cmd.linear_x_ = 0.0f;
-                state_aim_cmd.linear_y_ = 0.0f;
-            } else if (control_xbox_cmd.btnX == 1) {
-                state_aim_cmd.linear_x_ = 0.0f;
-                state_aim_cmd.linear_y_ = 0.5f;
-            } else if (control_xbox_cmd.btnA == 1) {
-                state_aim_cmd.linear_x_ = 0.0f;
-                state_aim_cmd.linear_y_ = 1.0f;
-            } else if (control_xbox_cmd.btnB == 1) {
-                state_aim_cmd.linear_x_ = 0.0f;
-                state_aim_cmd.linear_y_ = 1.5f;
-            }
-
-            error_x = state_aim_cmd.linear_x_ - control_position_x;
-            error_y = state_aim_cmd.linear_y_ - control_position_y;
-            state_xy_error = sqrt(error_x * error_x + error_y * error_y);
-            state_xy_angle_deg = atan2(error_y, error_x) / kDegToRad;
-            xy_pid_output = PID_Calculate(&linear_pid, 0.0f, state_xy_error);
-
-            robot_v_aim_cmd.linear_x_ = xy_pid_output * cos((state_xy_angle_deg - control_position_yaw) * kDegToRad);
-            robot_v_aim_cmd.linear_y_ = xy_pid_output * sin((state_xy_angle_deg - control_position_yaw) * kDegToRad);
-        }
-
-        if (xbox_cmd.omega_ != 0.0f)
-        {
-            robot_v_aim_cmd.omega_ = xbox_cmd.omega_;
-            state_aim_cmd.omega_ = control_position_yaw;
-        }
-        else
-        {
-            // 摇杆归零：按键选择目标角度
-            if (control_xbox_cmd.btnY == 1) {
-                state_aim_cmd.omega_ = 0.0f;
-            } else if (control_xbox_cmd.btnX == 1) {
-                state_aim_cmd.omega_ = 90.0f;
-            } else if (control_xbox_cmd.btnA == 1) {
-                state_aim_cmd.omega_ = 180.0f;
-            } else if (control_xbox_cmd.btnB == 1) {
-                state_aim_cmd.omega_ = -90.0f;
-            }
-
-            float error_dir = state_aim_cmd.omega_ - control_position_yaw;
-
-            // 角度死区
-            if (fabs(error_dir) < 1.5f) {
-                error_dir = 0.0f;
-            }
-            // 角度归一化到 [-180°, 180°]
-            ANGLE_LIMIT(error_dir, -180.0f, 180.0f);
-
-            // PID输出为度/s，转换为rad/s后发布
-            robot_v_aim_cmd.omega_ = kDegToRad * PID_Calculate(&angle_pid, control_position_yaw, control_position_yaw + error_dir);
-        }
-    }
 }
+
 
 
 void controlInit() {
@@ -257,8 +226,8 @@ void controlInit() {
 void controlTask(void *argument) {
     TickType_t currentTime = xTaskGetTickCount();
 
-    PID_Init(&linear_pid);
-    PID_Init(&angle_pid);
+    PID_Init(&linear);
+    PID_Init(&deg);
 
     controlInit();
     for (;;) {
