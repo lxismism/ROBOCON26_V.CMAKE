@@ -5,7 +5,6 @@
 uint8_t Position::init() {
   resetState();
   data_ = Data{};
-  frame_ready_ = false;
   return 1;
 }
 
@@ -81,7 +80,7 @@ uint8_t Position::processByte(uint8_t byte) {
           isSupportedPayloadLength(payload_length_)) {
         parseFrame();
         decoded_id = frame_id_;
-        frame_ready_ = true;
+
       }
       resetState();
       return decoded_id;
