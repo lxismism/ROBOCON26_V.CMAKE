@@ -58,10 +58,14 @@ namespace {//omni底盘解算器实例
 // 每个轮子的PID参数配置
 const std::array<OmniChassis::SpeedPidParam, OmniChassis::kOmniWheelCount>
   kOmniWheelPidParams = {
-    OmniChassis::SpeedPidParam(245.0f, 0.01f, 0.32f, 16000.0f, 0.5f, NONE), // 左上
-    OmniChassis::SpeedPidParam(245.0f, 0.01f, 0.32f, 16000.0f, 0.5f, NONE), // 右上
-    OmniChassis::SpeedPidParam(245.0f, 0.01f, 0.32f, 16000.0f, 0.5f, NONE), // 左下
-    OmniChassis::SpeedPidParam(245.0f, 0.01f, 0.32f, 16000.0f, 0.5f, NONE), // 右下
+    // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 左上
+    // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 右上
+    // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 左下
+    // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 右下
+    OmniChassis::SpeedPidParam(1050.0f, 750.0f, 0.002f, 16000.0f, 0.5f, NONE), // 左上
+    OmniChassis::SpeedPidParam(1050.0f, 750.0f, 0.002f, 16000.0f, 0.5f, NONE), // 右上
+    OmniChassis::SpeedPidParam(1050.0f, 750.0f, 0.002f, 16000.0f, 0.5f, NONE), // 左下
+    OmniChassis::SpeedPidParam(1050.0f, 750.0f, 0.002f, 16000.0f, 0.5f, NONE), // 右下
   };
 }
 
@@ -90,6 +94,6 @@ void chassisTask(void *argument) {
     }
     // 进行解算并控制电机
     Omnichassis_solver.run(chassis_chassis_cmd);
-    vTaskDelayUntil(&currentTime, 5); // 每1ms执行一次发送任务
+    vTaskDelayUntil(&currentTime, 1); // 每1ms执行一次发送任务
   }
 }

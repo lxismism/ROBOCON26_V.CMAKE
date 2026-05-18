@@ -35,7 +35,7 @@ pub_Xbox_Data control_xbox_cmd_Last{};
 // pub_imu_data imu_data{};
 
 /* 订阅Position定位信息 */
-static TypedTopicSubscriber<pub_Position_Data> control_position_sub("Position", 8);
+static TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
 pub_Position_Data control_position_msg{};
 
 // //测试时发现陀螺仪有绝对正向，故在此以上电时的正向为相对正向
@@ -72,8 +72,8 @@ pub_chassis_cmd State_Aim_cmd{
 };
 
 //车体目标角度环pid
-PID_t Linear{.Kp = 26.8f,.Ki = 0.5f,.Kd = 0.00022f,.MaxOut = MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-PID_t Deg{.Kp = 12.0f,.Ki = 0.8f,.Kd = 0.0024f,.MaxOut = MAX_VELOCITY_ANGULAR*90.0/M_PI,.DeadBand = 1.0f,.Improve = NONE};
+PID_t Linear{.Kp = 1.68f,.Ki = 0.5f,.Kd = 0.0022f,.MaxOut = MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = Derivative_On_Measurement};
+PID_t Deg{.Kp = 3.0f,.Ki = 0.8f,.Kd = 0.024f,.MaxOut = MAX_VELOCITY_ANGULAR*180.0/M_PI,.DeadBand = 0.3f,.Improve = Derivative_On_Measurement};
 
 // //陀螺仪的超时常量
 // static TickType_t last_imu_tick = 0;

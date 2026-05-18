@@ -353,6 +353,8 @@ void DebugSerialTask(void *argument) {
   static char debug_buffer[256];
 
   extern OmniChassis Omnichassis_solver;
+  extern pub_chassis_cmd State_Aim_cmd;
+  extern pub_Position_Data control_position_msg;
 
   const PID_t& pid_LU = Omnichassis_solver.pid(OmniChassis::kLeftUp);
   const PID_t& pid_RU = Omnichassis_solver.pid(OmniChassis::kRightUp);
@@ -364,19 +366,22 @@ void DebugSerialTask(void *argument) {
   for(;;)
   {
     currentTime = xTaskGetTickCount();
-    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
-                                              static_cast<int>(pid_LU.Ref), static_cast<int>(abs(pid_LU.Ref * 100)),
-                                              static_cast<int>(pid_LU.Measure), static_cast<int>(abs(pid_LU.Measure * 100)),
-                                              static_cast<int>(pid_RU.Ref), static_cast<int>(abs(pid_RU.Ref * 100)),
-                                              static_cast<int>(pid_RU.Measure), static_cast<int>(abs(pid_RU.Measure * 100)),
-                                              static_cast<int>(pid_LD.Ref), static_cast<int>(abs(pid_LD.Ref * 100)),
-                                              static_cast<int>(pid_LD.Measure), static_cast<int>(abs(pid_LD.Measure * 100)),
-                                              static_cast<int>(pid_RD.Ref), static_cast<int>(abs(pid_RD.Ref * 100)),
-                                              static_cast<int>(pid_RD.Measure), static_cast<int>(abs(pid_RD.Measure * 100))
+    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%03d,%d.%03d,%d.%02d\n",
+                                              static_cast<int>(pid_LU.Ref), (static_cast<int>(abs(pid_LU.Ref * 100)))%100,
+                                              static_cast<int>(pid_LU.Measure), (static_cast<int>(abs(pid_LU.Measure * 100)))%100,
+                                              static_cast<int>(pid_RU.Ref), (static_cast<int>(abs(pid_RU.Ref * 100)))%100,
+                                              static_cast<int>(pid_RU.Measure), (static_cast<int>(abs(pid_RU.Measure * 100)))%100,
+                                              static_cast<int>(pid_LD.Ref), (static_cast<int>(abs(pid_LD.Ref * 100)))%100,
+                                              static_cast<int>(pid_LD.Measure), (static_cast<int>(abs(pid_LD.Measure * 100)))%100,
+                                              static_cast<int>(pid_RD.Ref), (static_cast<int>(abs(pid_RD.Ref * 100)))%100,
+                                              static_cast<int>(pid_RD.Measure), (static_cast<int>(abs(pid_RD.Measure * 100)))%100,
+                                              static_cast<int>(control_position_msg.x), (static_cast<int>(abs(control_position_msg.x * 1000)))%1000,
+                                              static_cast<int>(control_position_msg.y), (static_cast<int>(abs(control_position_msg.y * 1000)))%1000,
+                                              static_cast<int>(control_position_msg.yaw), (static_cast<int>(abs(control_position_msg.yaw * 100)))%100
     );
     // HAL_UART_Transmit_DMA(&huart5, (const uint8_t *)debug_buffer, sizeof(debug_buffer));
     uart5_port.writeDma(reinterpret_cast<const uint8_t*>(debug_buffer), len);
-    vTaskDelayUntil(&currentTime, 25);//1ms发送一次
+    vTaskDelayUntil(&currentTime, 10);//10ms发送一次
   }
 }
 
