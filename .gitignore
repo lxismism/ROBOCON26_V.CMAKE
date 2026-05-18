@@ -4,3 +4,4 @@ build
 .vscode
 .settings
 [Hh]7_一键启动OpenOCD.bat
+*.bat
