@@ -232,6 +232,9 @@ void controlInit() {
     if (!control_ir_sub.IsValid()) {
         return;
     }
+    if (!ir_cmd_pub.IsValid()) {
+        return;
+    }
 }
 
 void controlTask(void *argument) {
@@ -261,6 +264,13 @@ void controlTask(void *argument) {
 
         if(control_ir_sub.TryGet(&control_ir_msg)) {
           //红外信号处理放这
+          //测试
+          if(control_ir_msg.data1 == 0x2B && control_ir_msg.data2 == 0xFC)
+          {
+            ir_cmd.tx_data[0] = 0x67; //示例：接收到特定红外信号后，发送0x01命令
+            ir_cmd.tx_data[1] = 0x78; //示例：接收到特定红外信号后，发送0x02命令
+            ir_cmd_pub.Publish(ir_cmd);
+          }
         }
 
         vTaskDelayUntil(&currentTime, 5);

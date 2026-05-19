@@ -46,7 +46,7 @@ osThreadId_t uart2ProcessTaskHandle;
 osThreadId_t uart3ProcessTaskHandle;
 osThreadId_t uart4ProcessTaskHandle;
 osThreadId_t uart5ProcessTaskHandle;
-osThreadId_t uart10RxProcessTaskHandle;
+osThreadId_t uart10ProcessTaskHandle;
 osThreadId_t uart10SendTaskHandle;
 osThreadId_t usbcdcProcessTaskHandle;
 osThreadId_t DebugSerialTaskHandle;
@@ -144,6 +144,7 @@ pub_Position_Data Position_msg{};
 TypedTopicPublisher<pub_ir_data> ir_data_pub("ir_data");
 pub_ir_data ir_data{};
 TickType_t last_F1_received_time = 0; // 上次接收到0xF1的时间戳
+TickType_t last_data_received_time = 0; // 上次接收到数据的时间
 
 TypedTopicSubscriber<pub_ir_cmd> ir_cmd_sub("ir_cmd", 8);
 pub_ir_cmd ir_cmd{};
@@ -421,6 +422,7 @@ void uart10RxProcessTask(void *argument) {
             case wait_for_data2:
               ir_data.data2 = packet.data[i];
               ir_data_rx_state = wait_for_data_HEAD;
+              last_data_received_time = xTaskGetTickCount();
               ir_data_pub.Publish(ir_data);
               break;
           }
@@ -440,8 +442,10 @@ void uart10SendTask(void *argument) {
     return;
   }
 
-  uint8_t tx[3];
-  tx[0] = 0xAA; // 数据帧头
+  uint8_t tx[5];
+  tx[0] = 0xFA;
+  tx[1] = 0xF1;
+  tx[2] = 0xAA; // 数据帧头
 
   TickType_t currentTime = xTaskGetTickCount();
   TickType_t last_transmit_time = 0;
@@ -461,13 +465,13 @@ void uart10SendTask(void *argument) {
           ir_data_tx_state = wait_for_transmit;
         break;
       case wait_for_transmit:
-        if(currentTime - last_transmit_time >= 300)
+        if(currentTime - last_transmit_time >= 200 && currentTime - last_data_received_time >= 200)
           ir_data_tx_state = wait_for_data;
         break;
       case wait_for_data:
         if (ir_cmd_sub.TryGet(&ir_cmd)) {
-          tx[1] = ir_cmd.tx_data[0];
-          tx[2] = ir_cmd.tx_data[1];
+          tx[3] = ir_cmd.tx_data[0];
+          tx[4] = ir_cmd.tx_data[1];
           uart10_port.writeDma(tx, sizeof(tx));
           last_transmit_time = xTaskGetTickCount();
           ir_data_tx_state = wait_for_F1;
