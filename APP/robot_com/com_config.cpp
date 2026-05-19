@@ -1,9 +1,9 @@
 /**
  * @file com_config.cpp
- * @author Keten (2863861004@qq.com)
+ * @author Keten (2863861004@qq.com) lxlx
  * @brief 全局通信配置，包含can设备、串口设备、协议解析等
- * @version 0.1
- * @date 2026-04-21
+ * @version 0.2
+ * @date 2026-04-21 2026-05-19(lxlx)
  *
  * @copyright Copyright (c) 2026
  *
@@ -22,6 +22,9 @@
 
 #include "Canbus.hpp"
 #include "Motor.hpp"
+#include "pick_hand.hpp"
+#include "weapon_hand.hpp"
+#include "lift.hpp"
 #include "Position.hpp"
 #include "ROSCom.hpp"
 #include "UartPort.hpp"
@@ -66,10 +69,28 @@ C620Motor chassis_motor3(&fdcan3_bus, 0x203, 0, 0x200, 0);
 C620Motor chassis_motor4(&fdcan3_bus, 0x204, 0, 0x200, 0);
 
 //
-C610Motor arm2006_motor(&fdcan2_bus, 0x205, 0, 0x1FF, 0);
-C620Motor arm3508_motor(&fdcan2_bus, 0x206, 0, 0x1FF, 0);
+// ---------- 上层机构电机 (CAN2) ----------
+// 0x1FF 组 (0x205-0x208): 2006 电机
+C610Motor picker_yaw_motor(&fdcan2_bus, 0x205, 0, 0x1FF, 0);     // pick_hand 云台旋转
+C610Motor picker_extend_motor(&fdcan2_bus, 0x206, 0, 0x1FF, 0);  // pick_hand 伸缩
+C610Motor weapon_extend_motor(&fdcan2_bus, 0x207, 0, 0x1FF, 0);  // weapon_hand 伸缩
+
+// 0x208 预留
+
+// 0x200 组 (0x201-0x204): 3508 电机
+C620Motor lift_left_motor(&fdcan2_bus, 0x201, 0, 0x200, 0);      // lift 左侧
+C620Motor lift_right_motor(&fdcan2_bus, 0x202, 0, 0x200, 0);     // lift 右侧
+C620Motor picker_lift_motor(&fdcan2_bus, 0x203, 0, 0x200, 0);    // pick_hand 抬升
+C620Motor weapon_lift_motor(&fdcan2_bus, 0x204, 0, 0x200, 0);    // weapon_hand 抬升
+
 DM4310Motor arm4310_motor(&fdcan2_bus, 0x301, 0, 0x01, 0,
                          DM4310Motor::PosWithSpeed);
+
+// ---------- 上层机构模块对象 ----------
+PickHand pick_hand;
+WeaponHand weapon_hand;
+Lift lift;
+
 
 // 串口外设（回调+信号量唤醒处理线程进行解包）
 void onUart3RxCb(const uint8_t *data, size_t len, void *user);
@@ -155,20 +176,54 @@ uint8_t comServiceInit() {
   chassis_motor3.init();
   chassis_motor4.init();
 
-  arm2006_motor.init();
-  arm3508_motor.init();
+  // ---- 上层机构电机初始化 ----
+  picker_yaw_motor.init();
+  picker_extend_motor.init();
+  weapon_extend_motor.init();
+
+  lift_left_motor.init();
+  lift_right_motor.init();
+  picker_lift_motor.init();
+  weapon_lift_motor.init();
+
   arm4310_motor.init();
 
+  // ---- 底盘电机初始化 ----
   fdcan3_bus.registerDevice(&chassis_motor1);
   fdcan3_bus.registerDevice(&chassis_motor2);
   fdcan3_bus.registerDevice(&chassis_motor3);
   fdcan3_bus.registerDevice(&chassis_motor4);
 
 
-  fdcan2_bus.registerDevice(&arm2006_motor);
-  fdcan2_bus.registerDevice(&arm3508_motor);
+  // ---- 注册到 CAN2 总线 ----
+  fdcan2_bus.registerDevice(&picker_yaw_motor);
+  fdcan2_bus.registerDevice(&picker_extend_motor);
+  fdcan2_bus.registerDevice(&weapon_extend_motor);
+
+  fdcan2_bus.registerDevice(&lift_left_motor);
+  fdcan2_bus.registerDevice(&lift_right_motor);
+  fdcan2_bus.registerDevice(&picker_lift_motor);
+  fdcan2_bus.registerDevice(&weapon_lift_motor);
+
   fdcan2_bus.registerDevice(&arm4310_motor);
 
+  // ---- 绑定机构模块的电机指针 ----
+  pick_hand.lift_motor_ = &picker_lift_motor;
+  pick_hand.yaw_motor_ = &picker_yaw_motor;
+  pick_hand.extend_motor_ = &picker_extend_motor;
+
+  weapon_hand.lift_motor_ = &weapon_lift_motor;
+  weapon_hand.extend_motor_ = &weapon_extend_motor;
+
+  lift.left_motor_ = &lift_left_motor;
+  lift.right_motor_ = &lift_right_motor;
+
+  // ---- 机构模块 PID 初始化 ----
+  pick_hand.init();
+  weapon_hand.init();
+  lift.init();
+  
+  
   // 串口外设
   uart5_rx_semphore = osSemaphoreNew(1, 0, NULL);
   if (uart5_rx_semphore == NULL || uart5_port.startRxDmaIdle() != HAL_OK) {
@@ -256,21 +311,34 @@ void can2SendTask(void *argument) {
   pack.type = CanBus::Type::STANDARD;
 
   uint8_t len = 8;
-  const uint32_t arm_motor_ids[4] = {0x205, 0x206, 0x207, 0x208};
-  for (;;) {
-    pack.id = 0x1FF; // DJI Group 2
-    // 当前仅有 0x201(arm2006) 和 0x203(arm3508)，其余槽位置 0
-    int16_t commands[4] = {0};
 
-    // arm motor
-    commands[0] = static_cast<int16_t>(arm2006_motor.cmdTrans()); // 0x201
-    commands[1] = static_cast<int16_t>(arm3508_motor.cmdTrans()); // 0x203
-    commands[2] = static_cast<int16_t>(0); // 0x203
-    commands[3] = static_cast<int16_t>(0); // 0x204
-    packDJIMotorCanMsg(pack.id, arm_motor_ids, commands, 4, pack.data, len);
+  const uint32_t group_1FF_ids[4] = {0x205, 0x206, 0x207, 0x208};
+  const uint32_t group_200_ids[4] = {0x201, 0x202, 0x203, 0x204};
+
+  for (;;) {
+    // ---- 帧1: 0x1FF → 2006电机组 (云台旋转/伸缩) ----
+    pack.id = 0x1FF;
+    int16_t commands_1FF[4] = {0};
+    commands_1FF[0] = static_cast<int16_t>(picker_yaw_motor.cmdTrans());
+    commands_1FF[1] = static_cast<int16_t>(picker_extend_motor.cmdTrans());
+    commands_1FF[2] = static_cast<int16_t>(weapon_extend_motor.cmdTrans());
+    commands_1FF[3] = static_cast<int16_t>(0); // 0x208 预留
+
+    packDJIMotorCanMsg(pack.id, group_1FF_ids, commands_1FF, 4, pack.data, len);
     fdcan2_bus.addCanMsg(pack);
 
-    vTaskDelayUntil(&currentTime, 1); // 每1ms执行一次发送任务
+    // ---- 帧2: 0x200 → 3508电机组 (抬升) ----
+    pack.id = 0x200;
+    int16_t commands_200[4] = {0};
+    commands_200[0] = static_cast<int16_t>(lift_left_motor.cmdTrans());
+    commands_200[1] = static_cast<int16_t>(lift_right_motor.cmdTrans());
+    commands_200[2] = static_cast<int16_t>(picker_lift_motor.cmdTrans());
+    commands_200[3] = static_cast<int16_t>(weapon_lift_motor.cmdTrans());
+
+    packDJIMotorCanMsg(pack.id, group_200_ids, commands_200, 4, pack.data, len);
+    fdcan2_bus.addCanMsg(pack);
+
+    vTaskDelayUntil(&currentTime, 1);
   }
 }
 

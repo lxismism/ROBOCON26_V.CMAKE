@@ -1,84 +1,72 @@
 /**
  * @file pos_ctrl_task.cpp
- * @brief 3508电机位置环控制任务实现
+ * @author lxlx
+ * @brief 上层机构7电机位置环控制任务 —— 通过三个机构模块统一管理
+ * @version 0.2
+ * @date 2026-5-19
  *
- * 数据流：
- *   Xbox → UART3 → uart3RxProcessTask → publish("xbox")
- *     → posCtrlTask 订阅 → 边缘检测LT/RT → 更新目标角度
- *     → PID_Calculate(measure=当前角度, ref=目标角度)
- *     → arm3508_motor.setMotorCmd(pid输出)
- *     → can2SendTask 每1ms打包发送到CAN总线
+ * @copyright Copyright (c) 2026
+ *
+ * @attention 上电首次循环以当前角度初始化所有目标值，避免电机跳变
+ * @note Xbox控制：A键切换电机 / LT增角度 / RT减角度；后续接入自动化逻辑替代手动测试
+ * @versioninfo v0.2: 三个模块统一调用，Xbox手动选电机测试
  */
+
 #include "pos_ctrl_task.hpp"
-
-
 
 #include "FreeRTOS.h"
 #include "cmsis_os2.h"
 #include "task.h"
 
-#include "Motor.hpp"
-#include "pid_controller.h"
+#include "pick_hand.hpp"
+#include "weapon_hand.hpp"
+#include "lift.hpp"
 #include "topic_pool.h"
 #include "topics.hpp"
 
-// ---------- 引用 com_config.cpp 中已存在的全局电机对象 ----------
-extern C620Motor arm3508_motor;
-extern C610Motor arm2006_motor;
-
-
+// ---------- 引用 com_config.cpp 中的机构模块对象 ----------
+extern PickHand pick_hand;
+extern WeaponHand weapon_hand;
+extern Lift lift;
 
 osThreadId_t PosCtrlTaskHandle;
-
 
 // ---------- 订阅 Xbox 手柄数据 ----------
 static TypedTopicSubscriber<pub_Xbox_Data> xbox_sub("xbox", 8);
 
-// ---------- 位置环 PID ----------
-static PID_t pos_pid;
-static PID_t pos_pid_2006;
-
-// ---------- 控制状态（static 保证在函数多次调用间保持值） ----------
-static float target_pos_deg = 0.0f;
-static bool last_lt_pressed = false;
-static bool last_rt_pressed = false;
-static bool pos_inited = false;
-
-static float target_pos_deg_2006 = 0.0f;   // 2006电机目标角度
-static bool last_lb_pressed = false;        // LB按键上一次状态
-static bool last_rb_pressed = false;        // RB按键上一次状态
-static bool pos_inited_2006 = false;        // 2006电机首次初始化标志
-
-
 // ---------- 常量 ----------
 static constexpr uint16_t kTriggerThreshold = 512;
 static constexpr float kStepAngle = 60.0f;
+static constexpr int kMaxMotors = 7;
 
-static float debug_current_angle = 0.0f;
+// ---------- 电机编号 ----------
+enum MotorIndex : int {
+  kPickerLift   = 0,  // pick_hand 抬升 (3508)
+  kPickerYaw    = 1,  // pick_hand 云台 (2006)
+  kPickerExtend = 2,  // pick_hand 伸缩 (2006)
+  kWeaponLift   = 3,  // weapon_hand 抬升 (3508)
+  kWeaponExtend = 4,  // weapon_hand 伸缩 (2006)
+  kLift         = 5,  // lift 双电机同步 (3508×2)
+  kMotorCount   = 6
+};
+
+// ---------- 电机名称数组（调试用，通过 DebugSerial 观察） ----------
+static const char *motor_names[] = {
+    "picker_lift", "picker_yaw", "picker_extend",
+    "weapon_lift", "weapon_extend",
+    "lift",         // 左右同步
+};
+
+// ---------- 控制状态 ----------
+static int selected_motor = 0;
+static bool last_up_pressed = false;
+static bool last_down_pressed = false;
+static bool last_lt_pressed = false;
+static bool last_rt_pressed = false;
+
 
 void posCtrlTask(void *argument) {
   (void)argument;
-
-  // ---- PID 参数初始化 ----
-  PID_Init(&pos_pid);
-  pos_pid.Kp = 11.5f;
-  pos_pid.Ki = 4.0f;
-  pos_pid.Kd = 0.61f;
-  pos_pid.MaxOut = 8000.0f;
-  pos_pid.IntegralLimit = 5000.0f;
-  pos_pid.DeadBand = 0.5f;
-  pos_pid.Improve = Integral_Limit | Derivative_On_Measurement;
-
-    // 2006电机 PID 参数初始化
-  PID_Init(&pos_pid_2006);
-  pos_pid_2006.Kp = 40.0f;
-  pos_pid_2006.Ki = 40.0f;
-  pos_pid_2006.Kd = 6.0f;
-  pos_pid_2006.MaxOut = 5000.0f;
-  pos_pid_2006.IntegralLimit = 3000.0f;
-  pos_pid_2006.DeadBand = 0.5f;
-  pos_pid_2006.Improve = Integral_Limit | Derivative_On_Measurement;
-
 
   if (!xbox_sub.IsValid()) {
     return;
@@ -87,66 +75,60 @@ void posCtrlTask(void *argument) {
   TickType_t currentTime = xTaskGetTickCount();
 
   for (;;) {
-    // -------- 步骤1：获取手柄数据，边缘检测 --------
+    // ===== 步骤1：Xbox 输入 & 边缘检测 =====
     pub_Xbox_Data xbox_data;
     if (xbox_sub.TryGet(&xbox_data)) {
 
-       // 3508电机：LT增加目标角度，RT减少目标角度
+      // --- A键：切换选中电机 ---
+      // --- 方向键上下：切换选中电机 ---
+      if (xbox_data.btnDirUp && !last_up_pressed) {
+        selected_motor = (selected_motor + 1) % kMotorCount;
+      }
+      last_up_pressed = xbox_data.btnDirUp;
+
+      if (xbox_data.btnDirDown && !last_down_pressed) {
+        selected_motor = (selected_motor - 1 + kMotorCount) % kMotorCount;
+      }
+      last_down_pressed = xbox_data.btnDirDown;
+
+
+      // --- LT：选中电机目标角度增加 ---
       bool lt_pressed = (xbox_data.trigLT > kTriggerThreshold);
-      bool rt_pressed = (xbox_data.trigRT > kTriggerThreshold);
-
       if (lt_pressed && !last_lt_pressed) {
-        target_pos_deg += kStepAngle;
+        float step = kStepAngle;
+        switch (selected_motor) {
+          case kPickerLift:   pick_hand.lift_target_deg_   += step; break;
+          case kPickerYaw:    pick_hand.yaw_target_deg_    += step; break;
+          case kPickerExtend: pick_hand.extend_target_deg_ += step; break;
+          case kWeaponLift:   weapon_hand.lift_target_deg_   += step; break;
+          case kWeaponExtend: weapon_hand.extend_target_deg_ += step; break;
+          case kLift:         lift.target_deg_               += step; break;
+          default: break;
+        }
       }
-      if (rt_pressed && !last_rt_pressed) {
-        target_pos_deg -= kStepAngle;
-      }
-
       last_lt_pressed = lt_pressed;
+
+      // --- RT：选中电机目标角度减少 ---
+      bool rt_pressed = (xbox_data.trigRT > kTriggerThreshold);
+      if (rt_pressed && !last_rt_pressed) {
+        float step = kStepAngle;
+        switch (selected_motor) {
+          case kPickerLift:   pick_hand.lift_target_deg_   -= step; break;
+          case kPickerYaw:    pick_hand.yaw_target_deg_    -= step; break;
+          case kPickerExtend: pick_hand.extend_target_deg_ -= step; break;
+          case kWeaponLift:   weapon_hand.lift_target_deg_   -= step; break;
+          case kWeaponExtend: weapon_hand.extend_target_deg_ -= step; break;
+          case kLift:         lift.target_deg_               -= step; break;
+          default: break;
+        }
+      }
       last_rt_pressed = rt_pressed;
-
-            // 2006电机：LB增加目标角度，RB减少目标角度
-      bool lb_pressed = xbox_data.btnLB;
-      bool rb_pressed = xbox_data.btnRB;
-
-      if (lb_pressed && !last_lb_pressed) {
-        target_pos_deg_2006 += kStepAngle;
-      }
-      if (rb_pressed && !last_rb_pressed) {
-        target_pos_deg_2006 -= kStepAngle;
-      }
-
-      last_lb_pressed = lb_pressed;
-      last_rb_pressed = rb_pressed;
-
-
     }
 
-    // -------- 步骤2：首次初始化，以当前角度为目标避免跳变 --------
-    if (!pos_inited) {
-      target_pos_deg = arm3508_motor.getCurrentSumPos();
-      pos_inited = true;
-    }
-        // 2006电机首次上电，以当前位置为目标，避免角度跳变
-    if (!pos_inited_2006) {
-      target_pos_deg_2006 = arm2006_motor.getCurrentSumPos();
-      pos_inited_2006 = true;
-    }
-
-
-    // -------- 步骤3：位置环PID --------
-    float current_pos = arm3508_motor.getCurrentSumPos();
-
-    debug_current_angle = current_pos;
-
-    float pid_out = PID_Calculate(&pos_pid, current_pos, target_pos_deg);
-    arm3508_motor.setMotorCmd(pid_out);
-
-        // 2006电机位置环PID
-    float current_pos_2006 = arm2006_motor.getCurrentSumPos();
-    float pid_out_2006 = PID_Calculate(&pos_pid_2006, current_pos_2006, target_pos_deg_2006);
-    arm2006_motor.setMotorCmd(pid_out_2006);
-
+    // ===== 步骤2：三个机构模块各跑自己的位置环 =====
+    pick_hand.update();
+    weapon_hand.update();
+    lift.update();
 
     vTaskDelayUntil(&currentTime, 5);
   }
