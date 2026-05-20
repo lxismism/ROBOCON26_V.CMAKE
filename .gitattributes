@@ -1,0 +1,22 @@
+# 默认行为：自动识别文本并统一为 LF
+* text=auto eol=lf
+
+# 显式指定常见源码文件为 LF（防止由于包含某些特殊字符被误判为二进制）
+*.c text eol=lf
+*.h text eol=lf
+*.cpp text eol=lf
+*.hpp text eol=lf
+*.s text eol=lf
+*.ld text eol=lf
+*.ioc text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+
+# 标记真正的二进制文件（防止 Git 尝试转换它们损坏文件）
+*.png binary
+*.jpg binary
+*.pdf binary
+*.zip binary
+*.a binary
+*.lib binary
