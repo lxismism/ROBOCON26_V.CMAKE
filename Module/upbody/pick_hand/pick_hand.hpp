@@ -52,6 +52,10 @@ public:
   void init();    // PID 参数初始化
   void update();  // 每控制周期调用一次：读取当前位置 → PID计算 → 写入电机指令
 
+  // ======== 新增：吸盘控制方法 ========
+  void pumpToggle();   // 真空泵通断切换（PG3）
+  void valveToggle();  // 电磁阀通断切换（PG4）
+
 private:
   float clampAngle(float target, float current, float min_deg, float max_deg);
 };

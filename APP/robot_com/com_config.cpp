@@ -30,6 +30,8 @@
 #include "UartPort.hpp"
 #include "UsbPort.hpp"
 #include "XboxRemote.hpp"
+#include "pm20s.hpp"
+#include "tim.h"
 #include "WitMotionImu.hpp"
 #include "topics.hpp"
 #include "topic_pool.h"
@@ -90,6 +92,10 @@ DM4310Motor arm4310_motor(&fdcan2_bus, 0x301, 0, 0x01, 0,
 PickHand pick_hand;
 WeaponHand weapon_hand;
 Lift lift;
+// ---------- 腕部舵机（TIM2_CH3, PA2） ----------
+extern TIM_HandleTypeDef htim2;
+PM20sServo wrist_servo(htim2, TIM_CHANNEL_3);
+
 
 
 // 串口外设（回调+信号量唤醒处理线程进行解包）
@@ -149,6 +155,10 @@ pub_Xbox_Data xbox_msg;
 Position position;
 TypedTopicPublisher<pub_Position_Data> Position_data_pub("position");
 pub_Position_Data Position_msg{};
+
+// 上身控制指令发布者（control_task 决策 → pos_ctrl_task 执行）
+TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");
+pub_upbody_cmd upbody_cmd_msg{};
 
 // usb
 osSemaphoreId_t usbcdc_rx_semphore = NULL;
@@ -222,6 +232,9 @@ uint8_t comServiceInit() {
   pick_hand.init();
   weapon_hand.init();
   lift.init();
+  // ---- 舵机初始化 & 绑定 ----
+  wrist_servo.init();
+  weapon_hand.wrist_servo_ = &wrist_servo;
   
   
   // 串口外设
@@ -392,6 +405,10 @@ void uart3RxProcessTask(void *argument) {
           xbox_msg.btnRB = ctrl_data.btnRB;
           xbox_msg.btnLS = ctrl_data.btnLS;
           xbox_msg.btnRS = ctrl_data.btnRS;
+          xbox_msg.btnSelect = ctrl_data.btnSelect;
+          xbox_msg.btnShare = ctrl_data.btnShare;
+          xbox_msg.btnStart = ctrl_data.btnStart;
+          xbox_msg.btnXbox = ctrl_data.btnXbox;
           xbox_msg.trigLT = ctrl_data.trigLT;
           xbox_msg.trigRT = ctrl_data.trigRT;
           xbox_msg.btnDirUp = ctrl_data.btnDirUp;

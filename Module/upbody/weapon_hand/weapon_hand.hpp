@@ -16,12 +16,16 @@
 
 #include "Motor.hpp"
 #include "pid_controller.h"
+#include "pm20s.hpp"
 
 class WeaponHand {
 public:
   // ---------- 电机引用（由外部 com_config.cpp 传入） ----------
   C620Motor *lift_motor_{nullptr};   // 3508 抬升电机
   C610Motor *extend_motor_{nullptr}; // 2006 伸缩电机
+
+  // ======== 新增：舵机指针（由外部 com_config.cpp 传入） ========
+  PM20sServo *wrist_servo_{nullptr}; // 腕部双轴舵机
 
   // ---------- 各电机 PID ----------
   PID_t lift_pid_;
@@ -41,16 +45,18 @@ public:
   bool lift_inited_{false};
   bool extend_inited_{false};
 
+  // ======== 新增：腕部舵机状态 ========
+  bool wrist_flipped_{false};   // false=朝上(初始位), true=朝前(下翻90°)
+  static constexpr float kWristUpAngle = 0.0f;     // 朝上的舵机角度（需实测校准）
+  static constexpr float kWristDownAngle = 90.0f;   // 朝前的舵机角度（需实测校准）
+
   // ---------- 方法 ----------
   void init();
   void update();
 
-  // TODO: 夹爪控制接口（气缸 + 电磁阀）
-  // void clawOpen();
-  // void clawClose();
-
-  // TODO: 腕部舵机接口（双轴舵机翻转）
-  // void wristFlip(float angle);
+  // ======== 新增：GPIO控制方法 ========
+  void clawToggle();    // 夹爪开合切换（气缸电磁阀PG5）
+  void wristFlip();     // 腕部舵机翻转切换（朝上↔朝前）
 
 private:
   float clampAngle(float target, float current, float min_deg, float max_deg);

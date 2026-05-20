@@ -1,15 +1,17 @@
 /**
  * @file pos_ctrl_task.cpp
  * @author lxlx
- * @brief 上层机构7电机位置环控制任务 —— 通过三个机构模块统一管理
- * @version 0.2
- * @date 2026-5-19
+ * @brief 上身机构位置环执行任务 —— 订阅 upbody_cmd，消费后驱动7路电机 + GPIO + 舵机
+ * @version 0.3
+ * @date 2026-5-20
  *
  * @copyright Copyright (c) 2026
  *
- * @attention 上电首次循环以当前角度初始化所有目标值，避免电机跳变
- * @note Xbox控制：A键切换电机 / LT增角度 / RT减角度；后续接入自动化逻辑替代手动测试
- * @versioninfo v0.2: 三个模块统一调用，Xbox手动选电机测试
+ * @attention 本任务只负责执行，决策由 control_task 完成
+ * @note delta 累加到目标角度后由各模块 update() 内 clampAngle 限幅
+ * @versioninfo v0.1: 7路电机位置环手动调试
+ * @versioninfo v0.2: 接入三个机构模块统一管理
+ * @versioninfo v0.3: 改为订阅 upbody_cmd，决策与执行分离
  */
 
 #include "pos_ctrl_task.hpp"
@@ -31,98 +33,49 @@ extern Lift lift;
 
 osThreadId_t PosCtrlTaskHandle;
 
-// ---------- 订阅 Xbox 手柄数据 ----------
-static TypedTopicSubscriber<pub_Xbox_Data> xbox_sub("xbox", 8);
-
-// ---------- 常量 ----------
-static constexpr uint16_t kTriggerThreshold = 512;
-static constexpr float kStepAngle = 60.0f;
-static constexpr int kMaxMotors = 7;
-
-// ---------- 电机编号 ----------
-enum MotorIndex : int {
-  kPickerLift   = 0,  // pick_hand 抬升 (3508)
-  kPickerYaw    = 1,  // pick_hand 云台 (2006)
-  kPickerExtend = 2,  // pick_hand 伸缩 (2006)
-  kWeaponLift   = 3,  // weapon_hand 抬升 (3508)
-  kWeaponExtend = 4,  // weapon_hand 伸缩 (2006)
-  kLift         = 5,  // lift 双电机同步 (3508×2)
-  kMotorCount   = 6
-};
-
-// ---------- 电机名称数组（调试用，通过 DebugSerial 观察） ----------
-static const char *motor_names[] = {
-    "picker_lift", "picker_yaw", "picker_extend",
-    "weapon_lift", "weapon_extend",
-    "lift",         // 左右同步
-};
-
-// ---------- 控制状态 ----------
-static int selected_motor = 0;
-static bool last_up_pressed = false;
-static bool last_down_pressed = false;
-static bool last_lt_pressed = false;
-static bool last_rt_pressed = false;
+// ---------- 订阅上身控制指令 ----------
+static TypedTopicSubscriber<pub_upbody_cmd> upbody_cmd_sub("upbody_cmd", 8);
 
 
 void posCtrlTask(void *argument) {
   (void)argument;
 
-  if (!xbox_sub.IsValid()) {
+  if (!upbody_cmd_sub.IsValid()) {
     return;
   }
 
   TickType_t currentTime = xTaskGetTickCount();
 
   for (;;) {
-    // ===== 步骤1：Xbox 输入 & 边缘检测 =====
-    pub_Xbox_Data xbox_data;
-    if (xbox_sub.TryGet(&xbox_data)) {
+    // ===== 步骤1：消费上身控制指令 =====
+    pub_upbody_cmd upbody_msg;
+    if (upbody_cmd_sub.TryGet(&upbody_msg)) {
 
-      // --- A键：切换选中电机 ---
-      // --- 方向键上下：切换选中电机 ---
-      if (xbox_data.btnDirUp && !last_up_pressed) {
-        selected_motor = (selected_motor + 1) % kMotorCount;
+      if (upbody_msg.active) {
+        // --- 持续型：delta 累加到目标角度 ---
+        pick_hand.lift_target_deg_   += upbody_msg.pick_lift_delta;
+        pick_hand.yaw_target_deg_    += upbody_msg.pick_yaw_delta;
+        pick_hand.extend_target_deg_ += upbody_msg.pick_extend_delta;
+
+        weapon_hand.lift_target_deg_   += upbody_msg.weapon_lift_delta;
+        weapon_hand.extend_target_deg_ += upbody_msg.weapon_extend_delta;
+
+        lift.target_deg_ += upbody_msg.lift_delta;
+
+        // --- 切换型：执行GPIO/舵机动作（仅上升沿单帧为true） ---
+        if (upbody_msg.pump_toggle)
+          pick_hand.pumpToggle();
+
+        if (upbody_msg.valve_toggle)
+          pick_hand.valveToggle();
+
+        if (upbody_msg.claw_toggle)
+          weapon_hand.clawToggle();
+
+        if (upbody_msg.wrist_toggle)
+          weapon_hand.wristFlip();
       }
-      last_up_pressed = xbox_data.btnDirUp;
-
-      if (xbox_data.btnDirDown && !last_down_pressed) {
-        selected_motor = (selected_motor - 1 + kMotorCount) % kMotorCount;
-      }
-      last_down_pressed = xbox_data.btnDirDown;
-
-
-      // --- LT：选中电机目标角度增加 ---
-      bool lt_pressed = (xbox_data.trigLT > kTriggerThreshold);
-      if (lt_pressed && !last_lt_pressed) {
-        float step = kStepAngle;
-        switch (selected_motor) {
-          case kPickerLift:   pick_hand.lift_target_deg_   += step; break;
-          case kPickerYaw:    pick_hand.yaw_target_deg_    += step; break;
-          case kPickerExtend: pick_hand.extend_target_deg_ += step; break;
-          case kWeaponLift:   weapon_hand.lift_target_deg_   += step; break;
-          case kWeaponExtend: weapon_hand.extend_target_deg_ += step; break;
-          case kLift:         lift.target_deg_               += step; break;
-          default: break;
-        }
-      }
-      last_lt_pressed = lt_pressed;
-
-      // --- RT：选中电机目标角度减少 ---
-      bool rt_pressed = (xbox_data.trigRT > kTriggerThreshold);
-      if (rt_pressed && !last_rt_pressed) {
-        float step = kStepAngle;
-        switch (selected_motor) {
-          case kPickerLift:   pick_hand.lift_target_deg_   -= step; break;
-          case kPickerYaw:    pick_hand.yaw_target_deg_    -= step; break;
-          case kPickerExtend: pick_hand.extend_target_deg_ -= step; break;
-          case kWeaponLift:   weapon_hand.lift_target_deg_   -= step; break;
-          case kWeaponExtend: weapon_hand.extend_target_deg_ -= step; break;
-          case kLift:         lift.target_deg_               -= step; break;
-          default: break;
-        }
-      }
-      last_rt_pressed = rt_pressed;
+      // active=false → 队友模式，不处理上身指令
     }
 
     // ===== 步骤2：三个机构模块各跑自己的位置环 =====

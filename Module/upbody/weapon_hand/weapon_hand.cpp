@@ -12,6 +12,7 @@
  * @versioninfo v0.1: 抬升/伸缩两路位置环，带角度限位保护
  */
 
+#include "main.h"
 #include "weapon_hand.hpp"
 
 void WeaponHand::init() {
@@ -68,6 +69,27 @@ void WeaponHand::update() {
 
   float extend_out = PID_Calculate(&extend_pid_, cur_extend, extend_target_deg_);
   extend_motor_->setMotorCmd(extend_out);
+}
+
+// ======== 新增：夹爪开合切换 ========
+void WeaponHand::clawToggle() {
+  // 读取PG5当前状态：高电平=夹爪合，低电平=夹爪开
+  GPIO_PinState cur = HAL_GPIO_ReadPin(VALVE_CLAW_GPIO_Port, VALVE_CLAW_Pin);
+  // 翻转电平
+  HAL_GPIO_WritePin(VALVE_CLAW_GPIO_Port, VALVE_CLAW_Pin,
+                    (cur == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET);
+}
+
+// ======== 新增：腕部舵机翻转切换 ========
+void WeaponHand::wristFlip() {
+  if (wrist_servo_ == nullptr) return;
+
+  wrist_flipped_ = !wrist_flipped_;
+  if (wrist_flipped_) {
+    wrist_servo_->setServoAngle(kWristDownAngle);  // 下翻90°
+  } else {
+    wrist_servo_->setServoAngle(kWristUpAngle);    // 回正
+  }
 }
 
 float WeaponHand::clampAngle(float target, float current,

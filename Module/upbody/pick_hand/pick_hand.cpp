@@ -14,6 +14,7 @@
 
 
 #include "pick_hand.hpp"
+#include "main.h"  
 
 void PickHand::init() {
   // ---- 抬升电机 PID (3508) ----
@@ -107,4 +108,18 @@ float PickHand::clampAngle(float target, float current,
   if (target < min_deg) return min_deg;
   if (target > max_deg) return max_deg;
   return target;
+}
+
+// ======== 新增：真空泵通断切换 ========
+void PickHand::pumpToggle() {
+  GPIO_PinState cur = HAL_GPIO_ReadPin(PUMP_PICK_GPIO_Port, PUMP_PICK_Pin);
+  HAL_GPIO_WritePin(PUMP_PICK_GPIO_Port, PUMP_PICK_Pin,
+                    (cur == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET);
+}
+
+// ======== 新增：电磁阀通断切换 ========
+void PickHand::valveToggle() {
+  GPIO_PinState cur = HAL_GPIO_ReadPin(VALVE_PICK_GPIO_Port, VALVE_PICK_Pin);
+  HAL_GPIO_WritePin(VALVE_PICK_GPIO_Port, VALVE_PICK_Pin,
+                    (cur == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET);
 }
