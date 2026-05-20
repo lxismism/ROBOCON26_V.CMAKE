@@ -25,6 +25,10 @@ osThreadId_t ControlTaskHandle;
 static TypedTopicPublisher<pub_chassis_cmd> chassis_data_pub("chassis_cmd");
 static pub_chassis_cmd xbox_cmd{};
 
+//发布红外控制命令
+static TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");
+static pub_ir_cmd ir_cmd{};
+
 /* 订阅xbox遥控控制信息 */
 static TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox", 8);
 pub_Xbox_Data control_xbox_cmd{};
@@ -33,6 +37,10 @@ pub_Xbox_Data control_xbox_cmd_Last{};
 /* 订阅Position定位信息 */
 static TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
 pub_Position_Data control_position_msg{};
+
+/* 订阅IR_data信息 */
+static TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
+pub_ir_data control_ir_msg{};
 
 static float control_position_x = 0.0f;
 static float control_position_y = 0.0f;
@@ -221,6 +229,12 @@ void controlInit() {
     if (!control_position_sub.IsValid()) {
         return;
     }
+    if (!control_ir_sub.IsValid()) {
+        return;
+    }
+    if (!ir_cmd_pub.IsValid()) {
+        return;
+    }
 }
 
 void controlTask(void *argument) {
@@ -246,6 +260,17 @@ void controlTask(void *argument) {
         if (control_xbox_sub.TryGet(&control_xbox_cmd)) {
             Xbox_Data_Process();
             chassis_data_pub.Publish(robot_v_aim_cmd);
+        }
+
+        if(control_ir_sub.TryGet(&control_ir_msg)) {
+          //红外信号处理放这
+          //测试
+          // if(control_ir_msg.data1 == 0x2B && control_ir_msg.data2 == 0xFC)
+          // {
+          //   ir_cmd.tx_data[0] = 0x67; //示例：接收到特定红外信号后，发送0x01命令
+          //   ir_cmd.tx_data[1] = 0x78; //示例：接收到特定红外信号后，发送0x02命令
+          //   ir_cmd_pub.Publish(ir_cmd);
+          // }
         }
 
         vTaskDelayUntil(&currentTime, 5);

@@ -35,6 +35,8 @@ extern osThreadId_t uart2ProcessTaskHandle;
 extern osThreadId_t uart3ProcessTaskHandle;
 extern osThreadId_t uart4ProcessTaskHandle;
 extern osThreadId_t uart5ProcessTaskHandle;
+extern osThreadId_t uart10ProcessTaskHandle;  
+extern osThreadId_t uart10SendTaskHandle;  
 extern osThreadId_t Debug_TaskHandle;
 extern osThreadId_t ChassisTaskHandle;
 extern osThreadId_t ControlTaskHandle;
@@ -128,6 +130,7 @@ void osTaskInit(void) {
   uart4ProcessTaskHandle =
       osThreadNew(uart4RxProcessTask, NULL, &Uart4ProcessTaskHandle_attributes);
 
+        //uart5用于同上位机串口通信
   const osThreadAttr_t Uart5ProcessTaskHandle_attributes = {
       .name = "Uart5Process_TaskHandle",
       .stack_size = 256 * 4,
@@ -135,6 +138,23 @@ void osTaskInit(void) {
   };
   uart5ProcessTaskHandle =
       osThreadNew(uart5RxProcessTask, NULL, &Uart5ProcessTaskHandle_attributes);
+        
+      //uart10用于IR模块
+  const osThreadAttr_t Uart10ProcessTaskHandle_attributes = {
+      .name = "Uart10Process_TaskHandle",
+      .stack_size = 256 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart10ProcessTaskHandle =
+      osThreadNew(uart10RxProcessTask, NULL, &Uart10ProcessTaskHandle_attributes);
+
+  const osThreadAttr_t Uart10SendTaskHandle_attributes = {
+      .name = "Uart10Send_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart10SendTaskHandle =
+        osThreadNew(uart10SendTask, NULL, &Uart10SendTaskHandle_attributes);
 
   const osThreadAttr_t UsbcdcProcessTaskHandle_attributes = {
       .name = "UsbcdcProcess_TaskHandle",
