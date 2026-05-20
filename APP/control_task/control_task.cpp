@@ -27,6 +27,7 @@ static TypedTopicPublisher<pub_chassis_cmd> chassis_data_pub("chassis_cmd");
 static pub_chassis_cmd xbox_cmd{};
 
 static TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");
+static pub_upbody_cmd upbody_cmd_msg{};
 
 // ---------- 订阅者 ----------
 static TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox", 8);
@@ -255,7 +256,7 @@ void controlTask(void *argument) {
             // ==========================================
             if (control_mode) {
 
-                // ---- 底盘：摇杆直驱（无头模式不启用） ----
+                // ---- 底盘：摇杆直驱 ----
                 if (ABS(control_xbox_cmd.joyLHori - kJoyCenter) > kJoyDeadZoneLeft)
                 {
                     robot_v_aim_cmd.linear_x_ = (int)(control_xbox_cmd.joyLHori - kJoyCenter - sign(control_xbox_cmd.joyLHori - kJoyCenter)*kJoyDeadZoneLeft) / ((float)(kJoyCenter - kJoyDeadZoneLeft)) * MAX_VELOCITY_LINEAR;
@@ -273,64 +274,70 @@ void controlTask(void *argument) {
                     robot_v_aim_cmd.omega_ = -(int)(control_xbox_cmd.joyRHori - kJoyCenter - sign(control_xbox_cmd.joyRHori - kJoyCenter)*kJoyDeadZoneRight) / ((float)(kJoyCenter - kJoyDeadZoneRight)) * MAX_VELOCITY_ANGULAR;
                 }
                 else { robot_v_aim_cmd.omega_ = 0.0f; }
+                // 无头旋转：场地坐标系 → 车身坐标系
+                float joy_angle_deg = atan2(robot_v_aim_cmd.linear_y_, robot_v_aim_cmd.linear_x_) / kDegToRad;
+                float joy_mag = sqrt(robot_v_aim_cmd.linear_x_ * robot_v_aim_cmd.linear_x_ + robot_v_aim_cmd.linear_y_ * robot_v_aim_cmd.linear_y_);
+                robot_v_aim_cmd.linear_x_ = joy_mag * cos((joy_angle_deg - control_position_yaw) * kDegToRad);
+                robot_v_aim_cmd.linear_y_ = joy_mag * sin((joy_angle_deg - control_position_yaw) * kDegToRad);
 
                 chassis_data_pub.Publish(robot_v_aim_cmd);
 
                 // ---- 上身控制指令 ----
-                pub_upbody_cmd upbody_msg{};
-                upbody_msg.active = true;
+                upbody_cmd_msg = {};
+                upbody_cmd_msg.active = true;
+
 
                 // ▼ 持续型：trigLT电梯上升 / trigRT电梯下降
                 if (control_xbox_cmd.trigLT > kTriggerThreshold)
-                    upbody_msg.lift_delta = kUpbodyStep;
+                    upbody_cmd_msg.lift_delta = kUpbodyStep;
                 if (control_xbox_cmd.trigRT > kTriggerThreshold)
-                    upbody_msg.lift_delta = -kUpbodyStep;
+                    upbody_cmd_msg.lift_delta = -kUpbodyStep;
 
                 // ▼ 持续型：btnLS武器手上升 / btnRS武器手下降
                 if (control_xbox_cmd.btnLS)
-                    upbody_msg.weapon_lift_delta = kUpbodyStep;
+                    upbody_cmd_msg.weapon_lift_delta = kUpbodyStep;
                 if (control_xbox_cmd.btnRS)
-                    upbody_msg.weapon_lift_delta = -kUpbodyStep;
+                    upbody_cmd_msg.weapon_lift_delta = -kUpbodyStep;
 
                 // ▼ 持续型：btnDirUp吸取手上升 / btnDirDown吸取手下降
                 if (control_xbox_cmd.btnDirUp)
-                    upbody_msg.pick_lift_delta = kUpbodyStep;
+                    upbody_cmd_msg.pick_lift_delta = kUpbodyStep;
                 if (control_xbox_cmd.btnDirDown)
-                    upbody_msg.pick_lift_delta = -kUpbodyStep;
+                    upbody_cmd_msg.pick_lift_delta = -kUpbodyStep;
 
                 // ▼ 持续型：btnDirLeft云台逆时针 / btnDirRight云台顺时针
                 if (control_xbox_cmd.btnDirLeft)
-                    upbody_msg.pick_yaw_delta = kUpbodyStep;
+                    upbody_cmd_msg.pick_yaw_delta = kUpbodyStep;
                 if (control_xbox_cmd.btnDirRight)
-                    upbody_msg.pick_yaw_delta = -kUpbodyStep;
+                    upbody_cmd_msg.pick_yaw_delta = -kUpbodyStep;
 
                 // ▼ 持续型：btnY武器手伸 / btnA武器手缩
                 if (control_xbox_cmd.btnY)
-                    upbody_msg.weapon_extend_delta = kUpbodyStep;
+                    upbody_cmd_msg.weapon_extend_delta = kUpbodyStep;
                 if (control_xbox_cmd.btnA)
-                    upbody_msg.weapon_extend_delta = -kUpbodyStep;
+                    upbody_cmd_msg.weapon_extend_delta = -kUpbodyStep;
 
                 // ▼ 切换型：btnX吸盘真空泵（上升沿触发）
                 if (control_xbox_cmd.btnX && !last_btnX)
-                    upbody_msg.pump_toggle = true;
+                    upbody_cmd_msg.pump_toggle = true;
                 last_btnX = control_xbox_cmd.btnX;
 
                 // ▼ 切换型：btnB吸盘电磁阀（上升沿触发）
                 if (control_xbox_cmd.btnB && !last_btnB)
-                    upbody_msg.valve_toggle = true;
+                    upbody_cmd_msg.valve_toggle = true;
                 last_btnB = control_xbox_cmd.btnB;
 
                 // ▼ 切换型：btnLB夹爪开合（上升沿触发）
                 if (control_xbox_cmd.btnLB && !last_btnLB)
-                    upbody_msg.claw_toggle = true;
+                    upbody_cmd_msg.claw_toggle = true;
                 last_btnLB = control_xbox_cmd.btnLB;
 
                 // ▼ 切换型：btnRB腕部舵机翻转（上升沿触发）
                 if (control_xbox_cmd.btnRB && !last_btnRB)
-                    upbody_msg.wrist_toggle = true;
+                    upbody_cmd_msg.wrist_toggle = true;
                 last_btnRB = control_xbox_cmd.btnRB;
 
-                upbody_cmd_pub.Publish(upbody_msg);
+                upbody_cmd_pub.Publish(upbody_cmd_msg);
 
             // ==========================================
             //  队友模式 (mode = 0)：现有逻辑不变
