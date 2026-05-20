@@ -98,7 +98,7 @@ public:
   static UartPort *fromHandle(UART_HandleTypeDef *huart);
 
 private:
-  static constexpr size_t kMaxMap = 4;
+  static constexpr size_t kMaxMap = 10;
 
   // 保存一个uart实例
   UART_HandleTypeDef *huart_{nullptr};

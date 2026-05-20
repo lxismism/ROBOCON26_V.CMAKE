@@ -30,12 +30,24 @@ static TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");
 static pub_upbody_cmd upbody_cmd_msg{};
 
 // ---------- 订阅者 ----------
+//发布红外控制命令
+static TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");
+static pub_ir_cmd ir_cmd{};
+
+/* 订阅xbox遥控控制信息 */
 static TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox", 8);
 pub_Xbox_Data control_xbox_cmd{};
 pub_Xbox_Data control_xbox_cmd_Last{};
 
 static TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
 pub_Position_Data control_position_msg{};
+//定位修正参数
+static float position_correction_x = 0.0f;
+static float position_correction_y = 0.0f;
+
+/* 订阅IR_data信息 */
+static TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
+pub_ir_data control_ir_msg{};
 
 static float control_position_x = 0.0f;
 static float control_position_y = 0.0f;
@@ -45,9 +57,9 @@ static uint8_t control_position_frame_id = 0;
 
 static float xbox_angle_deg;
 static float v_aim;
-
-static bool headless_xy_mode = true;
-static bool headless_omega_mode = true;
+  
+static bool headless_xy_mode = true;//手操模式与定位模式切换，默认手操
+static bool headless_omega_mode = true;//手操模式与定位模式切换，默认手操
 
 static float error_x;
 static float error_y;
@@ -66,9 +78,9 @@ static pub_chassis_cmd state_aim_cmd{
     .omega_ = 0.0f
 };
 
-// PID
-static PID_t linear{.Kp = 1.68f,.Ki = 0.5f,.Kd = 0.0022f,.MaxOut = MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = Derivative_On_Measurement};
-static PID_t deg{.Kp = 3.0f,.Ki = 0.8f,.Kd = 0.024f,.MaxOut = MAX_VELOCITY_ANGULAR*180.0/M_PI,.DeadBand = 0.3f,.Improve = Derivative_On_Measurement};
+//车体目标角度环pid
+static PID_t linear{.Kp = 1.68f,.Ki = 0.11f,.Kd = 0.0f,.MaxOut = 0.75*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+static PID_t deg{.Kp = 1.70f,.Ki = 0.32f,.Kd = 0.000001f,.MaxOut = MAX_VELOCITY_ANGULAR*0.5*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
 
 // 摇杆常量
 static constexpr uint16_t kJoyCenter = 32767;
@@ -123,15 +135,14 @@ void Xbox_Data_Process()
         headless_xy_mode = !headless_xy_mode;
       }
     }
-    control_xbox_cmd_Last.btnLS = control_xbox_cmd.btnLS;
-
+    
+    //切换omega模式（按下右摇杆RS切换）
     if(control_xbox_cmd.btnRS != control_xbox_cmd_Last.btnRS)
     {
       if(control_xbox_cmd.btnRS == true){
         headless_omega_mode = !headless_omega_mode;
       }
     }
-    control_xbox_cmd_Last.btnRS = control_xbox_cmd.btnRS;
 
     if(headless_xy_mode)
     {
@@ -146,20 +157,42 @@ void Xbox_Data_Process()
     }
     else
     {
-      if(control_xbox_cmd.btnY == 1){
-        state_aim_cmd.linear_x_ = 0.0f;
-        state_aim_cmd.linear_y_ = 0.0f;
-      }else if(control_xbox_cmd.btnX == 1){
-        state_aim_cmd.linear_x_ = 0.0f;
-        state_aim_cmd.linear_y_ = 0.5f;
-      }else if(control_xbox_cmd.btnA == 1){
-        state_aim_cmd.linear_x_ = 0.0f;
-        state_aim_cmd.linear_y_ = 1.0f;
-      }else if(control_xbox_cmd.btnB == 1){
-        state_aim_cmd.linear_x_ = 0.0f;
-        state_aim_cmd.linear_y_ = 1.5f;
+      // 定位模式：摇杆负责里程计误差修正，方向键控制目标位置，进入目标位置环PID
+      if(control_xbox_cmd.btnY == 1){//按Y复位回零点
+        if(control_xbox_cmd_Last.btnY == 0){
+          state_aim_cmd.linear_x_ = 0.0f;
+          state_aim_cmd.linear_y_ = 0.0f;
+        }
+      }
+      else{
+        //上下控制
+        if(control_xbox_cmd.btnDirUp == 1){
+          if(control_xbox_cmd_Last.btnDirUp == 0){
+            state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ + 1.2f;
+          }
+        }else if(control_xbox_cmd.btnDirDown == 1){
+          if(control_xbox_cmd_Last.btnDirDown == 0){
+            state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ - 1.2f;
+          }
+        }
+        
+        //左右控制
+        if(control_xbox_cmd.btnDirLeft == 1){
+          if(control_xbox_cmd_Last.btnDirLeft == 0){
+            state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ - 1.2f;
+          }
+        }else if(control_xbox_cmd.btnDirRight == 1){
+          if(control_xbox_cmd_Last.btnDirRight == 0){
+            state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ + 1.2f;
+          }
+        }
       }
 
+      //里程计定位修正
+      position_correction_x = position_correction_x + 0.001f*sign(xbox_cmd.linear_x_);
+      position_correction_y = position_correction_y + 0.001f*sign(xbox_cmd.linear_y_); 
+
+      //计算目标位置与当前实际位置的误差，进入PID
       error_x            = state_aim_cmd.linear_x_ - control_position_x;
       error_y            = state_aim_cmd.linear_y_ - control_position_y;
       state_xy_error     = sqrt(error_x*error_x + error_y*error_y);
@@ -176,15 +209,34 @@ void Xbox_Data_Process()
     }
     else
     {
-      if(control_xbox_cmd.btnY == 1){
-        state_aim_cmd.omega_ = 0.0f;
-      }else if(control_xbox_cmd.btnX == 1){
-        state_aim_cmd.omega_ = 90.0f;
-      }else if(control_xbox_cmd.btnA == 1){
-        state_aim_cmd.omega_ = 180.0f;
-      }else if(control_xbox_cmd.btnB == 1){
-        state_aim_cmd.omega_ = -90.0f;
+      // // 摇杆归零，进入目标角度环PID
+      // if(control_xbox_cmd.btnY == 1){
+      //   state_aim_cmd.omega_ = 0.0f;
+      // }else if(control_xbox_cmd.btnX == 1){
+      //   state_aim_cmd.omega_ = -90.0f;
+      // }else if(control_xbox_cmd.btnA == 1){
+      //   state_aim_cmd.omega_ = 180.0f;
+      // }else if(control_xbox_cmd.btnB == 1){
+      //   state_aim_cmd.omega_ = 90.0f;
+      // }
+      //通过右摇杆控制车辆执行4种朝向（0，90，180，-90）
+      if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > 30000)
+      {
+        if((control_xbox_cmd.joyRHori - kJoyCenter) > 0){
+          state_aim_cmd.omega_ = -90.0f;
+        }else{
+          state_aim_cmd.omega_ = 90.0f;
+        }
+      }else if (ABS(control_xbox_cmd.joyRVert - kJoyCenter) > 30000)
+      {
+        if((control_xbox_cmd.joyRVert - kJoyCenter) > 0){
+          state_aim_cmd.omega_ = 180.0f;
+        }else{
+          state_aim_cmd.omega_ = 0.0f;
+        }
       }
+
+      //计算角度误差并进行PID控制
       float error_dir = state_aim_cmd.omega_ - control_position_yaw;
       if (fabs(error_dir) < 1.5f){
         error_dir = 0.0f;
@@ -197,6 +249,9 @@ void Xbox_Data_Process()
     }
 
   }
+  
+  // ===== 第3步：保留本次xbox数据 =====
+  control_xbox_cmd_Last = control_xbox_cmd;
 
 }
 
@@ -211,6 +266,12 @@ void controlInit() {
         return;
     }
     if (!control_position_sub.IsValid()) {
+        return;
+    }
+    if (!control_ir_sub.IsValid()) {
+        return;
+    }
+    if (!ir_cmd_pub.IsValid()) {
         return;
     }
 }
@@ -346,6 +407,17 @@ void controlTask(void *argument) {
                 Xbox_Data_Process();
                 chassis_data_pub.Publish(robot_v_aim_cmd);
             }
+        }
+
+        if(control_ir_sub.TryGet(&control_ir_msg)) {
+          //红外信号处理放这
+          //测试
+          // if(control_ir_msg.data1 == 0x2B && control_ir_msg.data2 == 0xFC)
+          // {
+          //   ir_cmd.tx_data[0] = 0x67; //示例：接收到特定红外信号后，发送0x01命令
+          //   ir_cmd.tx_data[1] = 0x78; //示例：接收到特定红外信号后，发送0x02命令
+          //   ir_cmd_pub.Publish(ir_cmd);
+          // }
         }
 
         vTaskDelayUntil(&currentTime, 5);

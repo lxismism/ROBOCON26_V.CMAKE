@@ -15,6 +15,7 @@
  */
 #pragma once
 #include "fdcan.h"
+#include "portmacro.h"
 #include "usart.h"
 #include <stdbool.h>
 
@@ -100,5 +101,14 @@ typedef struct {
 
 } pub_upbody_cmd;
 
+// IR模块数据结构体
+typedef struct {
+  uint8_t data1;
+  uint8_t data2;
+} pub_ir_data;
+
+typedef struct {
+  uint8_t tx_data[2];
+} pub_ir_cmd;
 
 #pragma pack()
