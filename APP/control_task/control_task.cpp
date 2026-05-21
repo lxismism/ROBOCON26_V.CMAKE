@@ -297,8 +297,8 @@ void controlTask(void *argument) {
         /* 从Position订阅者中获取数据 */
         if (control_position_sub.TryGet(&control_position_msg)) {
             control_position_frame_id = control_position_msg.frame_id;
-            control_position_x = -control_position_msg.x;
-            control_position_y = control_position_msg.y;
+            control_position_x = -control_position_msg.x - position_correction_x;
+            control_position_y =  control_position_msg.y - position_correction_y;
             control_position_yaw = -control_position_msg.yaw;
             control_position_yaw_speed = control_position_msg.yaw_speed;
         }
