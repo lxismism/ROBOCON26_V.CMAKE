@@ -51,13 +51,28 @@ uint16_t ROSProtocol::processData(uint8_t byte) {
     // 解包数据
     rx_tmp_data[rx_data_index_++] = byte;
     if (rx_data_index_ >= rx_tmp_data_length_) {
-      rx_state_ = ros_protocol_state::CHECK_CRC;
+      rx_state_ = ros_protocol_state::CHECK_CRC_1;
     }
     break;
-  case ros_protocol_state::CHECK_CRC:
-    // todo:添加crc计算
-    rx_state_ = ros_protocol_state::CHECK_TAIL1;
-    // break;
+  case ros_protocol_state::CHECK_CRC_1:
+    crc.crc_16 = ROSProtocol::crc16_modbus(rx_tmp_data, rx_tmp_data_length_);
+    if(byte == crc.byte_8[0])
+      rx_state_ = ros_protocol_state::CHECK_CRC_2;
+    else
+    {
+      rx_state_ = ros_protocol_state::CHECK_HEAD1;
+      resetState();
+    }
+    break;
+  case ros_protocol_state::CHECK_CRC_2:
+    if(byte == crc.byte_8[1])
+      rx_state_ = ros_protocol_state::CHECK_TAIL1;
+    else
+    {
+      rx_state_ = ros_protocol_state::CHECK_HEAD1;
+      resetState();
+    }
+    break;
   case ros_protocol_state::CHECK_TAIL1:
     if (byte == TAIL1) {
       rx_state_ = ros_protocol_state::CHECK_TAIL2;
@@ -122,4 +137,24 @@ void ROSProtocol::onFrameComplete() {
   default:
     break;
   }
+}
+
+uint16_t ROSProtocol::crc16_modbus(const uint8_t *data, size_t len) {
+  const uint16_t polynomial = 0xA001;
+  uint16_t crc_reg = 0xFFFF;
+
+  for (size_t i = 0; i < len; ++i) {
+    crc_reg ^= data[i];
+
+    for (int j = 0; j < 8; ++j) {
+      if (crc_reg & 0x0001) {
+        crc_reg >>= 1;
+        crc_reg ^= polynomial;
+      } else {
+        crc_reg >>= 1;
+      }
+    }
+  }
+
+  return crc_reg;
 }

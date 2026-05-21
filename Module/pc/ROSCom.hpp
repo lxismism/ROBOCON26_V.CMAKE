@@ -36,7 +36,8 @@ class ROSProtocol {
     CHECK_ID,
     CHECK_LENGTH,
     UNPACK_DATA,
-    CHECK_CRC,
+    CHECK_CRC_1,
+    CHECK_CRC_2,
     CHECK_TAIL1,
     CHECK_TAIL2
   };
@@ -74,6 +75,11 @@ class ROSProtocol {
     } f_data[2];
   };
 
+  union {
+    uint8_t byte_8[2];
+    uint16_t crc_16;
+  } crc;
+
   /* 发送 */
 #pragma pack()
 
@@ -97,6 +103,8 @@ private:
   void resetState();
 
   void onFrameComplete();
+
+  uint16_t crc16_modbus(const uint8_t *data, size_t len);
 
 private:
   // 实例
