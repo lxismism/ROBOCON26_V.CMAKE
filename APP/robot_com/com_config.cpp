@@ -545,9 +545,11 @@ void uart10SendTask(void *argument) {
   {
     switch (ir_data_tx_state) {
       case wait_for_F1:
-        if(currentTime > last_F1_received_time && last_F1_received_time != 0)  //
+        if(currentTime > last_F1_received_time && last_F1_received_time != 0)
+        {
           ir_data_tx_state = wait_for_transmit;
           last_F1_received_time = 0; // 重置，等待下一次F1帧到来
+        }
         break;
       case wait_for_transmit:
         if(currentTime - last_transmit_time >= 200 && currentTime - last_data_received_time >= 200)
