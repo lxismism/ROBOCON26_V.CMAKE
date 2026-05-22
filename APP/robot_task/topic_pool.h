@@ -36,21 +36,21 @@ typedef struct {
   bool btnRB;
   bool btnLS;
   bool btnRS;
+  bool btnSelect;
+  bool btnShare;
+  bool btnStart;
+  bool btnXbox;
   uint16_t trigLT;
   uint16_t trigRT;
   bool btnDirUp;
   bool btnDirDown;
   bool btnDirLeft;
   bool btnDirRight;
-  
+
   uint16_t joyLHori;
   uint16_t joyLVert;
   uint16_t joyRHori;
   uint16_t joyRVert;
-  // 这里填写你需要传输的Xbox按键摇杆等数据
-  // bool btnY;
-  // bool btnY_last;
-  //......
 
 } pub_Xbox_Data;
 
@@ -80,6 +80,26 @@ typedef struct {
   float yaw_speed;
 
 } pub_Position_Data;
+
+// 上身机构控制指令（control_task → pos_ctrl_task）
+typedef struct {
+  bool active;  // true = 用户模式生效，false = 队友模式（忽略本指令）
+
+  // 每帧步进增量（持续按住时累加，单位：度/帧）
+  float pick_lift_delta;
+  float pick_yaw_delta;
+  float pick_extend_delta;
+  float weapon_lift_delta;
+  float weapon_extend_delta;
+  float lift_delta;
+
+  // 切换型命令（仅上升沿有效，pos_ctrl_task 执行后清零）
+  bool pump_toggle;
+  bool valve_toggle;
+  bool claw_toggle;
+  bool wrist_toggle;
+
+} pub_upbody_cmd;
 
 // IR模块数据结构体
 typedef struct {
