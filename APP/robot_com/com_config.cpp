@@ -545,9 +545,11 @@ void uart10SendTask(void *argument) {
   {
     switch (ir_data_tx_state) {
       case wait_for_F1:
-        if(currentTime > last_F1_received_time && last_F1_received_time != 0)  //
+        if(currentTime > last_F1_received_time && last_F1_received_time != 0)
+        {
           ir_data_tx_state = wait_for_transmit;
           last_F1_received_time = 0; // 重置，等待下一次F1帧到来
+        }
         break;
       case wait_for_transmit:
         if(currentTime - last_transmit_time >= 200 && currentTime - last_data_received_time >= 200)
@@ -572,8 +574,9 @@ void DebugSerialTask(void *argument) {
   static char debug_buffer[256];
 
   extern OmniChassis Omnichassis_solver;
-  extern pub_chassis_cmd State_Aim_cmd;
+  // extern pub_chassis_cmd State_Aim_cmd;
   extern pub_Position_Data control_position_msg;
+  extern pub_Position_Data control_position;
 
   const PID_t& pid_LU = Omnichassis_solver.pid(OmniChassis::kLeftUp);
   const PID_t& pid_RU = Omnichassis_solver.pid(OmniChassis::kRightUp);
@@ -593,9 +596,9 @@ void DebugSerialTask(void *argument) {
                                               static_cast<int>(pid_LD.Measure), (static_cast<int>(abs(pid_LD.Measure * 100)))%100,
                                               static_cast<int>(pid_RD.Ref), (static_cast<int>(abs(pid_RD.Ref * 100)))%100,
                                               static_cast<int>(pid_RD.Measure), (static_cast<int>(abs(pid_RD.Measure * 100)))%100,
-                                              static_cast<int>(control_position_msg.x), (static_cast<int>(abs(control_position_msg.x * 1000)))%1000,
-                                              static_cast<int>(control_position_msg.y), (static_cast<int>(abs(control_position_msg.y * 1000)))%1000,
-                                              static_cast<int>(control_position_msg.yaw), (static_cast<int>(abs(control_position_msg.yaw * 100)))%100
+                                              static_cast<int>(control_position.x), (static_cast<int>(abs(control_position.x * 1000)))%1000,
+                                              static_cast<int>(control_position.y), (static_cast<int>(abs(control_position.y * 1000)))%1000,
+                                              static_cast<int>(control_position.yaw), (static_cast<int>(abs(control_position.yaw * 100)))%100
     );
     // HAL_UART_Transmit_DMA(&huart5, (const uint8_t *)debug_buffer, sizeof(debug_buffer));
     uart5_port.writeDma(reinterpret_cast<const uint8_t*>(debug_buffer), len);

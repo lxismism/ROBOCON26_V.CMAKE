@@ -41,19 +41,17 @@ pub_Xbox_Data control_xbox_cmd_Last{};
 
 static TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
 pub_Position_Data control_position_msg{};
+pub_Position_Data control_position{};
 //定位修正参数
 static float position_correction_x = 0.0f;
 static float position_correction_y = 0.0f;
+static const float position_center_distance = 0.0f;
 
 /* 订阅IR_data信息 */
 static TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
 pub_ir_data control_ir_msg{};
 
-static float control_position_x = 0.0f;
-static float control_position_y = 0.0f;
-static float control_position_yaw = 0.0f;
-static float control_position_yaw_speed = 0.0f;
-static uint8_t control_position_frame_id = 0;
+
 
 static float xbox_angle_deg;
 static float v_aim;
@@ -149,11 +147,11 @@ void Xbox_Data_Process()
       xbox_angle_deg = atan2(xbox_cmd.linear_y_,xbox_cmd.linear_x_)/kDegToRad;
       v_aim = sqrt(xbox_cmd.linear_x_ * xbox_cmd.linear_x_ + xbox_cmd.linear_y_ * xbox_cmd.linear_y_);
 
-      robot_v_aim_cmd.linear_x_ = v_aim * cos((xbox_angle_deg - control_position_yaw)*kDegToRad);
-      robot_v_aim_cmd.linear_y_ = v_aim * sin((xbox_angle_deg - control_position_yaw)*kDegToRad);
+      robot_v_aim_cmd.linear_x_ = v_aim * cos((xbox_angle_deg - control_position.yaw)*kDegToRad);
+      robot_v_aim_cmd.linear_y_ = v_aim * sin((xbox_angle_deg - control_position.yaw)*kDegToRad);
 
-      state_aim_cmd.linear_x_ = control_position_x;
-      state_aim_cmd.linear_y_ = control_position_y;
+      state_aim_cmd.linear_x_ = control_position.x;
+      state_aim_cmd.linear_y_ = control_position.y;
     }
     else
     {
@@ -189,23 +187,23 @@ void Xbox_Data_Process()
       }
 
       //里程计定位修正
-      position_correction_x = position_correction_x + 0.001f*sign(xbox_cmd.linear_x_);
-      position_correction_y = position_correction_y + 0.001f*sign(xbox_cmd.linear_y_); 
+      position_correction_x = position_correction_x + 0.001f*xbox_cmd.linear_x_;
+      position_correction_y = position_correction_y + 0.001f*xbox_cmd.linear_y_;
 
       //计算目标位置与当前实际位置的误差，进入PID
-      error_x            = state_aim_cmd.linear_x_ - control_position_x;
-      error_y            = state_aim_cmd.linear_y_ - control_position_y;
+      error_x            = state_aim_cmd.linear_x_ - control_position.x;
+      error_y            = state_aim_cmd.linear_y_ - control_position.y;
       state_xy_error     = sqrt(error_x*error_x + error_y*error_y);
       state_xy_angle_deg = atan2(error_y,error_x)/kDegToRad;
       xy_pid_output      = PID_Calculate(&linear,0.0f,state_xy_error);
-      robot_v_aim_cmd.linear_x_  = xy_pid_output * cos((state_xy_angle_deg - control_position_yaw)*kDegToRad);
-      robot_v_aim_cmd.linear_y_  = xy_pid_output * sin((state_xy_angle_deg - control_position_yaw)*kDegToRad);
+      robot_v_aim_cmd.linear_x_  = xy_pid_output * cos((state_xy_angle_deg - control_position.yaw)*kDegToRad);
+      robot_v_aim_cmd.linear_y_  = xy_pid_output * sin((state_xy_angle_deg - control_position.yaw)*kDegToRad);
     }
 
     if(headless_omega_mode)
     {
       robot_v_aim_cmd.omega_ = xbox_cmd.omega_;
-      state_aim_cmd.omega_ = control_position_yaw ;
+      state_aim_cmd.omega_ = control_position.yaw ;
     }
     else
     {
@@ -237,7 +235,7 @@ void Xbox_Data_Process()
       }
 
       //计算角度误差并进行PID控制
-      float error_dir = state_aim_cmd.omega_ - control_position_yaw;
+      float error_dir = state_aim_cmd.omega_ - control_position.yaw;
       if (fabs(error_dir) < 1.5f){
         error_dir = 0.0f;
       }else if(fabs(error_dir) > 180.0 ){
@@ -245,7 +243,7 @@ void Xbox_Data_Process()
         else error_dir = error_dir + 360.0 ;
       }
 
-      robot_v_aim_cmd.omega_ = kDegToRad*PID_Calculate(&deg,control_position_yaw,control_position_yaw + error_dir);
+      robot_v_aim_cmd.omega_ = kDegToRad*PID_Calculate(&deg,control_position.yaw,control_position.yaw + error_dir);
     }
 
   }
@@ -296,11 +294,11 @@ void controlTask(void *argument) {
     for (;;) {
         /* 从Position订阅者中获取数据 */
         if (control_position_sub.TryGet(&control_position_msg)) {
-            control_position_frame_id = control_position_msg.frame_id;
-            control_position_x = -control_position_msg.x;
-            control_position_y = control_position_msg.y;
-            control_position_yaw = -control_position_msg.yaw;
-            control_position_yaw_speed = control_position_msg.yaw_speed;
+            control_position.frame_id = control_position_msg.frame_id;
+            control_position.yaw = -control_position_msg.yaw;
+            control_position.yaw_speed = control_position_msg.yaw_speed;
+            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw) - position_correction_x ;
+            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw) - position_correction_y ;
         }
 
         /* 从xbox数据订阅者中获取数据 */
@@ -338,8 +336,8 @@ void controlTask(void *argument) {
                 // 无头旋转：场地坐标系 → 车身坐标系
                 float joy_angle_deg = atan2(robot_v_aim_cmd.linear_y_, robot_v_aim_cmd.linear_x_) / kDegToRad;
                 float joy_mag = sqrt(robot_v_aim_cmd.linear_x_ * robot_v_aim_cmd.linear_x_ + robot_v_aim_cmd.linear_y_ * robot_v_aim_cmd.linear_y_);
-                robot_v_aim_cmd.linear_x_ = joy_mag * cos((joy_angle_deg - control_position_yaw) * kDegToRad);
-                robot_v_aim_cmd.linear_y_ = joy_mag * sin((joy_angle_deg - control_position_yaw) * kDegToRad);
+                robot_v_aim_cmd.linear_x_ = joy_mag * cos((joy_angle_deg - control_position.yaw) * kDegToRad);
+                robot_v_aim_cmd.linear_y_ = joy_mag * sin((joy_angle_deg - control_position.yaw) * kDegToRad);
 
                 chassis_data_pub.Publish(robot_v_aim_cmd);
 
