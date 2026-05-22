@@ -617,16 +617,8 @@ void usbCdcProcessTask(void *argument) {
         uint8_t frame_id = ros_protocol.processData(packet.data[i]);
         if (frame_id != 0) {
           uint8_t rev[64] = {0};
-          memcpy(rev, ros_protocol.getSensorBagData().i16_data,
-                 sizeof(ros_protocol.getSensorBagData().i16_data));
-          memcpy(rev + sizeof(ros_protocol.getSensorBagData().i16_data),
-                 ros_protocol.getSensorBagData().f_data,
-                 sizeof(ros_protocol.getSensorBagData().f_data));
-          memcpy(rev + sizeof(ros_protocol.getSensorBagData().i16_data) + sizeof(ros_protocol.getSensorBagData().f_data),
-                 &ros_protocol.getQRCodeBagData(),
-                 sizeof(ros_protocol.getQRCodeBagData()));
-          UsbPort::Instance().WriteAsync(
-              rev, sizeof(ros_protocol.getSensorBagData())+sizeof(ros_protocol.getQRCodeBagData()));
+          memcpy(rev, &ros_protocol.getQRCodeBagData(), sizeof(ros_protocol.getQRCodeBagData()));
+          UsbPort::Instance().WriteAsync(rev, sizeof(ros_protocol.getQRCodeBagData()));
         }
       }
     }

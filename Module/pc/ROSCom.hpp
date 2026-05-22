@@ -52,34 +52,10 @@ class ROSProtocol {
 #pragma pack(1)
 
   /* 接收 */
-  struct SensorBag {
-    union {
-      uint8_t byte[2];
-      int16_t data;
-    } i16_data[2];
-
-    union {
-      uint8_t byte[4];
-      float data;
-    } f_data[4];
-  };
-
-  struct ControlBag {
-    union {
-      uint8_t byte[2];
-      int16_t data;
-    } i16_data[4];
-
-    union {
-      uint8_t byte[4];
-      float data;
-    } f_data[2];
-  };
-
-  union {
+  union crc_t{
     uint8_t byte_8[2];
     uint16_t crc_16;
-  } crc;
+  };
 
   struct QRCodeBag {
     uint8_t QR_type;
@@ -98,8 +74,6 @@ public:
   uint16_t processData(uint8_t byte);
 
   // 获取最近一次成功解析的数据
-  const SensorBag &getSensorBagData() const { return sensor_bag_; }
-  const ControlBag &getControlBagData() const { return control_bag_; }
   const QRCodeBag &getQRCodeBagData() const { return qr_code_bag_; }
 
   void packSendData(void);
@@ -109,7 +83,7 @@ private:
 
   void onFrameComplete();
 
-  uint16_t crc16_modbus(const uint8_t *data, size_t len);
+  crc_t crc16_modbus(const uint8_t *data, size_t len);
 
 private:
   // 实例
@@ -126,7 +100,9 @@ private:
   package_id bag_id_{};
 
   // bag data
-  SensorBag sensor_bag_{};
-  ControlBag control_bag_{};
   QRCodeBag qr_code_bag_{};
+
+  //crc
+  crc_t crcRx{};
+  crc_t crcTx{};
 };

@@ -18,8 +18,7 @@
 
 void ROSProtocol::init(void) {
   resetState();
-  std::memset(&sensor_bag_, 0, sizeof(sensor_bag_));
-  std::memset(&control_bag_, 0, sizeof(control_bag_));
+  std::memset(&qr_code_bag_, 0, sizeof(qr_code_bag_));
 }
 
 uint16_t ROSProtocol::processData(uint8_t byte) {
@@ -55,8 +54,8 @@ uint16_t ROSProtocol::processData(uint8_t byte) {
     }
     break;
   case ros_protocol_state::CHECK_CRC_1:
-    crc.crc_16 = ROSProtocol::crc16_modbus(rx_tmp_data, rx_tmp_data_length_);
-    if(byte == crc.byte_8[0])
+    crcRx = ROSProtocol::crc16_modbus(rx_tmp_data, rx_tmp_data_length_);
+    if(byte == crcRx.byte_8[0])
       rx_state_ = ros_protocol_state::CHECK_CRC_2;
     else
     {
@@ -65,7 +64,7 @@ uint16_t ROSProtocol::processData(uint8_t byte) {
     }
     break;
   case ros_protocol_state::CHECK_CRC_2:
-    if(byte == crc.byte_8[1])
+    if(byte == crcRx.byte_8[1])
       rx_state_ = ros_protocol_state::CHECK_TAIL1;
     else
     {
@@ -105,6 +104,7 @@ void ROSProtocol::resetState() {
   rx_data_index_ = 0;
   rx_tmp_data_length_ = 0;
   std::memset(&rx_tmp_data, 0, sizeof(rx_tmp_data));
+  std::memset(&crcRx, 0, sizeof(crcRx));
 }
 
 void ROSProtocol::packSendData(void) {}
@@ -113,25 +113,6 @@ void ROSProtocol::onFrameComplete() {
   switch (bag_id_) {
   case package_id::NONE: {
     // NONE
-    break;
-  }
-  case package_id::SENSOR_BAG: {
-    if (rx_tmp_data_length_ != sizeof(sensor_bag_))
-      break;
-    std::memcpy(sensor_bag_.i16_data, rx_tmp_data,
-                sizeof(sensor_bag_.i16_data));
-    std::memcpy(sensor_bag_.f_data, rx_tmp_data + sizeof(sensor_bag_.i16_data),
-                sizeof(sensor_bag_.f_data));
-    break;
-  }
-  case package_id::CONTROL_BAG: {
-    if (rx_tmp_data_length_ != sizeof(control_bag_))
-      break;
-    std::memcpy(control_bag_.i16_data, rx_tmp_data,
-                sizeof(control_bag_.i16_data));
-    std::memcpy(control_bag_.f_data,
-                rx_tmp_data + sizeof(control_bag_.i16_data),
-                sizeof(control_bag_.f_data));
     break;
   }
   case package_id::QR_CODE_BAG: {
@@ -145,19 +126,20 @@ void ROSProtocol::onFrameComplete() {
   }
 }
 
-uint16_t ROSProtocol::crc16_modbus(const uint8_t *data, size_t len) {
+ROSProtocol::crc_t ROSProtocol::crc16_modbus(const uint8_t *data, size_t len) {
   const uint16_t polynomial = 0xA001;
-  uint16_t crc_reg = 0xFFFF;
+  crc_t crc_reg;
+  crc_reg.crc_16 = 0xFFFF;
 
   for (size_t i = 0; i < len; ++i) {
-    crc_reg ^= data[i];
+    crc_reg.crc_16 ^= data[i];
 
     for (int j = 0; j < 8; ++j) {
-      if (crc_reg & 0x0001) {
-        crc_reg >>= 1;
-        crc_reg ^= polynomial;
+      if (crc_reg.crc_16 & 0x0001) {
+        crc_reg.crc_16 >>= 1;
+        crc_reg.crc_16 ^= polynomial;
       } else {
-        crc_reg >>= 1;
+        crc_reg.crc_16 >>= 1;
       }
     }
   }
