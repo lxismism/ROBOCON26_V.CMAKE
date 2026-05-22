@@ -44,8 +44,9 @@ class ROSProtocol {
 
   enum class package_id {
     NONE = 0,
-    SENSOR_BAG = 1,
-    CONTROL_BAG = 2,
+    QR_CODE_BAG = 1,
+    SENSOR_BAG = 2,
+    CONTROL_BAG = 3,
   };
 
 #pragma pack(1)
@@ -80,6 +81,9 @@ class ROSProtocol {
     uint16_t crc_16;
   } crc;
 
+  struct QRCodeBag {
+    uint8_t QR_type;
+  };
   /* 发送 */
 #pragma pack()
 
@@ -96,6 +100,7 @@ public:
   // 获取最近一次成功解析的数据
   const SensorBag &getSensorBagData() const { return sensor_bag_; }
   const ControlBag &getControlBagData() const { return control_bag_; }
+  const QRCodeBag &getQRCodeBagData() const { return qr_code_bag_; }
 
   void packSendData(void);
 
@@ -123,4 +128,5 @@ private:
   // bag data
   SensorBag sensor_bag_{};
   ControlBag control_bag_{};
+  QRCodeBag qr_code_bag_{};
 };

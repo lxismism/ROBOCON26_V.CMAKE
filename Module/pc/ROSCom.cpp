@@ -134,6 +134,12 @@ void ROSProtocol::onFrameComplete() {
                 sizeof(control_bag_.f_data));
     break;
   }
+  case package_id::QR_CODE_BAG: {
+    if (rx_tmp_data_length_ != sizeof(qr_code_bag_))
+      break;
+    std::memcpy(&qr_code_bag_.QR_type, rx_tmp_data, sizeof(qr_code_bag_.QR_type));
+    break;
+  }
   default:
     break;
   }
