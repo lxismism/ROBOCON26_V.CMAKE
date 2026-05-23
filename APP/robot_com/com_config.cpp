@@ -55,6 +55,7 @@ osThreadId_t uart10ProcessTaskHandle;
 osThreadId_t uart10SendTaskHandle;
 osThreadId_t usbcdcProcessTaskHandle;
 osThreadId_t DebugSerialTaskHandle;
+osThreadId_t usbcdcSendTaskHandle;
 
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
@@ -179,6 +180,13 @@ TickType_t last_data_received_time = 0; // 上次接收到数据的时间
 TypedTopicSubscriber<pub_ir_cmd> ir_cmd_sub("ir_cmd", 8);
 pub_ir_cmd ir_cmd{};
 
+TypedTopicSubscriber<QR_code_cmd_t> qr_code_cmd_sub("qr_code_cmd", 8);
+QR_code_cmd_t qr_code_cmd{};
+
+TypedTopicPublisher<QR_code_data_t> qr_code_data_pub("qr_code_data");
+QR_code_data_t qr_code_data{};
+
+
 // usb
 osSemaphoreId_t usbcdc_rx_semphore = NULL;
 ROSProtocol ros_protocol(nullptr, &UsbPort::Instance());
@@ -282,7 +290,6 @@ uint8_t comServiceInit() {
   if (uart2_rx_semphore == NULL || uart2_port.startRxDmaIdle() != HAL_OK) {
     return 1;
   }
-
   // Xbox控制器初始化
   xbox_remote.init();
 
@@ -619,17 +626,48 @@ void usbCdcProcessTask(void *argument) {
       for (uint16_t i = 0; i < packet.len; ++i) {
         uint8_t frame_id = ros_protocol.processData(packet.data[i]);
         if (frame_id != 0) {
-          uint8_t rev[64] = {0};
-          memcpy(rev, ros_protocol.getSensorBagData().i16_data,
-                 sizeof(ros_protocol.getSensorBagData().i16_data));
-          memcpy(rev + sizeof(ros_protocol.getSensorBagData().i16_data),
-                 ros_protocol.getSensorBagData().f_data,
-                 sizeof(ros_protocol.getSensorBagData().f_data));
-          UsbPort::Instance().WriteAsync(
-              rev, sizeof(ros_protocol.getSensorBagData()));
+          switch (frame_id) {
+            case static_cast<uint8_t>(ROSProtocol::package_id::QR_CODE_BAG): {
+              // 发布二维码类型
+              const auto &qr_types = ros_protocol.getQRCodeBagData().QR_type;
+              qr_code_data.QR_type = qr_types;
+              qr_code_data_pub.Publish(qr_code_data);
+              //重复应答
+              // uint8_t rev[64] = {0};
+              // memcpy(rev, &ros_protocol.getQRCodeBagData(), sizeof(ros_protocol.getQRCodeBagData()));
+              // UsbPort::Instance().WriteAsync(rev, sizeof(ros_protocol.getQRCodeBagData()));
+              break;
+            }
+            default:
+              break;
+          }
+
         }
       }
     }
+  }
+}
+
+void usbCdcSendTask(void *argument) {
+  (void)argument;
+
+  TickType_t currentTime = xTaskGetTickCount();
+
+  if(!qr_code_cmd_sub.IsValid()) {
+    return;
+  }
+
+  if(!qr_code_data_pub.IsValid()) {
+    return;
+  }
+
+  for (;;) {
+    if(qr_code_cmd_sub.TryGet(&qr_code_cmd)) {
+      uint8_t tx[64] = {0};
+      uint8_t frame_length = ros_protocol.packQRMsg(tx, qr_code_cmd.QR_type);
+      UsbPort::Instance().WriteAsync(tx, frame_length);
+    }
+    vTaskDelayUntil(&currentTime, 10); // 每10ms发送一次
   }
 }
 

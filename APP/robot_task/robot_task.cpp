@@ -41,6 +41,7 @@ extern osThreadId_t Debug_TaskHandle;
 extern osThreadId_t ChassisTaskHandle;
 extern osThreadId_t ControlTaskHandle;
 extern osThreadId_t usbcdcProcessTaskHandle;
+extern osThreadId_t usbcdcSendTaskHandle;
 extern osThreadId_t PosCtrlTaskHandle;
 extern osThreadId_t DebugSerialTaskHandle;
 
@@ -163,6 +164,14 @@ void osTaskInit(void) {
   };
   usbcdcProcessTaskHandle =
       osThreadNew(usbCdcProcessTask, NULL, &UsbcdcProcessTaskHandle_attributes);
+
+  const osThreadAttr_t UsbcdcSendTaskHandle_attributes = {
+      .name = "UsbcdcSend_TaskHandle",
+      .stack_size = 256 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  usbcdcSendTaskHandle =
+      osThreadNew(usbCdcSendTask, NULL, &UsbcdcSendTaskHandle_attributes);
 
   const osThreadAttr_t DebugSerialTaskHandle_attributes = {
       .name = "DebugSerial_TaskHandle",

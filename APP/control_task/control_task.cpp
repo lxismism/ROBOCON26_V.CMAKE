@@ -29,10 +29,14 @@ static pub_chassis_cmd xbox_cmd{};
 static TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");
 static pub_upbody_cmd upbody_cmd_msg{};
 
-// ---------- 订阅者 ----------
 //发布红外控制命令
 static TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");
 static pub_ir_cmd ir_cmd{};
+
+static TypedTopicPublisher<QR_code_cmd_t> qr_code_cmd_pub("qr_code_cmd");
+static QR_code_cmd_t qr_code_cmd{};
+
+// ---------- 订阅者 ----------
 
 /* 订阅xbox遥控控制信息 */
 static TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox", 8);
@@ -50,6 +54,9 @@ static const float position_center_distance = 0.0f;
 /* 订阅IR_data信息 */
 static TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
 pub_ir_data control_ir_msg{};
+
+static TypedTopicSubscriber<QR_code_data_t> qr_code_data_sub("qr_code_data", 8);
+QR_code_data_t control_qr_code_data{};
 
 
 
@@ -272,6 +279,12 @@ void controlInit() {
     if (!ir_cmd_pub.IsValid()) {
         return;
     }
+    if(!qr_code_cmd_pub.IsValid()) {
+        return;
+    }
+    if(!qr_code_data_sub.IsValid()) {
+        return;
+    }
 }
 
 void controlTask(void *argument) {
@@ -417,6 +430,17 @@ void controlTask(void *argument) {
           //   ir_cmd_pub.Publish(ir_cmd);
           // }
         }
+
+        //if(qr_code_data_sub.TryGet(&control_qr_code_data)) {
+          //二维码输入数据处理放这
+          //测试
+          //示例：接收到0x01二维码数据后，发布显示0x01二维码命令
+          // if(control_qr_code_data.QR_type == 0x01)
+          // {
+          //   qr_code_cmd.QR_type = 0x01;            //<-
+          //   qr_code_cmd_pub.Publish(qr_code_cmd);  //<-发布显示0x01二维码命令核心代码
+          // }
+        //}
 
         vTaskDelayUntil(&currentTime, 5);
     }

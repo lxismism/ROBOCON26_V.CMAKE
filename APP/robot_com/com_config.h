@@ -39,6 +39,7 @@ void uart5RxProcessTask(void *argument);
 void uart10RxProcessTask(void *argument);
 void uart10SendTask(void *argument);
 void usbCdcProcessTask(void *argument);
+void usbCdcSendTask(void *argument);
 void posCtrlTask(void *argument);
 void DebugSerialTask(void *argument);
 

@@ -36,48 +36,35 @@ class ROSProtocol {
     CHECK_ID,
     CHECK_LENGTH,
     UNPACK_DATA,
-    CHECK_CRC,
+    CHECK_CRC_1,
+    CHECK_CRC_2,
     CHECK_TAIL1,
     CHECK_TAIL2
-  };
-
-  enum class package_id {
-    NONE = 0,
-    SENSOR_BAG = 1,
-    CONTROL_BAG = 2,
   };
 
 #pragma pack(1)
 
   /* 接收 */
-  struct SensorBag {
-    union {
-      uint8_t byte[2];
-      int16_t data;
-    } i16_data[2];
-
-    union {
-      uint8_t byte[4];
-      float data;
-    } f_data[4];
+  union crc_t{
+    uint8_t byte_8[2];
+    uint16_t crc_16;
   };
 
-  struct ControlBag {
-    union {
-      uint8_t byte[2];
-      int16_t data;
-    } i16_data[4];
-
-    union {
-      uint8_t byte[4];
-      float data;
-    } f_data[2];
+  struct QRCodeBag {
+    uint8_t QR_type;
   };
-
   /* 发送 */
 #pragma pack()
 
 public:
+
+  enum class package_id {
+    NONE = 0,
+    QR_CODE_BAG = 1,
+    SENSOR_BAG = 2,
+    CONTROL_BAG = 3,
+  };
+
   // 两种含参构造
   ROSProtocol(UartPort *uart_impl, UsbPort *usb_impl)
       : uart_impl_(uart_impl), usb_impl_(usb_impl) {}
@@ -87,16 +74,17 @@ public:
   // 解析回调
   uint16_t processData(uint8_t byte);
 
-  // 获取最近一次成功解析的数据
-  const SensorBag &getSensorBagData() const { return sensor_bag_; }
-  const ControlBag &getControlBagData() const { return control_bag_; }
+  uint8_t packQRMsg(uint8_t buf[], uint8_t QRCodetype);
 
-  void packSendData(void);
+  // 获取最近一次成功解析的数据
+  const QRCodeBag &getQRCodeBagData() const { return qr_code_bag_; }
 
 private:
   void resetState();
 
   void onFrameComplete();
+
+  crc_t crc16_modbus(const uint8_t *data, size_t len);
 
 private:
   // 实例
@@ -113,6 +101,9 @@ private:
   package_id bag_id_{};
 
   // bag data
-  SensorBag sensor_bag_{};
-  ControlBag control_bag_{};
+  QRCodeBag qr_code_bag_{};
+
+  //crc
+  crc_t crcRx{};
+  crc_t crcTx{};
 };

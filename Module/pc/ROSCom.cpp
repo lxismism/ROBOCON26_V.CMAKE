@@ -18,8 +18,7 @@
 
 void ROSProtocol::init(void) {
   resetState();
-  std::memset(&sensor_bag_, 0, sizeof(sensor_bag_));
-  std::memset(&control_bag_, 0, sizeof(control_bag_));
+  std::memset(&qr_code_bag_, 0, sizeof(qr_code_bag_));
 }
 
 uint16_t ROSProtocol::processData(uint8_t byte) {
@@ -51,13 +50,28 @@ uint16_t ROSProtocol::processData(uint8_t byte) {
     // 解包数据
     rx_tmp_data[rx_data_index_++] = byte;
     if (rx_data_index_ >= rx_tmp_data_length_) {
-      rx_state_ = ros_protocol_state::CHECK_CRC;
+      rx_state_ = ros_protocol_state::CHECK_CRC_1;
     }
     break;
-  case ros_protocol_state::CHECK_CRC:
-    // todo:添加crc计算
-    rx_state_ = ros_protocol_state::CHECK_TAIL1;
-    // break;
+  case ros_protocol_state::CHECK_CRC_1:
+    crcRx = ROSProtocol::crc16_modbus(rx_tmp_data, rx_tmp_data_length_);
+    if(byte == crcRx.byte_8[0])
+      rx_state_ = ros_protocol_state::CHECK_CRC_2;
+    else
+    {
+      rx_state_ = ros_protocol_state::CHECK_HEAD1;
+      resetState();
+    }
+    break;
+  case ros_protocol_state::CHECK_CRC_2:
+    if(byte == crcRx.byte_8[1])
+      rx_state_ = ros_protocol_state::CHECK_TAIL1;
+    else
+    {
+      rx_state_ = ros_protocol_state::CHECK_HEAD1;
+      resetState();
+    }
+    break;
   case ros_protocol_state::CHECK_TAIL1:
     if (byte == TAIL1) {
       rx_state_ = ros_protocol_state::CHECK_TAIL2;
@@ -90,9 +104,8 @@ void ROSProtocol::resetState() {
   rx_data_index_ = 0;
   rx_tmp_data_length_ = 0;
   std::memset(&rx_tmp_data, 0, sizeof(rx_tmp_data));
+  std::memset(&crcRx, 0, sizeof(crcRx));
 }
-
-void ROSProtocol::packSendData(void) {}
 
 void ROSProtocol::onFrameComplete() {
   switch (bag_id_) {
@@ -100,26 +113,55 @@ void ROSProtocol::onFrameComplete() {
     // NONE
     break;
   }
-  case package_id::SENSOR_BAG: {
-    if (rx_tmp_data_length_ != sizeof(sensor_bag_))
+  case package_id::QR_CODE_BAG: {
+    if (rx_tmp_data_length_ != sizeof(qr_code_bag_))
       break;
-    std::memcpy(sensor_bag_.i16_data, rx_tmp_data,
-                sizeof(sensor_bag_.i16_data));
-    std::memcpy(sensor_bag_.f_data, rx_tmp_data + sizeof(sensor_bag_.i16_data),
-                sizeof(sensor_bag_.f_data));
-    break;
-  }
-  case package_id::CONTROL_BAG: {
-    if (rx_tmp_data_length_ != sizeof(control_bag_))
-      break;
-    std::memcpy(control_bag_.i16_data, rx_tmp_data,
-                sizeof(control_bag_.i16_data));
-    std::memcpy(control_bag_.f_data,
-                rx_tmp_data + sizeof(control_bag_.i16_data),
-                sizeof(control_bag_.f_data));
+    std::memcpy(&qr_code_bag_.QR_type, rx_tmp_data, sizeof(qr_code_bag_.QR_type));
     break;
   }
   default:
     break;
   }
+}
+/**
+  @brief 打包QR码指令
+  @param buf 输出缓冲区，至少8+sizeof(QRCodeBag)字节
+  @param QRCodetype QR码类型
+  @return 完整的一帧数据长度
+*/
+uint8_t ROSProtocol::packQRMsg(uint8_t buf[], uint8_t QRCodetype) {
+  buf[0] = HEADER1;
+  buf[1] = HEADER2;
+  buf[2] = static_cast<uint8_t>(package_id::QR_CODE_BAG);
+  buf[3] = sizeof(QRCodeBag);
+  buf[4] = QRCodetype;
+
+  crcTx = ROSProtocol::crc16_modbus(&buf[4], sizeof(QRCodeBag));
+
+  buf[4 + sizeof(QRCodeBag)] = crcTx.byte_8[0];
+  buf[5 + sizeof(QRCodeBag)] = crcTx.byte_8[1];
+  buf[6 + sizeof(QRCodeBag)] = TAIL1;
+  buf[7 + sizeof(QRCodeBag)] = TAIL2;
+  return 8 + sizeof(QRCodeBag);
+}
+
+ROSProtocol::crc_t ROSProtocol::crc16_modbus(const uint8_t *data, size_t len) {
+  const uint16_t polynomial = 0xA001;
+  crc_t crc_reg;
+  crc_reg.crc_16 = 0xFFFF;
+
+  for (size_t i = 0; i < len; ++i) {
+    crc_reg.crc_16 ^= data[i];
+
+    for (int j = 0; j < 8; ++j) {
+      if (crc_reg.crc_16 & 0x0001) {
+        crc_reg.crc_16 >>= 1;
+        crc_reg.crc_16 ^= polynomial;
+      } else {
+        crc_reg.crc_16 >>= 1;
+      }
+    }
+  }
+
+  return crc_reg;
 }
