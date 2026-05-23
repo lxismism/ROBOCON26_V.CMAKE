@@ -107,8 +107,6 @@ void ROSProtocol::resetState() {
   std::memset(&crcRx, 0, sizeof(crcRx));
 }
 
-void ROSProtocol::packSendData(void) {}
-
 void ROSProtocol::onFrameComplete() {
   switch (bag_id_) {
   case package_id::NONE: {
@@ -124,6 +122,27 @@ void ROSProtocol::onFrameComplete() {
   default:
     break;
   }
+}
+/**
+  @brief 打包QR码指令
+  @param buf 输出缓冲区，至少8+sizeof(QRCodeBag)字节
+  @param QRCodetype QR码类型
+  @return 完整的一帧数据长度
+*/
+uint8_t ROSProtocol::packQRMsg(uint8_t buf[], uint8_t QRCodetype) {
+  buf[0] = HEADER1;
+  buf[1] = HEADER2;
+  buf[2] = static_cast<uint8_t>(package_id::QR_CODE_BAG);
+  buf[3] = sizeof(QRCodeBag);
+  buf[4] = QRCodetype;
+
+  crcTx = ROSProtocol::crc16_modbus(&buf[4], sizeof(QRCodeBag));
+
+  buf[4 + sizeof(QRCodeBag)] = crcTx.byte_8[0];
+  buf[5 + sizeof(QRCodeBag)] = crcTx.byte_8[1];
+  buf[6 + sizeof(QRCodeBag)] = TAIL1;
+  buf[7 + sizeof(QRCodeBag)] = TAIL2;
+  return 8 + sizeof(QRCodeBag);
 }
 
 ROSProtocol::crc_t ROSProtocol::crc16_modbus(const uint8_t *data, size_t len) {

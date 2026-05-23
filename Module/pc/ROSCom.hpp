@@ -42,13 +42,6 @@ class ROSProtocol {
     CHECK_TAIL2
   };
 
-  enum class package_id {
-    NONE = 0,
-    QR_CODE_BAG = 1,
-    SENSOR_BAG = 2,
-    CONTROL_BAG = 3,
-  };
-
 #pragma pack(1)
 
   /* 接收 */
@@ -64,6 +57,14 @@ class ROSProtocol {
 #pragma pack()
 
 public:
+
+  enum class package_id {
+    NONE = 0,
+    QR_CODE_BAG = 1,
+    SENSOR_BAG = 2,
+    CONTROL_BAG = 3,
+  };
+
   // 两种含参构造
   ROSProtocol(UartPort *uart_impl, UsbPort *usb_impl)
       : uart_impl_(uart_impl), usb_impl_(usb_impl) {}
@@ -73,10 +74,10 @@ public:
   // 解析回调
   uint16_t processData(uint8_t byte);
 
+  uint8_t packQRMsg(uint8_t buf[], uint8_t QRCodetype);
+
   // 获取最近一次成功解析的数据
   const QRCodeBag &getQRCodeBagData() const { return qr_code_bag_; }
-
-  void packSendData(void);
 
 private:
   void resetState();

@@ -111,4 +111,12 @@ typedef struct {
   uint8_t tx_data[2];
 } pub_ir_cmd;
 
+typedef struct {
+  uint8_t QR_type;
+} QR_code_cmd_t;
+
+typedef struct  {
+  uint8_t QR_type;
+} QR_code_data_t;
+
 #pragma pack()
