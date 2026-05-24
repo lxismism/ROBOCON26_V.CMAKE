@@ -74,13 +74,15 @@ C620Motor chassis_motor3(&fdcan3_bus, 0x203, 0, 0x200, 0);
 C620Motor chassis_motor4(&fdcan3_bus, 0x204, 0, 0x200, 0);
 
 //
-// ---------- 上层机构电机 (CAN2) ----------
+// ---------- 上层机构电机 (CAN1) ----------
 // 0x1FF 组 (0x205-0x208): 2006 电机
-C610Motor picker_yaw_motor(&fdcan2_bus, 0x205, 0, 0x1FF, 0);     // pick_hand 云台旋转
-C610Motor picker_extend_motor(&fdcan2_bus, 0x206, 0, 0x1FF, 0);  // pick_hand 伸缩
-C610Motor weapon_extend_motor(&fdcan2_bus, 0x207, 0, 0x1FF, 0);  // weapon_hand 伸缩
+C610Motor picker_yaw_motor(&fdcan1_bus, 0x205, 0, 0x1FF, 0);     // pick_hand 云台旋转
+C610Motor picker_extend_motor(&fdcan1_bus, 0x206, 0, 0x1FF, 0);  // pick_hand 伸缩
+C610Motor weapon_extend_motor(&fdcan1_bus, 0x207, 0, 0x1FF, 0);  // weapon_hand 伸缩
 
 // 0x208 预留
+
+// ---------- 上层机构电机 (CAN2) ----------
 
 // 0x200 组 (0x201-0x204): 3508 电机
 C620Motor lift_left_motor(&fdcan2_bus, 0x201, 0, 0x200, 0);      // lift 左侧
@@ -232,11 +234,12 @@ uint8_t comServiceInit() {
   fdcan3_bus.registerDevice(&chassis_motor4);
 
 
-  // ---- 注册到 CAN2 总线 ----
-  fdcan2_bus.registerDevice(&picker_yaw_motor);
-  fdcan2_bus.registerDevice(&picker_extend_motor);
-  fdcan2_bus.registerDevice(&weapon_extend_motor);
+  // ---- 将上身3个2006电机注册到 CAN1 总线 ----
+  fdcan1_bus.registerDevice(&picker_yaw_motor);
+  fdcan1_bus.registerDevice(&picker_extend_motor);
+  fdcan1_bus.registerDevice(&weapon_extend_motor);
 
+  // ---- 将上身4个3508注册到 CAN2 总线 ----
   fdcan2_bus.registerDevice(&lift_left_motor);
   fdcan2_bus.registerDevice(&lift_right_motor);
   fdcan2_bus.registerDevice(&picker_lift_motor);
@@ -350,25 +353,14 @@ void onUsbRxCb(const uint8_t *data, size_t len, void *user) {
 
 void can1SendTask(void *argument) {
   TickType_t currentTime = xTaskGetTickCount();
-
-  for (;;) {
-
-    vTaskDelayUntil(&currentTime, 1); // 每1ms执行一次发送任务
-  }
-}
-
-void can2SendTask(void *argument) {
-  TickType_t currentTime = xTaskGetTickCount();
   CanBus::ClassicPack pack;
   pack.type = CanBus::Type::STANDARD;
 
   uint8_t len = 8;
-
   const uint32_t group_1FF_ids[4] = {0x205, 0x206, 0x207, 0x208};
-  const uint32_t group_200_ids[4] = {0x201, 0x202, 0x203, 0x204};
 
   for (;;) {
-    // ---- 帧1: 0x1FF → 2006电机组 (云台旋转/伸缩) ----
+    // ---- 帧: 0x1FF → 2006电机组 (云台旋转/伸缩) ----
     pack.id = 0x1FF;
     int16_t commands_1FF[4] = {0};
     commands_1FF[0] = static_cast<int16_t>(picker_yaw_motor.cmdTrans());
@@ -377,9 +369,23 @@ void can2SendTask(void *argument) {
     commands_1FF[3] = static_cast<int16_t>(0); // 0x208 预留
 
     packDJIMotorCanMsg(pack.id, group_1FF_ids, commands_1FF, 4, pack.data, len);
-    fdcan2_bus.addCanMsg(pack);
+    fdcan1_bus.addCanMsg(pack);
 
-    // ---- 帧2: 0x200 → 3508电机组 (抬升) ----
+    vTaskDelayUntil(&currentTime, 1);
+  }
+}
+
+
+void can2SendTask(void *argument) {
+  TickType_t currentTime = xTaskGetTickCount();
+  CanBus::ClassicPack pack;
+  pack.type = CanBus::Type::STANDARD;
+
+  uint8_t len = 8;
+  const uint32_t group_200_ids[4] = {0x201, 0x202, 0x203, 0x204};
+
+  for (;;) {
+    // ---- 帧: 0x200 → 3508电机组 (抬升) ----
     pack.id = 0x200;
     int16_t commands_200[4] = {0};
     commands_200[0] = static_cast<int16_t>(lift_left_motor.cmdTrans());

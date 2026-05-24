@@ -95,6 +95,7 @@ static constexpr float kDegToRad = M_PI / 180.0f;
 
 // 上身控制常量
 static constexpr float kUpbodyStep = 1.0f;           // 持续按键每帧步进 (°/帧)
+static constexpr float kPickExtendStep = 0.3f; // 吸取手伸缩步进 (°/帧) ，减速比大，需慢速
 static constexpr uint16_t kTriggerThreshold = 512;   // 扳机触发阈值
 
 static int8_t sign(double value) {
@@ -300,8 +301,8 @@ void controlTask(void *argument) {
     // 切换型按键上一帧状态（边缘检测用）
     static bool last_btnX = false;
     static bool last_btnB = false;
-    static bool last_btnLB = false;
-    static bool last_btnRB = false;
+    static bool last_btnLS = false;
+    static bool last_btnRS = false;
 
     controlInit();
     for (;;) {
@@ -365,12 +366,12 @@ void controlTask(void *argument) {
                 if (control_xbox_cmd.trigRT > kTriggerThreshold)
                     upbody_cmd_msg.lift_delta = -kUpbodyStep;
 
-                // ▼ 持续型：btnLS武器手上升 / btnRS武器手下降
-                if (control_xbox_cmd.btnLS)
+                // ▼ 持续型：btnLB武器手上升 / btnRB武器手下降
+                if (control_xbox_cmd.btnLB)
                     upbody_cmd_msg.weapon_lift_delta = kUpbodyStep;
-                if (control_xbox_cmd.btnRS)
+                if (control_xbox_cmd.btnRB)
                     upbody_cmd_msg.weapon_lift_delta = -kUpbodyStep;
-
+                  
                 // ▼ 持续型：btnDirUp吸取手上升 / btnDirDown吸取手下降
                 if (control_xbox_cmd.btnDirUp)
                     upbody_cmd_msg.pick_lift_delta = kUpbodyStep;
@@ -382,6 +383,15 @@ void controlTask(void *argument) {
                     upbody_cmd_msg.pick_yaw_delta = kUpbodyStep;
                 if (control_xbox_cmd.btnDirRight)
                     upbody_cmd_msg.pick_yaw_delta = -kUpbodyStep;
+
+                // ▼ 持续型：右摇杆前推吸取手伸 / 后拉吸取手缩
+                {
+                    int32_t rvert_diff = (int32_t)control_xbox_cmd.joyRVert - (int32_t)kJoyCenter;
+                    if (rvert_diff > (int32_t)kJoyDeadZoneRight)
+                        upbody_cmd_msg.pick_extend_delta = kPickExtendStep;
+                    else if (rvert_diff < -(int32_t)kJoyDeadZoneRight)
+                        upbody_cmd_msg.pick_extend_delta = -kPickExtendStep;
+                }
 
                 // ▼ 持续型：btnY武器手伸 / btnA武器手缩
                 if (control_xbox_cmd.btnY)
@@ -399,15 +409,15 @@ void controlTask(void *argument) {
                     upbody_cmd_msg.valve_toggle = true;
                 last_btnB = control_xbox_cmd.btnB;
 
-                // ▼ 切换型：btnLB夹爪开合（上升沿触发）
-                if (control_xbox_cmd.btnLB && !last_btnLB)
+                // ▼ 切换型：btnLS夹爪开合（上升沿触发）
+                if (control_xbox_cmd.btnLS && !last_btnLS)
                     upbody_cmd_msg.claw_toggle = true;
-                last_btnLB = control_xbox_cmd.btnLB;
+                last_btnLS = control_xbox_cmd.btnLS;
 
-                // ▼ 切换型：btnRB腕部舵机翻转（上升沿触发）
-                if (control_xbox_cmd.btnRB && !last_btnRB)
+                // ▼ 切换型：btnRS腕部舵机翻转（上升沿触发）
+                if (control_xbox_cmd.btnRS && !last_btnRS)
                     upbody_cmd_msg.wrist_toggle = true;
-                last_btnRB = control_xbox_cmd.btnRB;
+                last_btnRS = control_xbox_cmd.btnRS;
 
                 upbody_cmd_pub.Publish(upbody_cmd_msg);
 
