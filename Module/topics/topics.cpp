@@ -8,40 +8,61 @@
 #include "topics.hpp"
 
 #include <atomic>
-#include <cstdlib>
+#include <cstdint>
 #include <cstring>
 
-#include "lockfree_ringbuffer.hpp"
+// 统一空返回值
+static publish_data MakeEmptyData() { return publish_data{nullptr, -1}; }
 
-template <typename T> class SpscOverwriteRing {
+// 固定slot
+struct publish_slot {
+  uint8_t data[TOPICS_MAX_MESSAGE_SIZE];
+  int len;
+};
+
+// 深拷贝到slot,超长直接拒绝
+static bool CopyToSlot(const publish_data &src, publish_slot *out) {
+  if (out == nullptr || src.data == nullptr || src.len <= 0) {
+    return false;
+  }
+  if (src.len > static_cast<int>(TOPICS_MAX_MESSAGE_SIZE)) {
+    return false;
+  }
+  std::memcpy(out->data, src.data, static_cast<size_t>(src.len));
+  out->len = src.len;
+  return true;
+}
+
+// 每个订阅者维护一个spsc环形队列（固定静态容量）
+template <typename T, uint32_t MaxCapacity> class SpscOverwriteRing {
 public:
   SpscOverwriteRing() = default;
-
-  ~SpscOverwriteRing() {
-    if (items_ != nullptr) {
-      std::free(items_);
-      items_ = nullptr;
-    }
-  }
 
   bool Init(uint32_t capacity) {
     if (capacity == 0U) {
       capacity = 1U;
+    } else if (capacity > MaxCapacity) {
+      capacity = MaxCapacity;
     }
-    items_ = static_cast<T *>(std::calloc(capacity, sizeof(T)));
-    if (items_ == nullptr) {
-      capacity_ = 0U;
-      return false;
-    }
-
     capacity_ = capacity;
     head_.store(0U, std::memory_order_relaxed);
     tail_.store(0U, std::memory_order_relaxed);
     return true;
   }
 
+  bool IsReady() const { return capacity_ > 0U; }
+
+  void Clear() {
+    if (!IsReady()) {
+      return;
+    }
+
+    head_.store(0U, std::memory_order_relaxed);
+    tail_.store(0U, std::memory_order_relaxed);
+  }
+
   void Push(const T &item) {
-    if (items_ == nullptr || capacity_ == 0U) {
+    if (!IsReady()) {
       return;
     }
 
@@ -77,37 +98,87 @@ public:
 private:
   uint32_t Inc(uint32_t index) const { return (index + 1U) % capacity_; }
 
-  T *items_{nullptr};
+  T items_[MaxCapacity]{};
   uint32_t capacity_{0};
   std::atomic<uint32_t> head_{0};
   std::atomic<uint32_t> tail_{0};
 };
 
 struct topic_queue_t {
-  SpscOverwriteRing<publish_data> ring;
+  SpscOverwriteRing<publish_slot, TOPICS_MAX_HISTORY_LEN + 1U> ring;
 };
 
-typedef struct subscriber_node_t {
-  Subscriber *sub;
+struct subscriber_state {
+  const char *sub_topic;
+  struct internal_topic *topic;
   topic_queue_t queue;
-  struct subscriber_node_t *next;
-} subscriber_node_t;
+  uint8_t scratch[TOPICS_MAX_MESSAGE_SIZE];
+  struct subscriber_state *next;
+  bool in_use;
+};
 
+// topic 内部状态
 struct internal_topic {
-  Publisher *pub;
-  subscriber_node_t *subs;
+  subscriber_state *subs;
   const char *topic_str;
   struct internal_topic *next;
+  uint32_t sub_count;
+  bool in_use;
 };
 
+static internal_topic g_topic_pool[TOPICS_MAX_TOPICS]{};
+static subscriber_state
+    g_sub_pool[TOPICS_MAX_TOPICS * TOPICS_MAX_SUBS_PER_TOPIC]{};
+
+static void queue_init(topic_queue_t *queue, uint32_t capacity);
+
+// 从静态地址中申请内存,创建话题
+static internal_topic *AllocateTopic(const char *topic) {
+  for (auto &item : g_topic_pool) {
+    if (!item.in_use) {
+      item.in_use = true;
+      item.topic_str = topic;
+      item.subs = nullptr;
+      item.sub_count = 0U;
+      item.next = nullptr;
+      return &item;
+    }
+  }
+  return nullptr;
+}
+
+// 从静态地址中申请内存,创建订阅者
+static subscriber_state *AllocateSubscriber(internal_topic *topic,
+                                            const char *sub_topic,
+                                            uint32_t buffer_len) {
+  if (topic == nullptr || sub_topic == nullptr) {
+    return nullptr;
+  }
+  if (topic->sub_count >= TOPICS_MAX_SUBS_PER_TOPIC) {
+    return nullptr;
+  }
+
+  for (auto &item : g_sub_pool) {
+    if (!item.in_use) {
+      item.in_use = true;
+      item.sub_topic = sub_topic;
+      item.topic = topic;
+      item.next = nullptr;
+      queue_init(&item.queue, buffer_len);
+      topic->sub_count += 1U;
+      return &item;
+    }
+  }
+  return nullptr;
+}
+
+// 发布订阅总线管理类,单例模式
 class TopicBus {
 public:
   static TopicBus &Instance() {
     static TopicBus instance;
     return instance;
   }
-
-  void Init() { topics_ = nullptr; }
 
   struct internal_topic *RegisterTopic(const char *topic) {
     struct internal_topic *now = nullptr;
@@ -123,13 +194,11 @@ public:
       }
     }
 
-    now = static_cast<struct internal_topic *>(
-        std::calloc(1, sizeof(struct internal_topic)));
+    now = AllocateTopic(topic);
     if (now == nullptr) {
       return nullptr;
     }
 
-    now->topic_str = topic;
     now->next = topics_;
     topics_ = now;
     return now;
@@ -140,126 +209,121 @@ private:
   struct internal_topic *topics_{nullptr};
 };
 
-static void pub_commit(Publisher *pub, publish_data data);
-static publish_data sub_get(Subscriber *sub);
-static void queue_init(topic_queue_t *queue, uint32_t capacity);
+static void PublishToSubscribers(internal_topic *topic, publish_data data);
+static publish_data GetSubscriberData(subscriber_state *sub);
 static void queue_push(topic_queue_t *queue, publish_data data);
-static int queue_pop(topic_queue_t *queue, publish_data *out);
-static void queue_free(topic_queue_t *queue);
-
-void SubPub_Init(void) { TopicBus::Instance().Init(); }
+static int queue_pop(topic_queue_t *queue, publish_slot *out);
 
 static void queue_init(topic_queue_t *queue, uint32_t capacity) {
   if (queue == nullptr) {
     return;
   }
-  (void)queue->ring.Init(capacity);
+  // Capacity is "history length"; ring needs one extra slot to detect full.
+  uint32_t history = capacity;
+  if (history == 0U) {
+    history = 1U;
+  } else if (history > TOPICS_MAX_HISTORY_LEN) {
+    history = TOPICS_MAX_HISTORY_LEN;
+  }
+  uint32_t ring_capacity = history + 1U;
+  if (ring_capacity > TOPICS_MAX_HISTORY_LEN + 1U) {
+    ring_capacity = TOPICS_MAX_HISTORY_LEN + 1U;
+  }
+  (void)queue->ring.Init(ring_capacity);
 }
 
 static void queue_push(topic_queue_t *queue, publish_data data) {
-  if (queue == nullptr) {
+  if (queue == nullptr || !queue->ring.IsReady()) {
     return;
   }
-  queue->ring.Push(data);
+  // 先做深拷贝,再push到spsc中
+  publish_slot slot{};
+  if (!CopyToSlot(data, &slot)) {
+    return;
+  }
+  queue->ring.Push(slot);
 }
 
-static int queue_pop(topic_queue_t *queue, publish_data *out) {
+static int queue_pop(topic_queue_t *queue, publish_slot *out) {
   if (queue == nullptr || out == nullptr) {
     return 0;
   }
   return queue->ring.Pop(out) ? 1 : 0;
 }
 
-static void queue_free(topic_queue_t *queue) { (void)queue; }
-
-static void pub_commit(Publisher *pub, publish_data data) {
-  subscriber_node_t *node;
-
-  if (pub == nullptr || pub->topic == nullptr) {
+static void PublishToSubscribers(internal_topic *topic, publish_data data) {
+  if (topic == nullptr) {
     return;
   }
 
-  node = pub->topic->subs;
+  subscriber_state *node = topic->subs;
   while (node != nullptr) {
     queue_push(&node->queue, data);
     node = node->next;
   }
 }
 
-static publish_data sub_get(Subscriber *sub) {
-  publish_data now;
+static publish_data GetSubscriberData(subscriber_state *sub) {
+  publish_data now = MakeEmptyData();
 
-  now.data = nullptr;
-  now.len = -1;
-
-  if (sub == nullptr || sub->queue == nullptr) {
+  if (sub == nullptr) {
     return now;
   }
 
-  if (queue_pop(static_cast<topic_queue_t *>(sub->queue), &now) == 0) {
-    now.data = nullptr;
-    now.len = -1;
+  publish_slot slot{};
+  if (queue_pop(&sub->queue, &slot) == 0) {
+    return now;
   }
 
-  return now;
+  if (slot.len <= 0 || slot.len > static_cast<int>(TOPICS_MAX_MESSAGE_SIZE)) {
+    return MakeEmptyData();
+  }
+
+  std::memcpy(sub->scratch, slot.data, static_cast<size_t>(slot.len));
+  return publish_data{sub->scratch, slot.len};
 }
 
-Publisher *register_pub(const char *topic) {
-  struct internal_topic *now_topic;
-  Publisher *obj;
+TopicPublisher::TopicPublisher(const char *topic)
+    : topic_(TopicBus::Instance().RegisterTopic(topic)) {}
 
-  now_topic = TopicBus::Instance().RegisterTopic(topic);
-  if (now_topic == nullptr) {
-    return nullptr;
+bool TopicPublisher::Publish(uint8_t *data, int len) const {
+  if (topic_ == nullptr || data == nullptr || len <= 0) {
+    return false;
   }
-
-  if (now_topic->pub != nullptr) {
-    return now_topic->pub;
+  if (len > static_cast<int>(TOPICS_MAX_MESSAGE_SIZE)) {
+    return false;
   }
-
-  obj = static_cast<Publisher *>(calloc(1, sizeof(Publisher)));
-  if (obj == nullptr) {
-    return nullptr;
-  }
-
-  obj->pub_topic = topic;
-  obj->topic = now_topic;
-  obj->publish = pub_commit;
-  now_topic->pub = obj;
-  return obj;
+  publish_data packet{data, len};
+  PublishToSubscribers(topic_, packet);
+  return true;
 }
 
-Subscriber *register_sub(const char *topic, uint32_t buffer_len) {
-  struct internal_topic *now_topic;
-  subscriber_node_t *node;
-  Subscriber *obj;
-
-  now_topic = TopicBus::Instance().RegisterTopic(topic);
+TopicSubscriber::TopicSubscriber(const char *topic, uint32_t buffer_len) {
+  internal_topic *now_topic = TopicBus::Instance().RegisterTopic(topic);
   if (now_topic == nullptr) {
-    return nullptr;
+    return;
   }
 
-  obj = static_cast<Subscriber *>(calloc(1, sizeof(Subscriber)));
+  subscriber_state *obj = AllocateSubscriber(now_topic, topic, buffer_len);
   if (obj == nullptr) {
-    return nullptr;
+    return;
   }
 
-  node = static_cast<subscriber_node_t *>(calloc(1, sizeof(subscriber_node_t)));
-  if (node == nullptr) {
-    free(obj);
-    return nullptr;
+  obj->next = now_topic->subs;
+  now_topic->subs = obj;
+  sub_ = obj;
+}
+
+bool TopicSubscriber::TryGet(publish_data *out) const {
+  if (sub_ == nullptr || out == nullptr) {
+    return false;
   }
 
-  queue_init(&node->queue, buffer_len);
+  publish_data packet = GetSubscriberData(sub_);
+  if (packet.data == nullptr || packet.len < 0) {
+    return false;
+  }
 
-  obj->sub_topic = topic;
-  obj->topic = now_topic;
-  obj->queue = &node->queue;
-  obj->get_data = sub_get;
-
-  node->sub = obj;
-  node->next = now_topic->subs;
-  now_topic->subs = node;
-
-  return obj;
+  *out = packet;
+  return true;
 }

@@ -26,9 +26,6 @@ void Robot_Init() {
   // 初始化DWT计时器，提供计时功能
   DWT_Init(SystemCoreClock / 1000000U);
 
-  // 消息订阅系统初始化
-  SubPub_Init();
-
   // 通信外设初始化
   if (comServiceInit() != 0) {
     Error_Handler();
