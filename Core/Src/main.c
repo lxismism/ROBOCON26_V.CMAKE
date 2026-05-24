@@ -105,7 +105,6 @@ int main(void)
   MX_FDCAN3_Init();
   MX_USART3_UART_Init();
   MX_TIM2_Init();
-  MX_USB_DEVICE_Init();
   MX_USART2_UART_Init();
   MX_UART4_Init();
   MX_UART5_Init();
