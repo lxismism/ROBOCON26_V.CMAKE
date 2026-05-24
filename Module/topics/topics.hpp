@@ -1,9 +1,44 @@
+/**
+ * @file topics.hpp
+ * @author Keten (2863861004@qq.com)
+ * @brief 队列实现
+ * @version 0.1
+ * @date 2026-05-24 修订版
+ *
+ * @copyright Copyright (c) 2026
+ *
+ * @attention :
+ * @note :
+ * 每个topic维护订阅者链表;发布时对每个订阅者做一次深拷贝并push进其独立环形缓冲;
+ *        订阅者取消息时从自己的缓冲取出,复制到内部暂存区并释放原拷贝,保证内存安全与互不影响
+ * @versioninfo :
+ */
 #pragma once
 
 #include <cstdint>
 #include <cstring>
 
-extern "C" {
+/* 静态内存配置 */
+
+// 最大消息结构体字节数
+#ifndef TOPICS_MAX_MESSAGE_SIZE
+#define TOPICS_MAX_MESSAGE_SIZE 32U
+#endif
+
+// 最大历史长度(订阅者缓冲队列最大长度)
+#ifndef TOPICS_MAX_HISTORY_LEN
+#define TOPICS_MAX_HISTORY_LEN 8U
+#endif
+
+// 最大topic数量
+#ifndef TOPICS_MAX_TOPICS
+#define TOPICS_MAX_TOPICS 8U
+#endif
+
+// 某个topics上能挂载订阅者的最大数目
+#ifndef TOPICS_MAX_SUBS_PER_TOPIC
+#define TOPICS_MAX_SUBS_PER_TOPIC 4U
+#endif
 
 typedef struct publish_data_t {
   uint8_t *data;
@@ -11,76 +46,34 @@ typedef struct publish_data_t {
 } publish_data;
 
 struct internal_topic;
-
-typedef struct publisher_t Publisher;
-typedef struct subscriber_t Subscriber;
-
-typedef void (*publish_fn_t)(Publisher *pub, publish_data data);
-typedef publish_data (*get_data_fn_t)(Subscriber *sub);
-
-typedef struct publisher_t {
-  const char *pub_topic;
-  struct internal_topic *topic;
-  publish_fn_t publish;
-} Publisher;
-
-typedef struct subscriber_t {
-  const char *sub_topic;
-  struct internal_topic *topic;
-  void *queue;
-  get_data_fn_t get_data;
-} Subscriber;
-
-void SubPub_Init(void);
-Publisher *register_pub(const char *topic);
-Subscriber *register_sub(const char *topic, uint32_t buffer_len);
-
-} // extern "C"
+struct subscriber_state;
 
 class TopicPublisher {
 public:
-  explicit TopicPublisher(const char *topic) : pub_(register_pub(topic)) {}
+  explicit TopicPublisher(const char *topic);
 
-  bool IsValid() const { return pub_ != nullptr; }
+  bool IsValid() const { return topic_ != nullptr; }
 
-  bool Publish(uint8_t *data, int len) const {
-    if (pub_ == nullptr || data == nullptr || len < 0) {
-      return false;
-    }
-    publish_data packet{data, len};
-    pub_->publish(pub_, packet);
-    return true;
-  }
+  bool Publish(uint8_t *data, int len) const;
 
 private:
-  Publisher *pub_{nullptr};
+  internal_topic *topic_{nullptr};
 };
 
 class TopicSubscriber {
 public:
-  TopicSubscriber(const char *topic, uint32_t buffer_len)
-      : sub_(register_sub(topic, buffer_len)) {}
+  TopicSubscriber(const char *topic, uint32_t buffer_len);
 
   bool IsValid() const { return sub_ != nullptr; }
 
-  bool TryGet(publish_data *out) const {
-    if (sub_ == nullptr || out == nullptr) {
-      return false;
-    }
-
-    publish_data packet = sub_->get_data(sub_);
-    if (packet.data == nullptr || packet.len < 0) {
-      return false;
-    }
-
-    *out = packet;
-    return true;
-  }
+  // Returned data is owned by the subscriber and valid until the next TryGet.
+  bool TryGet(publish_data *out) const;
 
 private:
-  Subscriber *sub_{nullptr};
+  subscriber_state *sub_{nullptr};
 };
 
+// 模板类,通过消息类型构造发布者
 template <typename T> class TypedTopicPublisher {
 public:
   explicit TypedTopicPublisher(const char *topic) : pub_(topic) {}
@@ -97,6 +90,7 @@ private:
   TopicPublisher pub_;
 };
 
+// 通过消息类型构造订阅者
 template <typename T> class TypedTopicSubscriber {
 public:
   TypedTopicSubscriber(const char *topic, uint32_t buffer_len)
