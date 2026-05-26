@@ -14,6 +14,7 @@
 
 #include "control_task.h"
 #include "pid_controller.h"
+#include "chassis_task.h"
 #include "topic_pool.h"
 #include "topics.hpp"
 #include "bsp_usart.h"
@@ -161,8 +162,8 @@ void controlTask(void *argument) {
             control_position.frame_id = control_position_msg.frame_id;
             control_position.yaw = -control_position_msg.yaw;
             control_position.yaw_speed = control_position_msg.yaw_speed;
-            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw) - position_correction_x ;
-            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw) - position_correction_y ;
+            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw*kDegToRad) - position_correction_x ;
+            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw*kDegToRad) - position_correction_y ;
         }
 
         /* 从xbox数据订阅者中获取数据 */
@@ -284,6 +285,9 @@ void controlTask(void *argument) {
             } else {
                 Chassis_Xbox_Data_Process();
             }
+
+          //保留本次xbox数据
+          control_xbox_cmd_Last = control_xbox_cmd;
         }
         // 发布底盘控制指令
         chassis_data_pub.Publish(robot_v_aim_cmd);
@@ -479,13 +483,41 @@ void Chassis_Xbox_Data_Process()
     }
 
   }
-  
-  // ===== 第3步：保留本次xbox数据 =====
-  control_xbox_cmd_Last = control_xbox_cmd;
+
 
 }
 
 void MF_control_Process()
 {
-  //占个位
+  if(control_xbox_cmd.btnDirUp == 1){
+    if(control_xbox_cmd_Last.btnDirUp == 0){
+      if(MF_y < 5){
+        MF_y = MF_y + 1;
+      }
+    }
+  }else if(control_xbox_cmd.btnDirDown == 1){
+    if(control_xbox_cmd_Last.btnDirDown == 0){
+      if(MF_y > 0){
+        MF_y = MF_y - 1;
+      }
+    }
+  }
+        
+  if(control_xbox_cmd.btnDirLeft == 1){
+    if(control_xbox_cmd_Last.btnDirLeft == 0){
+      if(MF_x < 6){
+        MF_x = MF_x + 1;
+      }
+    }
+  }else if(control_xbox_cmd.btnDirRight == 1){
+    if(control_xbox_cmd_Last.btnDirRight == 0){
+      if(MF_x > 0){
+        MF_x = MF_x - 1;
+      }
+    }
+  }
+
+  state_aim_cmd.linear_x_ = robot_position_MF[MF_x][MF_y][0];
+  state_aim_cmd.linear_y_ = robot_position_MF[MF_x][MF_y][1];
+  state_aim_cmd.omega_    = robot_position_MF[MF_x][MF_y][2];
 }
