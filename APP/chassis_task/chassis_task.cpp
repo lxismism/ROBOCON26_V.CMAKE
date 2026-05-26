@@ -77,7 +77,7 @@ void chassisTask(void *argument) {
     }
 }
 
-const float_t robot_position_MF[6][5][3] = {//用于在梅林半自动控制车辆移动
+const float robot_position_MF[6][5][3] = {//用于在梅林半自动控制车辆移动
   //[MF_x][MF_y] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
 {
         {2.1f, 0.1f, 0.0f},
