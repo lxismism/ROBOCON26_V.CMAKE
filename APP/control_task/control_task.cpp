@@ -45,7 +45,8 @@ pub_Position_Data control_position{};
 //定位修正参数
 static float position_correction_x = 0.0f;
 static float position_correction_y = 0.0f;
-static const float position_center_distance = 0.28f;
+// static const float position_center_distance = 0.28f;
+static float position_center_distance = 0.28f;
 
 /* 订阅IR_data信息 */
 static TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
@@ -147,8 +148,8 @@ void controlTask(void *argument) {
             control_position.frame_id = control_position_msg.frame_id;
             control_position.yaw = -control_position_msg.yaw;
             control_position.yaw_speed = control_position_msg.yaw_speed;
-            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw) - position_correction_x ;
-            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw) - position_correction_y ;
+            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw*kDegToRad) - position_correction_x ;
+            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw*kDegToRad) - position_correction_y ;
         }
 
         /* 从xbox数据订阅者中获取数据 */
@@ -260,10 +261,11 @@ void controlTask(void *argument) {
 
             } else {
                 Chassis_Xbox_Data_Process();
+                // 发布底盘控制指令
+                chassis_data_pub.Publish(robot_v_aim_cmd);
             }
         }
-        // 发布底盘控制指令
-        chassis_data_pub.Publish(robot_v_aim_cmd);
+        
         
 
         if(control_ir_sub.TryGet(&control_ir_msg)) {
