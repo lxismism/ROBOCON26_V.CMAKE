@@ -111,6 +111,9 @@ static int8_t sign(double value) {
 
 void Chassis_Xbox_Data_Process();
 void MF_control_Process();
+void Normal_control_Process();
+void Aim_State_xy_Process();
+void Aim_State_omega_Process();
 
 void controlInit() {
     if (!chassis_data_pub.IsValid()) {
@@ -355,7 +358,49 @@ void Chassis_Xbox_Data_Process()
     xbox_cmd.omega_ = 0.0f;
   }
 
+  if(control_xbox_cmd.btnB != control_xbox_cmd_Last.btnB)
+    {
+      if(control_xbox_cmd.btnB == true){
+        MF_control_mode = !MF_control_mode;
+
+        /* ======= 若是进入MF控制模式，计算最近的MF点位，并自动移动过去 ====== */
+        // if(MF_control_mode)
+        // {
+        //   int8_t closest_x = 0;
+        //   int8_t closest_y = 0;
+        //   float min_distance = 100.0f;//初始化一个较大的距离值
+        //   for(int x=0;x<6;x++){
+        //     for(int y=0;y<5;y++){
+        //       if(robot_position_MF[x][y][0] != 0.0f && robot_position_MF[x][y][1] != 0.0f){
+        //         float diatance_now = (state_aim_cmd.linear_x_ - robot_position_MF[x][y][0])*(state_aim_cmd.linear_x_ - robot_position_MF[x][y][0])
+        //                            + (state_aim_cmd.linear_y_ - robot_position_MF[x][y][1])*(state_aim_cmd.linear_y_ - robot_position_MF[x][y][1]);
+        //         if(diatance_now < min_distance){
+        //         closest_x = x;
+        //         closest_y = y;
+        //         }
+        //       }
+        //     }
+        //   }
+        //   MF_x= closest_x;
+        //   MF_y= closest_y;
+        // }
+        /* ======= 逻辑结束 ====== */
+
+      }
+    }
+
+  if(MF_control_mode)
   {
+    MF_control_Process();
+  }
+  else
+  {
+    Normal_control_Process();
+  }
+
+}
+
+void Normal_control_Process(){
 
     if(control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS)
     {
@@ -388,7 +433,13 @@ void Chassis_Xbox_Data_Process()
     {
       //xy定位模式：摇杆负责里程计误差修正，方向键控制目标位置，进入目标位置环PID
 
-      //MF半自动控制，按下B就切换到MF，
+      //MF半自动控制，按下B就切换到MF控制模式
+      if(control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS)
+      {
+        if(control_xbox_cmd.btnB == true){
+          headless_xy_mode = !headless_xy_mode;
+        }
+      }
 
 
       if(control_xbox_cmd.btnY == 1){//按Y复位回零点
@@ -401,38 +452,28 @@ void Chassis_Xbox_Data_Process()
         //上下控制
         if(control_xbox_cmd.btnDirUp == 1){
           if(control_xbox_cmd_Last.btnDirUp == 0){
-            state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ + 1.2f;
+            state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ + 1.0f;
           }
         }else if(control_xbox_cmd.btnDirDown == 1){
           if(control_xbox_cmd_Last.btnDirDown == 0){
-            state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ - 1.2f;
+            state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ - 1.0f;
           }
         }
         
         //左右控制
         if(control_xbox_cmd.btnDirLeft == 1){
           if(control_xbox_cmd_Last.btnDirLeft == 0){
-            state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ - 1.2f;
+            state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ - 1.0f;
           }
         }else if(control_xbox_cmd.btnDirRight == 1){
           if(control_xbox_cmd_Last.btnDirRight == 0){
-            state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ + 1.2f;
+            state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ + 1.0f;
           }
         }
       }
 
-      //里程计定位修正
-      position_correction_x = position_correction_x + 0.001f*xbox_cmd.linear_x_;
-      position_correction_y = position_correction_y + 0.001f*xbox_cmd.linear_y_;
-
-      //计算目标位置与当前实际位置的误差，进入PID
-      error_x            = state_aim_cmd.linear_x_ - control_position.x;
-      error_y            = state_aim_cmd.linear_y_ - control_position.y;
-      state_xy_error     = sqrt(error_x*error_x + error_y*error_y);
-      state_xy_angle_deg = atan2(error_y,error_x)/kDegToRad;
-      xy_pid_output      = PID_Calculate(&linear,0.0f,state_xy_error);
-      robot_v_aim_cmd.linear_x_  = xy_pid_output * cos((state_xy_angle_deg - control_position.yaw)*kDegToRad);
-      robot_v_aim_cmd.linear_y_  = xy_pid_output * sin((state_xy_angle_deg - control_position.yaw)*kDegToRad);
+      Aim_State_xy_Process();
+      
     }
 
 
@@ -443,17 +484,7 @@ void Chassis_Xbox_Data_Process()
     }
     else
     {//omega定位模式：右摇杆控制目标角度，进入目标角度环PID
-      // // 摇杆归零，进入目标角度环PID
-      // if(control_xbox_cmd.btnY == 1){
-      //   state_aim_cmd.omega_ = 0.0f;
-      // }else if(control_xbox_cmd.btnX == 1){
-      //   state_aim_cmd.omega_ = -90.0f;
-      // }else if(control_xbox_cmd.btnA == 1){
-      //   state_aim_cmd.omega_ = 180.0f;
-      // }else if(control_xbox_cmd.btnB == 1){
-      //   state_aim_cmd.omega_ = 90.0f;
-      // }
-      //通过右摇杆控制车辆执行4种朝向（0，90，180，-90）
+
       if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > 30000)
       {
         if((control_xbox_cmd.joyRHori - kJoyCenter) > 0){
@@ -470,54 +501,82 @@ void Chassis_Xbox_Data_Process()
         }
       }
 
-      //计算角度误差并进行PID控制
-      float error_dir = state_aim_cmd.omega_ - control_position.yaw;
-      if (fabs(error_dir) < 1.5f){
-        error_dir = 0.0f;
-      }else if(fabs(error_dir) > 180.0 ){
-        if(error_dir > 0) error_dir = error_dir - 360.0 ;
-        else error_dir = error_dir + 360.0 ;
-      }
+      Aim_State_omega_Process();
 
-      robot_v_aim_cmd.omega_ = kDegToRad*PID_Calculate(&deg,control_position.yaw,control_position.yaw + error_dir);
     }
 
   }
-
-
-}
 
 void MF_control_Process()
 {
-  if(control_xbox_cmd.btnDirUp == 1){
-    if(control_xbox_cmd_Last.btnDirUp == 0){
-      if(MF_y < 5){
-        MF_y = MF_y + 1;
+  if(MF_x == 0 || MF_x == 5){//检测到在最左边或者最右边时，才允许上下控制
+    if(control_xbox_cmd.btnDirUp == 1){
+      if(control_xbox_cmd_Last.btnDirUp == 0){
+        if(MF_y < 5){
+          MF_y = MF_y + 1;
+        }
       }
-    }
-  }else if(control_xbox_cmd.btnDirDown == 1){
-    if(control_xbox_cmd_Last.btnDirDown == 0){
-      if(MF_y > 0){
-        MF_y = MF_y - 1;
+    }else if(control_xbox_cmd.btnDirDown == 1){
+      if(control_xbox_cmd_Last.btnDirDown == 0){
+        if(MF_y > 0){
+          MF_y = MF_y - 1;
+        }
       }
     }
   }
-        
-  if(control_xbox_cmd.btnDirLeft == 1){
-    if(control_xbox_cmd_Last.btnDirLeft == 0){
-      if(MF_x < 6){
-        MF_x = MF_x + 1;
+  
+  if(MF_y == 0 || MF_y == 4){//检测到在最上边或者最下边时，才允许左右控制
+    if(control_xbox_cmd.btnDirLeft == 1){
+      if(control_xbox_cmd_Last.btnDirLeft == 0){
+        if(MF_x < 6){
+          MF_x = MF_x + 1;
+        }
       }
-    }
-  }else if(control_xbox_cmd.btnDirRight == 1){
-    if(control_xbox_cmd_Last.btnDirRight == 0){
-      if(MF_x > 0){
-        MF_x = MF_x - 1;
+    }else if(control_xbox_cmd.btnDirRight == 1){
+      if(control_xbox_cmd_Last.btnDirRight == 0){
+        if(MF_x > 0){
+          MF_x = MF_x - 1;
+        }
       }
     }
   }
 
-  state_aim_cmd.linear_x_ = robot_position_MF[MF_x][MF_y][0];
+  state_aim_cmd.linear_x_ = -robot_position_MF[MF_x][MF_y][0];
   state_aim_cmd.linear_y_ = robot_position_MF[MF_x][MF_y][1];
   state_aim_cmd.omega_    = robot_position_MF[MF_x][MF_y][2];
+
+  Aim_State_xy_Process();
+  Aim_State_omega_Process();
+
+}
+
+
+void Aim_State_xy_Process()
+{
+  //里程计定位修正
+  position_correction_x = position_correction_x + 0.001f*xbox_cmd.linear_x_;
+  position_correction_y = position_correction_y + 0.001f*xbox_cmd.linear_y_;
+
+  //计算目标位置与当前实际位置的误差，进入PID
+  error_x            = state_aim_cmd.linear_x_ - control_position.x;
+  error_y            = state_aim_cmd.linear_y_ - control_position.y;
+  state_xy_error     = sqrt(error_x*error_x + error_y*error_y);
+  state_xy_angle_deg = atan2(error_y,error_x)/kDegToRad;
+  xy_pid_output      = PID_Calculate(&linear,0.0f,state_xy_error);
+  robot_v_aim_cmd.linear_x_  = xy_pid_output * cos((state_xy_angle_deg - control_position.yaw)*kDegToRad);
+  robot_v_aim_cmd.linear_y_  = xy_pid_output * sin((state_xy_angle_deg - control_position.yaw)*kDegToRad);
+}
+
+void Aim_State_omega_Process()
+{
+  //计算角度误差并进行PID控制
+  float error_dir = state_aim_cmd.omega_ - control_position.yaw;
+  if (fabs(error_dir) < 1.5f){
+    error_dir = 0.0f;
+  }else if(fabs(error_dir) > 180.0 ){
+    if(error_dir > 0) error_dir = error_dir - 360.0 ;
+    else error_dir = error_dir + 360.0 ;
+  }
+
+  robot_v_aim_cmd.omega_ = kDegToRad*PID_Calculate(&deg,control_position.yaw,control_position.yaw + error_dir);
 }

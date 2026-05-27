@@ -48,10 +48,10 @@ const std::array<OmniChassis::SpeedPidParam, OmniChassis::kWheelCount>
     // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右上
     // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 左下
     // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右下
-    OmniChassis::SpeedPidParam(1300.0f, 0.0f, 0.0f, 16000.0f, 0.5f, IMCREATEMENT_OF_OUT), // 左上
-    OmniChassis::SpeedPidParam(1300.0f, 0.0f, 0.0f, 16000.0f, 0.5f, IMCREATEMENT_OF_OUT), // 右上
-    OmniChassis::SpeedPidParam(1300.0f, 0.0f, 0.0f, 16000.0f, 0.5f, IMCREATEMENT_OF_OUT), // 左下
-    OmniChassis::SpeedPidParam(1300.0f, 0.0f, 0.0f, 16000.0f, 0.5f, IMCREATEMENT_OF_OUT), // 右下
+    OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左上
+    OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右上
+    OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左下
+    OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右下
   };
 }
 
@@ -81,44 +81,45 @@ const float robot_position_MF[6][5][3] = {//用于在梅林半自动控制车辆
   //[MF_x][MF_y] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
 {
         {2.1f, 0.1f, 0.0f},
-        {2.1f, 1.3f, 90.0f},
-        {2.1f, 2.5f, 90.0f},
-        {2.1f, 3.7f, 90.0f},
+        {2.1f, 1.7f, 90.0f},
+        {2.1f, 2.9f, 90.0f},
+        {2.1f, 4.1f, 90.0f},
         {2.1f, 4.9f, 180.0f}
+
     },
     {
-        {3.3f, 0.1f, 0.0f},
+        {2.9f, 0.1f, 0.0f},
         {0.0f, 0.0f, 0.0f},
         {0.0f, 0.0f, 0.0f},
         {0.0f, 0.0f, 0.0f},
-        {3.3f, 4.9f, 180.0f}
+        {3.7f, 4.9f, 180.0f}
     },
     {
-        {4.5f, 0.1f, 0.0f},
+        {4.1f, 0.1f, 0.0f},
         {0.0f, 0.0f, 0.0f},
         {0.0f, 0.0f, 0.0f},
         {0.0f, 0.0f, 0.0f},
-        {4.5f, 4.9f, 180.0f}
+        {4.9f, 4.9f, 180.0f}
     },
     {
-        {5.7f, 0.1f, 0.0f},
+        {5.3f, 0.1f, 0.0f},
         {0.0f, 0.0f, 0.0f},
         {0.0f, 0.0f, 0.0f},
         {0.0f, 0.0f, 0.0f},
-        {5.7f, 4.9f, 180.0f}
+        {6.1f, 4.9f, 180.0f}
     },
     {
-        {6.9f, 0.1f, 0.0f},
+        {6.5f, 0.1f, 0.0f},
         {0.0f, 0.0f, 0.0f},
         {0.0f, 0.0f, 0.0f},
         {0.0f, 0.0f, 0.0f},
-        {6.9f, 4.9f, 180.0f}
+        {7.3f, 4.9f, 180.0f}
     },
     {
         {8.1f, 0.1f, 0.0f},
-        {8.1f, 1.3f, -90.0f},
-        {8.1f, 2.5f, -90.0f},
-        {8.1f, 3.7f, -90.0f},
+        {8.1f, 0.9f, -90.0f},
+        {8.1f, 2.1f, -90.0f},
+        {8.1f, 3.3f, -90.0f},
         {8.1f, 4.9f, 180.0f}
     }
 };
