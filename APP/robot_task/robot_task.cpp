@@ -176,7 +176,7 @@ void osTaskInit(void) {
   const osThreadAttr_t DebugSerialTaskHandle_attributes = {
       .name = "DebugSerial_TaskHandle",
       .stack_size = 256 * 4,
-      .priority = (osPriority_t)osPriorityNormal1,
+      .priority = (osPriority_t)osPriorityLow,
   };
   DebugSerialTaskHandle =
       osThreadNew(DebugSerialTask, NULL, &DebugSerialTaskHandle_attributes);
