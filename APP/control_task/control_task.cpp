@@ -49,7 +49,7 @@ pub_Position_Data control_position{};
 //定位修正参数
 static float position_correction_x = 0.0f;
 static float position_correction_y = 0.0f;
-static const float position_center_distance = 0.0f;
+static const float position_center_distance = 0.28f;
 
 /* 订阅IR_data信息 */
 static TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
@@ -311,8 +311,8 @@ void controlTask(void *argument) {
             control_position.frame_id = control_position_msg.frame_id;
             control_position.yaw = -control_position_msg.yaw;
             control_position.yaw_speed = control_position_msg.yaw_speed;
-            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw) - position_correction_x ;
-            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw) - position_correction_y ;
+            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw*kDegToRad) - position_correction_x ;
+            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw*kDegToRad) - position_correction_y ;
         }
 
         /* 从xbox数据订阅者中获取数据 */
@@ -374,9 +374,9 @@ void controlTask(void *argument) {
                   
                 // ▼ 持续型：btnDirUp吸取手上升 / btnDirDown吸取手下降
                 if (control_xbox_cmd.btnDirUp)
-                    upbody_cmd_msg.pick_lift_delta = kUpbodyStep;
-                if (control_xbox_cmd.btnDirDown)
                     upbody_cmd_msg.pick_lift_delta = -kUpbodyStep;
+                if (control_xbox_cmd.btnDirDown)
+                    upbody_cmd_msg.pick_lift_delta = kUpbodyStep;
 
                 // ▼ 持续型：btnDirLeft云台逆时针 / btnDirRight云台顺时针
                 if (control_xbox_cmd.btnDirLeft)

@@ -35,8 +35,8 @@ public:
   float extend_target_deg_{0.0f};
 
   // ---------- 角度限位（单位：度，上电后实测填入） ----------
-  float lift_min_deg_{0.0f};
-  float lift_max_deg_{360.0f};
+  float lift_min_deg_{-360.0f};
+  float lift_max_deg_{0.0f};
   float yaw_min_deg_{0.0f};
   float yaw_max_deg_{360.0f};
   float extend_min_deg_{-180.0f};

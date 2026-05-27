@@ -43,7 +43,7 @@ void Lift::update() {
   }
 
   float cur_left = left_motor_->getCurrentSumPos();
-  float cur_right = right_motor_->getCurrentSumPos();
+  float cur_right = -right_motor_->getCurrentSumPos();
 
   // ---- 首次初始化：两侧各以自己的当前位置为目标，避免跳变 ----
   if (!inited_) {
@@ -69,14 +69,14 @@ void Lift::update() {
 
   // ---- 右侧位置环 ----
   float right_out = PID_Calculate(&right_pid_, cur_right, target_deg_);
-  right_motor_->setMotorCmd(right_out);
+  right_motor_->setMotorCmd(-right_out);
 }
 
 float Lift::getSyncError() const {
   if (left_motor_ == nullptr || right_motor_ == nullptr) {
     return 0.0f;
   }
-  return std::fabs(left_motor_->getCurrentSumPos() -
+  return std::fabs(left_motor_->getCurrentSumPos() +
                    right_motor_->getCurrentSumPos());
 }
 
