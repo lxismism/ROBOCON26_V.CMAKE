@@ -18,9 +18,9 @@
 void WeaponHand::init() {
   // ---- 抬升电机 PID (3508) ----
   PID_Init(&lift_pid_);
-  lift_pid_.Kp = 11.5f;
-  lift_pid_.Ki = 4.0f;
-  lift_pid_.Kd = 0.61f;
+  lift_pid_.Kp = 40.0f;
+  lift_pid_.Ki = 40.0f;
+  lift_pid_.Kd = 9.0f;
   lift_pid_.MaxOut = 8000.0f;
   lift_pid_.IntegralLimit = 5000.0f;
   lift_pid_.DeadBand = 0.5f;
@@ -57,7 +57,7 @@ void WeaponHand::update() {
   lift_motor_->setMotorCmd(lift_out);
 
   // ===== 2. 伸缩电机位置环 =====
-  float cur_extend = extend_motor_->getCurrentSumPos();
+  float cur_extend = -extend_motor_->getCurrentSumPos();
 
   if (!extend_inited_) {
     extend_target_deg_ = cur_extend;
@@ -68,7 +68,7 @@ void WeaponHand::update() {
                                   extend_min_deg_, extend_max_deg_);
 
   float extend_out = PID_Calculate(&extend_pid_, cur_extend, extend_target_deg_);
-  extend_motor_->setMotorCmd(extend_out);
+  extend_motor_->setMotorCmd(-extend_out);
 }
 
 // ======== 新增：夹爪开合切换 ========

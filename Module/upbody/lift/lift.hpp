@@ -32,7 +32,7 @@ public:
 
   // ---------- 角度限位 ----------
   float min_deg_{0.0f};
-  float max_deg_{360.0f};
+  float max_deg_{1425.0f};
 
   // ---------- 同步误差阈值（单位：度，超出则报警） ----------
   float sync_error_threshold_{5.0f};

@@ -374,9 +374,9 @@ void controlTask(void *argument) {
                   
                 // ▼ 持续型：btnDirUp吸取手上升 / btnDirDown吸取手下降
                 if (control_xbox_cmd.btnDirUp)
-                    upbody_cmd_msg.pick_lift_delta = -kUpbodyStep;
-                if (control_xbox_cmd.btnDirDown)
                     upbody_cmd_msg.pick_lift_delta = kUpbodyStep;
+                if (control_xbox_cmd.btnDirDown)
+                    upbody_cmd_msg.pick_lift_delta = -kUpbodyStep;
 
                 // ▼ 持续型：btnDirLeft云台逆时针 / btnDirRight云台顺时针
                 if (control_xbox_cmd.btnDirLeft)
@@ -388,9 +388,9 @@ void controlTask(void *argument) {
                 {
                     int32_t rvert_diff = (int32_t)control_xbox_cmd.joyRVert - (int32_t)kJoyCenter;
                     if (rvert_diff > (int32_t)kJoyDeadZoneRight)
-                        upbody_cmd_msg.pick_extend_delta = kPickExtendStep;
-                    else if (rvert_diff < -(int32_t)kJoyDeadZoneRight)
                         upbody_cmd_msg.pick_extend_delta = -kPickExtendStep;
+                    else if (rvert_diff < -(int32_t)kJoyDeadZoneRight)
+                        upbody_cmd_msg.pick_extend_delta = kPickExtendStep;
                 }
 
                 // ▼ 持续型：btnY武器手伸 / btnA武器手缩

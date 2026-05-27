@@ -37,9 +37,9 @@ public:
 
   // ---------- 角度限位（单位：度，上电后实测填入） ----------
   float lift_min_deg_{0.0f};
-  float lift_max_deg_{360.0f};
+  float lift_max_deg_{1389.0f};
   float extend_min_deg_{0.0f};
-  float extend_max_deg_{360.0f};
+  float extend_max_deg_{1101.0f};
 
   // ---------- 首次初始化标志 ----------
   bool lift_inited_{false};

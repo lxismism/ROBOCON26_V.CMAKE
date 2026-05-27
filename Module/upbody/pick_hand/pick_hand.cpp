@@ -55,7 +55,7 @@ void PickHand::update() {
   }
 
   // ===== 1. 抬升电机位置环 =====
-  float cur_lift = lift_motor_->getCurrentSumPos();
+  float cur_lift = -lift_motor_->getCurrentSumPos();
 
   if (!lift_inited_) {
     lift_target_deg_ = cur_lift;
@@ -67,7 +67,7 @@ void PickHand::update() {
                                 lift_min_deg_, lift_max_deg_);
 
   float lift_out = PID_Calculate(&lift_pid_, cur_lift, lift_target_deg_);
-  lift_motor_->setMotorCmd(lift_out);
+  lift_motor_->setMotorCmd(-lift_out);
 
   // ===== 2. 云台旋转电机位置环 =====
   float cur_yaw = yaw_motor_->getCurrentSumPos();
@@ -85,7 +85,7 @@ void PickHand::update() {
   yaw_motor_->setMotorCmd(yaw_out);
 
   // ===== 3. 伸缩电机位置环 =====
-  float cur_extend = extend_motor_->getCurrentSumPos();
+  float cur_extend = -extend_motor_->getCurrentSumPos();
 
   if (!extend_inited_) {
     extend_target_deg_ = cur_extend;
@@ -96,7 +96,7 @@ void PickHand::update() {
                                   extend_min_deg_, extend_max_deg_);
 
   float extend_out = PID_Calculate(&extend_pid_, cur_extend, extend_target_deg_);
-  extend_motor_->setMotorCmd(extend_out);
+  extend_motor_->setMotorCmd(-extend_out);
 }
 
 float PickHand::clampAngle(float target, float current,
