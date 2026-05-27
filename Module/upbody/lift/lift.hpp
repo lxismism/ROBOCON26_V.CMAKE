@@ -24,19 +24,20 @@ public:
   C620Motor *right_motor_{nullptr};  // 3508 右侧抬升
 
   // ---------- 各电机 PID ----------
-  PID_t left_pid_;
-  PID_t right_pid_;
+  PID_t platfrom_pos_pid_;  // 平台位置环，ref为平台高度（度），out为弧度/秒
+  PID_t left_v_pid_;        // 平台左侧速度环，ref为左侧速度（弧度/秒），out为电流（0.0001A）
+  PID_t right_v_pid_;       // 平台右侧速度环，ref为右侧速度（弧度/秒），out为电流（0.0001A）
+
+  float sync_error;
 
   // ---------- 目标角度（两侧共用同一个目标，保证同步） ----------
   float target_deg_{0.0f};
 
   // ---------- 角度限位 ----------
   float min_deg_{0.0f};
-  float max_deg_{360.0f};
-
+  float max_deg_{1425.0f};
   // ---------- 同步误差阈值（单位：度，超出则报警） ----------
   float sync_error_threshold_{5.0f};
-
   // ---------- 首次初始化标志 ----------
   bool inited_{false};
 
@@ -48,5 +49,6 @@ public:
   float getSyncError() const;
 
 private:
+  float platform_pos_out_;
   float clampAngle(float target, float current, float min_deg, float max_deg);
 };
