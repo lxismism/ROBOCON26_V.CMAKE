@@ -21,3 +21,6 @@
 #include "topics.hpp"
 
 void chassisTask(void *argument);
+
+
+extern const float robot_position_MF[6][5][3];

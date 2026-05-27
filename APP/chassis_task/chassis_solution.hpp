@@ -22,6 +22,8 @@
 #include <cstddef>
 #include <cstdint>
 
+extern const float_t robot_position_MF[6][5][3];
+
 
 class OmniChassis {
 public:

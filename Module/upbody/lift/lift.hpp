@@ -33,6 +33,14 @@ public:
   // ---------- 目标角度（两侧共用同一个目标，保证同步） ----------
   float target_deg_{0.0f};
 
+  // ---------- 换算系数：电机输出轴1°对应同步带位移(mm) ----------
+  static constexpr float kMmPerDeg = 65.0f / 360.0f;
+
+  float ground_clearance_mm_{225.0f};  // encoder=0时平台离地高度
+  float travel_max_mm_{257.3f};        // 最大抬升行程（1425° × 65/360）
+  // min = ground_clearance, max = ground_clearance + travel_max
+
+
   // ---------- 角度限位 ----------
   float min_deg_{0.0f};
   float max_deg_{1425.0f};
@@ -48,7 +56,18 @@ public:
   // 获取两侧位置差（绝对值），供外部监控
   float getSyncError() const;
 
+  /// @brief 增减目标高度，正=升，负=降，单位mm
+  void addTargetDelta(float delta_mm);
+
+  /// @brief 获取当前高度（mm，相对值）
+  float getCurrentHeightMm() const;
+
+  /// @brief 获取同步误差（mm）
+  float getSyncErrorMm() const;
+
+
 private:
   float platform_pos_out_;
-  float clampAngle(float target, float current, float min_deg, float max_deg);
+  float clampTarget(float target_mm, float current_mm, float min_mm, float max_mm);
+
 };

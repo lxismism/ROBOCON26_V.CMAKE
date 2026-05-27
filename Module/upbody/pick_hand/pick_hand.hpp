@@ -34,13 +34,21 @@ public:
   float yaw_target_deg_{0.0f};
   float extend_target_deg_{0.0f};
 
-  // ---------- 角度限位（单位：度，上电后实测填入） ----------
-  float lift_min_deg_{-360.0f};
-  float lift_max_deg_{0.0f};
+  // ---------- 换算系数 ----------
+  static constexpr float kLiftMmPerDeg = 105.0f / 360.0f;
+  static constexpr float kExtendMmPerDeg = 68.0f * 3.14159f / 360.0f;
+  static constexpr float kYawDegPerMotorDeg = 3.0f / 13.0f;
+
+  // ---------- 限位（升降和伸缩用mm，云台用真实°） ----------
+  float lift_ground_clearance_mm_{0.0f};  // 吸取手底座离地高度（=电梯平台高度）
+  float lift_travel_max_mm_{392.6f};        // 吸取手升降行程（1346° × 105/360）
+  // lift min=225, max=225+392.6=617.6
   float yaw_min_deg_{0.0f};
   float yaw_max_deg_{360.0f};
-  float extend_min_deg_{-180.0f};
-  float extend_max_deg_{0.0f};
+  float extend_min_mm_{0.0f};
+  float extend_max_mm_{227.3f};             // 伸缩行程，不涉及离地高度
+
+
 
 
   // ---------- 首次初始化标志 ----------
@@ -55,7 +63,14 @@ public:
   // ======== 新增：吸盘控制方法 ========
   void pumpToggle();   // 真空泵通断切换（PG3）
   void valveToggle();  // 电磁阀通断切换（PG4）
+  // ======== mm接口 ========
+  void addLiftDelta(float delta_mm);
+  void addExtendDelta(float delta_mm);
+  float getLiftHeightMm() const;
+  float getExtendLengthMm() const;
+
 
 private:
-  float clampAngle(float target, float current, float min_deg, float max_deg);
+  float clampTarget(float target, float current, float min_val, float max_val);
+
 };

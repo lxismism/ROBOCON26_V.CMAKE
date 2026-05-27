@@ -55,14 +55,15 @@ void posCtrlTask(void *argument) {
 
       if (upbody_msg.active) {
         // --- 持续型：delta 累加到目标角度 ---
-        pick_hand.lift_target_deg_   += upbody_msg.pick_lift_delta;
-        pick_hand.yaw_target_deg_    += upbody_msg.pick_yaw_delta;
-        pick_hand.extend_target_deg_ += upbody_msg.pick_extend_delta;
+        pick_hand.addLiftDelta(upbody_msg.pick_lift_delta);
+        pick_hand.yaw_target_deg_    += upbody_msg.pick_yaw_delta;  // 云台是旋转，仍用角度
+        pick_hand.addExtendDelta(upbody_msg.pick_extend_delta);
 
-        weapon_hand.lift_target_deg_   += upbody_msg.weapon_lift_delta;
-        weapon_hand.extend_target_deg_ += upbody_msg.weapon_extend_delta;
+        weapon_hand.addLiftDelta(upbody_msg.weapon_lift_delta);
+        weapon_hand.addExtendDelta(upbody_msg.weapon_extend_delta);
 
-        lift.target_deg_ += upbody_msg.lift_delta;
+        lift.addTargetDelta(upbody_msg.lift_delta);
+
 
         // --- 切换型：执行GPIO/舵机动作（仅上升沿单帧为true） ---
         if (upbody_msg.pump_toggle)
