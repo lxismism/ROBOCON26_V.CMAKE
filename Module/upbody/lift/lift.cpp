@@ -53,8 +53,17 @@ void Lift::update() {
   }
 
   // ---- 角度限幅（共用同一限位） ----
-  target_deg_ = clampAngle(target_deg_, (cur_left + cur_right) * 0.5f,
-                           min_deg_, max_deg_);
+  {
+    float cur_avg_deg = (cur_left + cur_right) * 0.5f;
+    float target_abs_mm = target_deg_ * kMmPerDeg + ground_clearance_mm_;
+    float cur_abs_mm = cur_avg_deg * kMmPerDeg + ground_clearance_mm_;
+    target_abs_mm = clampTarget(target_abs_mm, cur_abs_mm,
+                                ground_clearance_mm_,
+                                ground_clearance_mm_ + travel_max_mm_);
+    target_deg_ = (target_abs_mm - ground_clearance_mm_) / kMmPerDeg;
+  }
+
+
 
   // ---- 同步误差检测 ----
   float sync_error = std::fabs(cur_left - cur_right);
@@ -80,12 +89,30 @@ float Lift::getSyncError() const {
                    right_motor_->getCurrentSumPos());
 }
 
-float Lift::clampAngle(float target, float current,
-                       float min_deg, float max_deg) {
-  if (min_deg >= max_deg) {
-    return target;
-  }
-  if (target < min_deg) return min_deg;
-  if (target > max_deg) return max_deg;
-  return target;
+float Lift::clampTarget(float target_mm, float current_mm,
+                        float min_mm, float max_mm) {
+  if (min_mm >= max_mm) return target_mm;
+  if (target_mm < min_mm) return min_mm;
+  if (target_mm > max_mm) return max_mm;
+  return target_mm;
+}
+
+
+void Lift::addTargetDelta(float delta_mm) {
+  target_deg_ += delta_mm / kMmPerDeg;
+}
+
+float Lift::getCurrentHeightMm() const {
+  if (left_motor_ == nullptr || right_motor_ == nullptr) return 0.0f;
+  float cur_left = left_motor_->getCurrentSumPos();
+  float cur_right = -right_motor_->getCurrentSumPos();
+  return (cur_left + cur_right) * 0.5f * kMmPerDeg + ground_clearance_mm_;
+
+}
+
+float Lift::getSyncErrorMm() const {
+  if (left_motor_ == nullptr || right_motor_ == nullptr) return 0.0f;
+  float cur_left = left_motor_->getCurrentSumPos();
+  float cur_right = -right_motor_->getCurrentSumPos();
+  return std::fabs(cur_left - cur_right) * kMmPerDeg;
 }

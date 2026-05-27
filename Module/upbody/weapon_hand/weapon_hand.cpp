@@ -50,8 +50,10 @@ void WeaponHand::update() {
     lift_inited_ = true;
   }
 
-  lift_target_deg_ = clampAngle(lift_target_deg_, cur_lift,
-                                lift_min_deg_, lift_max_deg_);
+  lift_target_deg_ = clampTarget(lift_target_deg_, cur_lift,
+                                 lift_ground_clearance_mm_ / kLiftMmPerDeg,
+                                 (lift_ground_clearance_mm_ + lift_travel_max_mm_) / kLiftMmPerDeg);
+
 
   float lift_out = PID_Calculate(&lift_pid_, cur_lift, lift_target_deg_);
   lift_motor_->setMotorCmd(lift_out);
@@ -64,8 +66,10 @@ void WeaponHand::update() {
     extend_inited_ = true;
   }
 
-  extend_target_deg_ = clampAngle(extend_target_deg_, cur_extend,
-                                  extend_min_deg_, extend_max_deg_);
+  extend_target_deg_ = clampTarget(extend_target_deg_, cur_extend,
+                                   extend_min_mm_ / kExtendMmPerDeg,
+                                   extend_max_mm_ / kExtendMmPerDeg);
+
 
   float extend_out = PID_Calculate(&extend_pid_, cur_extend, extend_target_deg_);
   extend_motor_->setMotorCmd(-extend_out);
@@ -92,12 +96,28 @@ void WeaponHand::wristFlip() {
   }
 }
 
-float WeaponHand::clampAngle(float target, float current,
-                             float min_deg, float max_deg) {
-  if (min_deg >= max_deg) {
-    return target;
-  }
-  if (target < min_deg) return min_deg;
-  if (target > max_deg) return max_deg;
+float WeaponHand::clampTarget(float target, float current,
+                              float min_val, float max_val) {
+  if (min_val >= max_val) return target;
+  if (target < min_val) return min_val;
+  if (target > max_val) return max_val;
   return target;
+}
+
+void WeaponHand::addLiftDelta(float delta_mm) {
+  lift_target_deg_ += delta_mm / kLiftMmPerDeg;
+}
+
+void WeaponHand::addExtendDelta(float delta_mm) {
+  extend_target_deg_ += delta_mm / kExtendMmPerDeg;
+}
+
+float WeaponHand::getLiftHeightMm() const {
+  if (lift_motor_ == nullptr) return 0.0f;
+  return lift_motor_->getCurrentSumPos() * kLiftMmPerDeg + lift_ground_clearance_mm_;
+}
+
+float WeaponHand::getExtendLengthMm() const {
+  if (extend_motor_ == nullptr) return 0.0f;
+  return -extend_motor_->getCurrentSumPos() * kExtendMmPerDeg;
 }
