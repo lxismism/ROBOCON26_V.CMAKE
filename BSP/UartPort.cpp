@@ -197,11 +197,14 @@ void UartPort::onError(uint32_t error_code) {
     return;
   }
 
-  // TX 出错后释放 busy，避免上层持续卡在 HAL_BUSY。
-  tx_busy_ = false;
+  // UART的 ErrorCallback 绝大多数是因为接收管脚收到噪声产生的 RX 错误 (如 ORE, FE, NE 等)
+  // 如果直接调用 HAL_UART_DMAStop，会将正在进行中的 TX DMA 也强行终止！
+  // 导致发送任务的数据在有电气噪声时（比如电机工作）被持续强迫打断，进而出现几秒钟无数据然后突然恢复的现象。
+  
+  // 只停止当前的接收 DMA，不干扰正在发送的 TX 数据
+  (void)HAL_UART_AbortReceive(huart_);
 
-  // 先停掉当前 DMA，再清错误标志并重启 RX DMA。
-  (void)HAL_UART_DMAStop(huart_);
+  // 清除所有 RX 相关的错误标志位
   __HAL_UART_CLEAR_PEFLAG(huart_);
   __HAL_UART_CLEAR_FEFLAG(huart_);
   __HAL_UART_CLEAR_NEFLAG(huart_);
@@ -209,6 +212,7 @@ void UartPort::onError(uint32_t error_code) {
   __HAL_UART_CLEAR_IDLEFLAG(huart_);
   huart_->ErrorCode = HAL_UART_ERROR_NONE;
 
+  // 重启 RX DMA
   last_rx_pos_ = 0;
   (void)startRxDmaIdle();
 }
