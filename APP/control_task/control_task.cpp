@@ -99,8 +99,14 @@ static constexpr uint16_t kJoyDeadZoneRight = 2000;
 static constexpr float kDegToRad = M_PI / 180.0f;
 
 // 上身控制常量
-static constexpr float kUpbodyStep = 1.0f;           // 持续按键每帧步进 (°/帧)
-static constexpr float kPickExtendStep = 0.3f; // 吸取手伸缩步进 (°/帧) ，减速比大，需慢速
+// 上身机构每帧步进（1000Hz控制频率）
+static constexpr float kLiftStep = 0.2f;              // 电梯抬升 (mm/帧)
+static constexpr float kPickLiftStep = 0.3f;          // 吸取手抬升 (mm/帧)
+static constexpr float kPickYawStep = 1.0f;           // 吸取手云台 (°/帧，旋转运动)
+static constexpr float kPickExtendStep = 0.2f;        // 吸取手伸缩 (mm/帧)
+static constexpr float kWeaponLiftStep = 0.25f;       // 武器手抬升 (mm/帧)
+static constexpr float kWeaponExtendStep = 0.4f;      // 武器手伸缩 (mm/帧)
+
 static constexpr uint16_t kTriggerThreshold = 512;   // 扳机触发阈值
 
 static int8_t sign(double value) {
@@ -216,42 +222,42 @@ void controlTask(void *argument) {
 
                 // ▼ 持续型：trigLT电梯上升 / trigRT电梯下降
                 if (control_xbox_cmd.trigLT > kTriggerThreshold)
-                    upbody_cmd_msg.lift_delta = kUpbodyStep;
+                    upbody_cmd_msg.lift_delta = kLiftStep;
                 if (control_xbox_cmd.trigRT > kTriggerThreshold)
-                    upbody_cmd_msg.lift_delta = -kUpbodyStep;
+                    upbody_cmd_msg.lift_delta = -kLiftStep;
 
                 // ▼ 持续型：btnLB武器手上升 / btnRB武器手下降
                 if (control_xbox_cmd.btnLB)
-                    upbody_cmd_msg.weapon_lift_delta = kUpbodyStep;
+                    upbody_cmd_msg.weapon_lift_delta = kWeaponLiftStep;
                 if (control_xbox_cmd.btnRB)
-                    upbody_cmd_msg.weapon_lift_delta = -kUpbodyStep;
+                    upbody_cmd_msg.weapon_lift_delta = -kWeaponLiftStep;
                   
                 // ▼ 持续型：btnDirUp吸取手上升 / btnDirDown吸取手下降
                 if (control_xbox_cmd.btnDirUp)
-                    upbody_cmd_msg.pick_lift_delta = kUpbodyStep;
+                    upbody_cmd_msg.pick_lift_delta = kPickLiftStep;
                 if (control_xbox_cmd.btnDirDown)
-                    upbody_cmd_msg.pick_lift_delta = -kUpbodyStep;
+                    upbody_cmd_msg.pick_lift_delta = -kPickLiftStep;
 
                 // ▼ 持续型：btnDirLeft云台逆时针 / btnDirRight云台顺时针
                 if (control_xbox_cmd.btnDirLeft)
-                    upbody_cmd_msg.pick_yaw_delta = kUpbodyStep;
+                    upbody_cmd_msg.pick_yaw_delta = kPickYawStep;
                 if (control_xbox_cmd.btnDirRight)
-                    upbody_cmd_msg.pick_yaw_delta = -kUpbodyStep;
+                    upbody_cmd_msg.pick_yaw_delta = -kPickYawStep;
 
                 // ▼ 持续型：右摇杆前推吸取手伸 / 后拉吸取手缩
                 {
                     int32_t rvert_diff = (int32_t)control_xbox_cmd.joyRVert - (int32_t)kJoyCenter;
                     if (rvert_diff > (int32_t)kJoyDeadZoneRight)
-                        upbody_cmd_msg.pick_extend_delta = kPickExtendStep;
-                    else if (rvert_diff < -(int32_t)kJoyDeadZoneRight)
                         upbody_cmd_msg.pick_extend_delta = -kPickExtendStep;
+                    else if (rvert_diff < -(int32_t)kJoyDeadZoneRight)
+                        upbody_cmd_msg.pick_extend_delta = kPickExtendStep;
                 }
 
                 // ▼ 持续型：btnY武器手伸 / btnA武器手缩
                 if (control_xbox_cmd.btnY)
-                    upbody_cmd_msg.weapon_extend_delta = kUpbodyStep;
+                    upbody_cmd_msg.weapon_extend_delta = kWeaponExtendStep;
                 if (control_xbox_cmd.btnA)
-                    upbody_cmd_msg.weapon_extend_delta = -kUpbodyStep;
+                    upbody_cmd_msg.weapon_extend_delta = -kWeaponExtendStep;
 
                 // ▼ 切换型：btnX吸盘真空泵（上升沿触发）
                 if (control_xbox_cmd.btnX && !last_btnX)
@@ -274,6 +280,9 @@ void controlTask(void *argument) {
                 last_btnRS = control_xbox_cmd.btnRS;
 
                 upbody_cmd_pub.Publish(upbody_cmd_msg);
+                //保留本次xbox数据
+                control_xbox_cmd_Last = control_xbox_cmd;
+                chassis_data_pub.Publish(robot_v_aim_cmd);
 
                 //底盘速度归零
                 robot_v_aim_cmd.linear_x_ = 0.0f;
@@ -287,14 +296,12 @@ void controlTask(void *argument) {
 
             } else {
                 Chassis_Xbox_Data_Process();
+                //保留本次xbox数据
+                control_xbox_cmd_Last = control_xbox_cmd;
+                chassis_data_pub.Publish(robot_v_aim_cmd);
             }
 
-          //保留本次xbox数据
-          control_xbox_cmd_Last = control_xbox_cmd;
         }
-        // 发布底盘控制指令
-        chassis_data_pub.Publish(robot_v_aim_cmd);
-        
 
         if(control_ir_sub.TryGet(&control_ir_msg)) {
           //红外信号处理放这

@@ -55,19 +55,21 @@ void PickHand::update() {
   }
 
   // ===== 1. 抬升电机位置环 =====
-  float cur_lift = lift_motor_->getCurrentSumPos();
+  float cur_lift = -lift_motor_->getCurrentSumPos();
 
   if (!lift_inited_) {
     lift_target_deg_ = cur_lift;
     lift_inited_ = true;
   }
 
-  // 角度限幅
-  lift_target_deg_ = clampAngle(lift_target_deg_, cur_lift,
-                                lift_min_deg_, lift_max_deg_);
+  lift_target_deg_ = clampTarget(lift_target_deg_, cur_lift,
+                                 lift_ground_clearance_mm_ / kLiftMmPerDeg,
+                                 (lift_ground_clearance_mm_ + lift_travel_max_mm_) / kLiftMmPerDeg);
+
+
 
   float lift_out = PID_Calculate(&lift_pid_, cur_lift, lift_target_deg_);
-  lift_motor_->setMotorCmd(lift_out);
+  lift_motor_->setMotorCmd(-lift_out);
 
   // ===== 2. 云台旋转电机位置环 =====
   float cur_yaw = yaw_motor_->getCurrentSumPos();
@@ -77,49 +79,68 @@ void PickHand::update() {
     yaw_inited_ = true;
   }
 
-  yaw_target_deg_ = clampAngle(yaw_target_deg_, cur_yaw,
+  yaw_target_deg_ = clampTarget(yaw_target_deg_, cur_yaw,
                                 yaw_min_deg_, yaw_max_deg_);
+
 
   float yaw_out = PID_Calculate(&yaw_pid_, cur_yaw, yaw_target_deg_);
 
   yaw_motor_->setMotorCmd(yaw_out);
 
   // ===== 3. 伸缩电机位置环 =====
-  float cur_extend = extend_motor_->getCurrentSumPos();
+  float cur_extend = -extend_motor_->getCurrentSumPos();
 
   if (!extend_inited_) {
     extend_target_deg_ = cur_extend;
     extend_inited_ = true;
   }
 
-  extend_target_deg_ = clampAngle(extend_target_deg_, cur_extend,
-                                  extend_min_deg_, extend_max_deg_);
+  extend_target_deg_ = clampTarget(extend_target_deg_, cur_extend,
+                                   extend_min_mm_ / kExtendMmPerDeg,
+                                   extend_max_mm_ / kExtendMmPerDeg);
+
 
   float extend_out = PID_Calculate(&extend_pid_, cur_extend, extend_target_deg_);
-  extend_motor_->setMotorCmd(extend_out);
+  extend_motor_->setMotorCmd(-extend_out);
 }
 
-float PickHand::clampAngle(float target, float current,
-                           float min_deg, float max_deg) {
-  // 如果限位尚未设置（均为0），跳过限幅
-  if (min_deg >= max_deg) {
-    return target;
-  }
-  if (target < min_deg) return min_deg;
-  if (target > max_deg) return max_deg;
+float PickHand::clampTarget(float target, float current,
+                            float min_val, float max_val) {
+  if (min_val >= max_val) return target;
+  if (target < min_val) return min_val;
+  if (target > max_val) return max_val;
   return target;
 }
 
-// ======== 新增：真空泵通断切换 ========
+
+// ======== 真空泵通断切换 ========
 void PickHand::pumpToggle() {
   GPIO_PinState cur = HAL_GPIO_ReadPin(PUMP_PICK_GPIO_Port, PUMP_PICK_Pin);
   HAL_GPIO_WritePin(PUMP_PICK_GPIO_Port, PUMP_PICK_Pin,
                     (cur == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET);
 }
 
-// ======== 新增：电磁阀通断切换 ========
+// ======== 电磁阀通断切换 ========
 void PickHand::valveToggle() {
   GPIO_PinState cur = HAL_GPIO_ReadPin(VALVE_PICK_GPIO_Port, VALVE_PICK_Pin);
   HAL_GPIO_WritePin(VALVE_PICK_GPIO_Port, VALVE_PICK_Pin,
                     (cur == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET);
+}
+
+void PickHand::addLiftDelta(float delta_mm) {
+  lift_target_deg_ += delta_mm / kLiftMmPerDeg;
+}
+
+void PickHand::addExtendDelta(float delta_mm) {
+  extend_target_deg_ += delta_mm / kExtendMmPerDeg;
+}
+
+float PickHand::getLiftHeightMm() const {
+  if (lift_motor_ == nullptr) return 0.0f;
+return -lift_motor_->getCurrentSumPos() * kLiftMmPerDeg + lift_ground_clearance_mm_;
+}
+
+float PickHand::getExtendLengthMm() const {
+  if (extend_motor_ == nullptr) return 0.0f;
+  return -extend_motor_->getCurrentSumPos() * kExtendMmPerDeg;
 }

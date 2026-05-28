@@ -25,6 +25,7 @@
 #include "lift.hpp"
 #include "topic_pool.h"
 #include "topics.hpp"
+#include <cstdint>
 
 // ---------- 引用 com_config.cpp 中的机构模块对象 ----------
 extern PickHand pick_hand;
@@ -45,6 +46,7 @@ void posCtrlTask(void *argument) {
   }
 
   TickType_t currentTime = xTaskGetTickCount();
+  uint8_t prescaler_cnt = 0;
 
   for (;;) {
     // ===== 步骤1：消费上身控制指令 =====
@@ -53,14 +55,15 @@ void posCtrlTask(void *argument) {
 
       if (upbody_msg.active) {
         // --- 持续型：delta 累加到目标角度 ---
-        pick_hand.lift_target_deg_   += upbody_msg.pick_lift_delta;
-        pick_hand.yaw_target_deg_    += upbody_msg.pick_yaw_delta;
-        pick_hand.extend_target_deg_ += upbody_msg.pick_extend_delta;
+        pick_hand.addLiftDelta(upbody_msg.pick_lift_delta);
+        pick_hand.yaw_target_deg_    += upbody_msg.pick_yaw_delta;  // 云台是旋转，仍用角度
+        pick_hand.addExtendDelta(upbody_msg.pick_extend_delta);
 
-        weapon_hand.lift_target_deg_   += upbody_msg.weapon_lift_delta;
-        weapon_hand.extend_target_deg_ += upbody_msg.weapon_extend_delta;
+        weapon_hand.addLiftDelta(upbody_msg.weapon_lift_delta);
+        weapon_hand.addExtendDelta(upbody_msg.weapon_extend_delta);
 
-        lift.target_deg_ += upbody_msg.lift_delta;
+        lift.addTargetDelta(upbody_msg.lift_delta);
+
 
         // --- 切换型：执行GPIO/舵机动作（仅上升沿单帧为true） ---
         if (upbody_msg.pump_toggle)
@@ -79,10 +82,17 @@ void posCtrlTask(void *argument) {
     }
 
     // ===== 步骤2：三个机构模块各跑自己的位置环 =====
-    pick_hand.update();
-    weapon_hand.update();
-    lift.update();
+    //保持原有200Hz频率
+    if(prescaler_cnt >= 5)
+    {  pick_hand.update();
+      weapon_hand.update();
 
-    vTaskDelayUntil(&currentTime, 5);
+      prescaler_cnt = 0;
+    }
+
+    lift.update();  //内部分频
+
+    prescaler_cnt++;
+    vTaskDelayUntil(&currentTime, 1); //频率提高到1k给速度环
   }
 }

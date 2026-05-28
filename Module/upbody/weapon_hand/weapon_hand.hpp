@@ -35,11 +35,16 @@ public:
   float lift_target_deg_{0.0f};
   float extend_target_deg_{0.0f};
 
-  // ---------- 角度限位（单位：度，上电后实测填入） ----------
-  float lift_min_deg_{0.0f};
-  float lift_max_deg_{360.0f};
-  float extend_min_deg_{0.0f};
-  float extend_max_deg_{360.0f};
+  // ---------- 换算系数 ----------
+  static constexpr float kLiftMmPerDeg = 90.0f / 360.0f;
+  static constexpr float kExtendMmPerDeg = 44.0f * 3.14159f / 360.0f;
+
+  // ---------- 限位（mm） ----------
+  float lift_ground_clearance_mm_{0.0f};  // 武器手底座离地高度（=电梯平台高度）
+  float lift_travel_max_mm_{347.25f};       // 1389° × 90/360
+  float extend_min_mm_{0.0f};
+  float extend_max_mm_{422.75f};            // 1101° × 44π/360
+
 
   // ---------- 首次初始化标志 ----------
   bool lift_inited_{false};
@@ -58,6 +63,13 @@ public:
   void clawToggle();    // 夹爪开合切换（气缸电磁阀PG5）
   void wristFlip();     // 腕部舵机翻转切换（朝上↔朝前）
 
+  // ======== mm接口 ========
+  void addLiftDelta(float delta_mm);
+  void addExtendDelta(float delta_mm);
+  float getLiftHeightMm() const;
+  float getExtendLengthMm() const;
+
+
 private:
-  float clampAngle(float target, float current, float min_deg, float max_deg);
+  float clampTarget(float target, float current, float min_val, float max_val);
 };

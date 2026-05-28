@@ -24,19 +24,28 @@ public:
   C620Motor *right_motor_{nullptr};  // 3508 右侧抬升
 
   // ---------- 各电机 PID ----------
-  PID_t left_pid_;
-  PID_t right_pid_;
+  PID_t platfrom_pos_pid_;  // 平台位置环，ref为平台高度（度），out为弧度/秒
+  PID_t left_v_pid_;        // 平台左侧速度环，ref为左侧速度（弧度/秒），out为电流（0.0001A）
+  PID_t right_v_pid_;       // 平台右侧速度环，ref为右侧速度（弧度/秒），out为电流（0.0001A）
+
+  float sync_error;
 
   // ---------- 目标角度（两侧共用同一个目标，保证同步） ----------
   float target_deg_{0.0f};
 
+  // ---------- 换算系数：电机输出轴1°对应同步带位移(mm) ----------
+  static constexpr float kMmPerDeg = 65.0f / 360.0f;
+
+  float ground_clearance_mm_{225.0f};  // encoder=0时平台离地高度
+  float travel_max_mm_{257.3f};        // 最大抬升行程（1425° × 65/360）
+  // min = ground_clearance, max = ground_clearance + travel_max
+
+
   // ---------- 角度限位 ----------
   float min_deg_{0.0f};
-  float max_deg_{360.0f};
-
+  float max_deg_{1425.0f};
   // ---------- 同步误差阈值（单位：度，超出则报警） ----------
   float sync_error_threshold_{5.0f};
-
   // ---------- 首次初始化标志 ----------
   bool inited_{false};
 
@@ -47,6 +56,18 @@ public:
   // 获取两侧位置差（绝对值），供外部监控
   float getSyncError() const;
 
+  /// @brief 增减目标高度，正=升，负=降，单位mm
+  void addTargetDelta(float delta_mm);
+
+  /// @brief 获取当前高度（mm，相对值）
+  float getCurrentHeightMm() const;
+
+  /// @brief 获取同步误差（mm）
+  float getSyncErrorMm() const;
+
+
 private:
-  float clampAngle(float target, float current, float min_deg, float max_deg);
+  float platform_pos_out_;
+  float clampTarget(float target_mm, float current_mm, float min_mm, float max_mm);
+
 };

@@ -85,9 +85,10 @@ typedef struct {
 typedef struct {
   bool active;  // true = 用户模式生效，false = 队友模式（忽略本指令）
 
-  // 每帧步进增量（持续按住时累加，单位：度/帧）
+  // 每帧步进增量（持续按住时累加）
+  // 单位：mm/帧（pick_yaw_delta 除外，为 °/帧）
   float pick_lift_delta;
-  float pick_yaw_delta;
+  float pick_yaw_delta;      // 单位：°/帧（云台旋转，非直线运动）
   float pick_extend_delta;
   float weapon_lift_delta;
   float weapon_extend_delta;
@@ -100,6 +101,8 @@ typedef struct {
   bool wrist_toggle;
 
 } pub_upbody_cmd;
+
+
 
 // IR模块数据结构体
 typedef struct {
