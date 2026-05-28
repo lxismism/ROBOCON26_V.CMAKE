@@ -29,7 +29,7 @@ void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd
 // ===== 队友模式 =====
 
 /** @brief 队友模式入口：摇杆处理 + MF / Normal 模式分发 */
-void Chassis_Xbox_Data_Process();
+void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg);
 
 /** @brief 普通手操 / 定位模式（headless 双模式切换） */
 void Normal_control_Process();
