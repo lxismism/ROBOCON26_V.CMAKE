@@ -17,6 +17,7 @@
 #include "chassis_task.h"
 #include "topics.hpp"
 #include <cmath>
+#include <cstdint>
 
 // ===== 上身控制常量（每帧步进量，1000Hz 控制频率） =====
 static constexpr float kLiftStep = 0.2f;
@@ -326,6 +327,29 @@ void MF_control_Process() {
                 }
             }
         }
+    }
+
+    /*上层机构执行*/
+    switch ((int8_t)robot_position_MF[MF_x][MF_y][3]) {
+        case 1:
+            //最低高台高度
+
+            break;
+        case 2:
+            //中间高台高度
+
+            break;
+        case 3:
+            //最高高台任务
+
+            break;
+        default:
+            break;
+    }
+    if(control_xbox_cmd.btnRB == 1){
+        //设置伸出去为目标状态
+    }else{
+        //设置0为目标状态
     }
 
     state_aim_cmd.linear_x_ = -robot_position_MF[MF_x][MF_y][0];
