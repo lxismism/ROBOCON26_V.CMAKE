@@ -76,57 +76,102 @@ void Action_KFS_High(TypedTopicPublisher<pub_upbody_cmd>& pub) {
 }
 
 // ===== 渐变动作 =====
-
 void Ramp_Start(PickRamp& ramp, const RobotPose& pose) {
     ramp.end_lift_mm   = pose.pick_lift_mm;
     ramp.end_yaw_deg   = pose.pick_yaw_deg;
     ramp.end_extend_mm = pose.pick_extend_mm;
     ramp.active        = true;
-    // cur_* 保持当前值——从"现在的位置"开始往终点走
+
+    // 自动策略：检测是否需要两段式
+    bool going_to_danger  = (pose.pick_yaw_deg < 0.0f);                // 目标在负数区
+    bool leaving_danger   = (ramp.cur_yaw_deg < 0.0f && pose.pick_yaw_deg >= 0.0f); // 从负数区离开
+
+    if (going_to_danger) {
+        ramp.phase = 1;  // 先抬升到位 → 再转云台
+    } else if (leaving_danger) {
+        ramp.phase = 2;  // 先转云台出负数区 → 再降抬升
+    } else {
+        ramp.phase = 0;  // 正常，所有轴同步
+    }
+
+    // 伸缩安全策略（优先级低于 yaw 安全策略）
+    if (ramp.phase == 0) {
+        // 目标缩回到安全位 → 先缩回
+        if (pose.pick_extend_mm < 1.0f && ramp.cur_extend_mm > 1.0f)
+            ramp.phase = 3;
+        // 从缩回状态伸出且 yaw 在危险角 → 先转云台
+        else if (ramp.cur_extend_mm < 1.0f && pose.pick_extend_mm >= 1.0f
+                 && ramp.cur_yaw_deg <= 0.0f)
+            ramp.phase = 4;
+    }
+    
 }
 
 bool Ramp_Step(PickRamp& ramp, float dt) {
     if (!ramp.active) return false;
 
-    bool done = true;
 
-    // 抬升
-    float lift_step = kPickLiftSpeed * dt;
-    if (ramp.cur_lift_mm < ramp.end_lift_mm) {
-        ramp.cur_lift_mm += lift_step;
-        if (ramp.cur_lift_mm >= ramp.end_lift_mm) ramp.cur_lift_mm = ramp.end_lift_mm;
-        else done = false;
-    } else if (ramp.cur_lift_mm > ramp.end_lift_mm) {
-        ramp.cur_lift_mm -= lift_step;
-        if (ramp.cur_lift_mm <= ramp.end_lift_mm) ramp.cur_lift_mm = ramp.end_lift_mm;
-        else done = false;
+        // 抬升
+    bool lift_done = true;
+    if (fabsf(ramp.cur_lift_mm - ramp.end_lift_mm) > 0.01f) {
+        // phase=2 时锁定抬升，phase=3 时锁定抬升（先缩回）
+        if (ramp.phase != 2 && ramp.phase != 3) {
+            float lift_step = kPickLiftSpeed * dt;
+            if (ramp.cur_lift_mm < ramp.end_lift_mm) {
+                ramp.cur_lift_mm += lift_step;
+                if (ramp.cur_lift_mm > ramp.end_lift_mm) ramp.cur_lift_mm = ramp.end_lift_mm;
+            } else {
+                ramp.cur_lift_mm -= lift_step;
+                if (ramp.cur_lift_mm < ramp.end_lift_mm) ramp.cur_lift_mm = ramp.end_lift_mm;
+            }
+        }
+        if (fabsf(ramp.cur_lift_mm - ramp.end_lift_mm) > 0.01f) lift_done = false;
     }
 
     // 云台
-    float yaw_step = kPickYawSpeed * dt;
-    if (ramp.cur_yaw_deg < ramp.end_yaw_deg) {
-        ramp.cur_yaw_deg += yaw_step;
-        if (ramp.cur_yaw_deg >= ramp.end_yaw_deg) ramp.cur_yaw_deg = ramp.end_yaw_deg;
-        else done = false;
-    } else if (ramp.cur_yaw_deg > ramp.end_yaw_deg) {
-        ramp.cur_yaw_deg -= yaw_step;
-        if (ramp.cur_yaw_deg <= ramp.end_yaw_deg) ramp.cur_yaw_deg = ramp.end_yaw_deg;
-        else done = false;
+    bool yaw_done = true;
+    if (fabsf(ramp.cur_yaw_deg - ramp.end_yaw_deg) > 0.1f) {
+        // phase=1 时锁定云台（等抬升到安全高度），phase=3 时锁定云台
+        if (ramp.phase != 1 && ramp.phase != 3) {
+            float yaw_step = kPickYawSpeed * dt;
+            if (ramp.cur_yaw_deg < ramp.end_yaw_deg) {
+                ramp.cur_yaw_deg += yaw_step;
+                if (ramp.cur_yaw_deg > ramp.end_yaw_deg) ramp.cur_yaw_deg = ramp.end_yaw_deg;
+            } else {
+                ramp.cur_yaw_deg -= yaw_step;
+                if (ramp.cur_yaw_deg < ramp.end_yaw_deg) ramp.cur_yaw_deg = ramp.end_yaw_deg;
+            }
+        }
+        if (fabsf(ramp.cur_yaw_deg - ramp.end_yaw_deg) > 0.1f) yaw_done = false;
     }
 
-    // 伸缩
-    float extend_step = kPickExtendSpeed * dt;
-    if (ramp.cur_extend_mm < ramp.end_extend_mm) {
-        ramp.cur_extend_mm += extend_step;
-        if (ramp.cur_extend_mm >= ramp.end_extend_mm) ramp.cur_extend_mm = ramp.end_extend_mm;
-        else done = false;
-    } else if (ramp.cur_extend_mm > ramp.end_extend_mm) {
-        ramp.cur_extend_mm -= extend_step;
-        if (ramp.cur_extend_mm <= ramp.end_extend_mm) ramp.cur_extend_mm = ramp.end_extend_mm;
-        else done = false;
+
+        // 伸缩（phase=4 时锁定——等 yaw > 0 再伸）
+    bool extend_done = true;
+    if (fabsf(ramp.cur_extend_mm - ramp.end_extend_mm) > 0.01f) {
+        if (ramp.phase != 4) {
+            float extend_step = kPickExtendSpeed * dt;
+            if (ramp.cur_extend_mm < ramp.end_extend_mm) {
+                ramp.cur_extend_mm += extend_step;
+                if (ramp.cur_extend_mm >= ramp.end_extend_mm) ramp.cur_extend_mm = ramp.end_extend_mm;
+                else extend_done = false;
+            } else if (ramp.cur_extend_mm > ramp.end_extend_mm) {
+                ramp.cur_extend_mm -= extend_step;
+                if (ramp.cur_extend_mm <= ramp.end_extend_mm) ramp.cur_extend_mm = ramp.end_extend_mm;
+                else extend_done = false;
+            }
+        }
+        if (fabsf(ramp.cur_extend_mm - ramp.end_extend_mm) > 0.01f) extend_done = false;
     }
 
-    if (done) ramp.active = false;
+
+    // 判断 phase 切换（移到伸缩段后面）
+    if (ramp.phase == 1 && lift_done)      ramp.phase = 0;
+    if (ramp.phase == 2 && yaw_done)       ramp.phase = 0;
+    if (ramp.phase == 3 && extend_done)    ramp.phase = 0;
+    if (ramp.phase == 4 && ramp.cur_yaw_deg > 0.0f) ramp.phase = 0;
+
+    if (lift_done && yaw_done && extend_done) ramp.active = false;
     return ramp.active;
 }
 

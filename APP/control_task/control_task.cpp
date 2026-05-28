@@ -70,6 +70,8 @@ bool headless_omega_mode = true;
 bool MF_control_mode = false;
 int8_t MF_x = 0;
 int8_t MF_y = 0;
+float MF_close_position_x = 0.0f;
+float MF_close_position_y = 0.0f;
 
 float error_x;
 float error_y;
@@ -154,8 +156,9 @@ void controlTask(void *argument) {
 
             switch (control_mode) {
                 case 0:
-                    Chassis_Xbox_Data_Process();                    // 队友模式
+                    Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
                     break;
+
                 case 1:
                     Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);  // 调试模式
                     break;

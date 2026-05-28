@@ -35,6 +35,7 @@ inline constexpr float kPickExtendSpeed = 40.0f;  // 吸取手伸缩
 // ===== 渐变状态：记录当前中间目标和终点 =====
 struct PickRamp {
     bool  active = false;
+    int   phase  = 0;     // 0=所有轴同步, 1=先抬升后云台, 2=先云台后抬升
     float cur_lift_mm   = 0.0f;
     float cur_yaw_deg   = 0.0f;
     float cur_extend_mm = 0.0f;
@@ -42,6 +43,7 @@ struct PickRamp {
     float end_yaw_deg   = 0.0f;
     float end_extend_mm = 0.0f;
 };
+
 
 // ===== 机器人全身姿态 =====
 
@@ -60,6 +62,8 @@ inline constexpr RobotPose kPose_KFS_High = {392.6f, 392.0f, 181.6f, 0.0f, 0.0f,
 
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};  // 复位
 
+inline constexpr RobotPose kPose_Place1   = {211.4f, -292.0f, 0.59f, 0.0f, 0.0f, 0.0f};  // 放置远处
+inline constexpr RobotPose kPose_Place2   = {130.0f, -49.0f, 1.19f, 0.0f, 0.0f, 0.0f};
 
 // ===== 摇杆处理 =====
 

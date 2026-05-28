@@ -43,7 +43,7 @@ public:
   float lift_ground_clearance_mm_{0.0f};  // 吸取手底座离地高度（=电梯平台高度）
   float lift_travel_max_mm_{392.6f};        // 吸取手升降行程（1346° × 105/360）
   // lift min=225, max=225+392.6=617.6
-  float yaw_min_deg_{0.0f};
+  float yaw_min_deg_{-786.0f};
   float yaw_max_deg_{786.0f};
   float extend_min_mm_{0.0f};
   float extend_max_mm_{181.6f};             // 伸缩行程，不涉及离地高度
