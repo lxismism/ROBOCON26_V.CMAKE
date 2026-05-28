@@ -346,18 +346,53 @@ void MF_control_Process() {
         default:
             break;
     }
+
     if(control_xbox_cmd.btnRB == 1){
         //设置伸出去为目标状态
+
+        //车辆缓慢向前移动
+        switch ((int16_t)robot_position_MF[MF_x][MF_y][2]) {
+            case 0:
+                //0度任务
+                robot_v_aim_cmd.linear_x_ = 0.0f;
+                robot_v_aim_cmd.linear_y_ = 0.05f;
+                break;
+
+            case 90:
+                //90度任务
+                robot_v_aim_cmd.linear_x_ = -0.05f;
+                robot_v_aim_cmd.linear_y_ = 0.0f;
+                break;
+
+            case -90:
+                //-90度任务
+                robot_v_aim_cmd.linear_x_ = 0.05f;
+                robot_v_aim_cmd.linear_y_ = 0.0f;
+                break;
+
+            case 180:
+                //180度任务
+                robot_v_aim_cmd.linear_x_ = 0.0f;
+                robot_v_aim_cmd.linear_y_ = -0.05f;
+                break;
+
+            default:
+                break;
+        }
+
     }else{
         //设置0为目标状态
+
+        //只有当按钮未按下时进行点跟踪
+        state_aim_cmd.linear_x_ = -robot_position_MF[MF_x][MF_y][0];
+        state_aim_cmd.linear_y_ = robot_position_MF[MF_x][MF_y][1];
+        Aim_State_xy_Process();
     }
 
-    state_aim_cmd.linear_x_ = -robot_position_MF[MF_x][MF_y][0];
-    state_aim_cmd.linear_y_ = robot_position_MF[MF_x][MF_y][1];
+    //角度跟踪
     state_aim_cmd.omega_    = robot_position_MF[MF_x][MF_y][2];
-
-    Aim_State_xy_Process();
     Aim_State_omega_Process();
+
 }
 
 
