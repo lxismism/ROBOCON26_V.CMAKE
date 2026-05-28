@@ -2,17 +2,20 @@
  * @file control_task.cpp
  * @author 大帅将军 / lxlx
  * @brief 控制任务 —— Xbox按键 → 底盘 + 上身控制指令决策层
- * @version 0.2
- * @date 2026-05-20
+ * @version 0.3
+ * @date 2026-05-28
  *
  * @copyright Copyright (c) 2026
  *
- * @attention btnSelect 切换模式：0=队友模式(现有逻辑), 1=用户模式(上身按键映射)
+ * @attention btnSelect 切换模式：0=队友模式(现有逻辑), 1=调试模式(上身按键映射)
  * @note 持续型按键每帧累加步进量；切换型按键仅上升沿触发
+ * @versioninfo v0.3: 模块化拆分 —— 流程函数移至 control_process，动作函数移至 control_action
  * @versioninfo v0.2: 新增上身控制指令 + btnSelect模式切换
  */
 
 #include "control_task.h"
+#include "control_process.hpp"       // ← 新增：流程层
+#include "control_action.hpp"        // ← 新增：动作层（常量 + 工具函数）
 #include "pid_controller.h"
 #include "chassis_task.h"
 #include "topic_pool.h"
@@ -23,103 +26,72 @@
 
 osThreadId_t ControlTaskHandle;
 
-// ---------- 发布者 ----------
-static TypedTopicPublisher<pub_chassis_cmd> chassis_data_pub("chassis_cmd");
-static pub_chassis_cmd xbox_cmd{};
+// ===== 发布者 =====
+TypedTopicPublisher<pub_chassis_cmd> chassis_data_pub("chassis_cmd");
+pub_chassis_cmd xbox_cmd{};
 
-static TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");
-static pub_upbody_cmd upbody_cmd_msg{};
+static TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");       // ← 加回 static
+static pub_upbody_cmd upbody_cmd_msg{};                                         // ← 加回 static
 
-//发布红外控制命令
-static TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");
-static pub_ir_cmd ir_cmd{};
+static TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");                   // ← 加回 static
+static pub_ir_cmd ir_cmd{};                                                     // ← 加回 static
 
-static TypedTopicPublisher<QR_code_cmd_t> qr_code_cmd_pub("qr_code_cmd");
-static QR_code_cmd_t qr_code_cmd{};
+static TypedTopicPublisher<QR_code_cmd_t> qr_code_cmd_pub("qr_code_cmd");      // ← 加回 static
+static QR_code_cmd_t qr_code_cmd{};                                             // ← 加回 static
 
-// ---------- 订阅者 ----------
 
-/* 订阅xbox遥控控制信息 */
-static TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox", 8);
+// ===== 订阅者 =====
+TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox", 8);
 pub_Xbox_Data control_xbox_cmd{};
 pub_Xbox_Data control_xbox_cmd_Last{};
 
-static TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
+TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
 pub_Position_Data control_position_msg{};
 pub_Position_Data control_position{};
-//定位修正参数
-static float position_correction_x = 0.0f;
-static float position_correction_y = 0.0f;
+
+// 定位修正参数
+float position_correction_x = 0.0f;
+float position_correction_y = -0.28f;
 static const float position_center_distance = 0.28f;
 
-/* 订阅IR_data信息 */
-static TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
+TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
 pub_ir_data control_ir_msg{};
 
-static TypedTopicSubscriber<QR_code_data_t> qr_code_data_sub("qr_code_data", 8);
+TypedTopicSubscriber<QR_code_data_t> qr_code_data_sub("qr_code_data", 8);
 QR_code_data_t control_qr_code_data{};
 
+// ===== 控制状态变量 =====
+float xbox_angle_deg;
+float v_aim;
 
+bool headless_xy_mode = true;
+bool headless_omega_mode = true;
 
-static float xbox_angle_deg;
-static float v_aim;
-  
-static bool headless_xy_mode = true;//手操模式与定位模式切换，默认手操
-static bool headless_omega_mode = true;//手操模式与定位模式切换，默认手操
+bool MF_control_mode = false;
+int8_t MF_x = 0;
+int8_t MF_y = 0;
 
-static bool MF_control_mode = false;//梅林控制模式，默认关闭
-static int8_t MF_x = 0;
-static int8_t MF_y = 0;
+float error_x;
+float error_y;
+float state_xy_error;
+float state_xy_angle_deg;
+float xy_pid_output;
 
-static float error_x;
-static float error_y;
-static float state_xy_error;
-static float state_xy_angle_deg;
-static float xy_pid_output;
-
-static pub_chassis_cmd robot_v_aim_cmd{
+pub_chassis_cmd robot_v_aim_cmd{
     .linear_x_ = 0.0f,
     .linear_y_ = 0.0f,
     .omega_ = 0.0f
 };
-static pub_chassis_cmd state_aim_cmd{
+pub_chassis_cmd state_aim_cmd{
     .linear_x_ = 0.0f,
     .linear_y_ = 0.0f,
     .omega_ = 0.0f
 };
 
-//车体目标角度环pid
-static PID_t linear{.Kp = 1.68f,.Ki = 0.11f,.Kd = 0.0f,.MaxOut = 0.75*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-static PID_t deg{.Kp = 1.70f,.Ki = 0.32f,.Kd = 0.000001f,.MaxOut = MAX_VELOCITY_ANGULAR*0.5*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
+// 车体目标角度环 PID
+PID_t linear{.Kp = 1.68f,.Ki = 0.11f,.Kd = 0.0f,.MaxOut = 0.75*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+PID_t deg{.Kp = 1.70f,.Ki = 0.32f,.Kd = 0.000001f,.MaxOut = MAX_VELOCITY_ANGULAR*0.5*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
 
-// 摇杆常量
-static constexpr uint16_t kJoyCenter = 32767;
-static constexpr uint16_t kJoyDeadZoneLeft = 3500;
-static constexpr uint16_t kJoyDeadZoneRight = 2000;
-static constexpr float kDegToRad = M_PI / 180.0f;
-
-// 上身控制常量
-// 上身机构每帧步进（1000Hz控制频率）
-static constexpr float kLiftStep = 0.2f;              // 电梯抬升 (mm/帧)
-static constexpr float kPickLiftStep = 0.3f;          // 吸取手抬升 (mm/帧)
-static constexpr float kPickYawStep = 1.0f;           // 吸取手云台 (°/帧，旋转运动)
-static constexpr float kPickExtendStep = 0.2f;        // 吸取手伸缩 (mm/帧)
-static constexpr float kWeaponLiftStep = 0.25f;       // 武器手抬升 (mm/帧)
-static constexpr float kWeaponExtendStep = 0.4f;      // 武器手伸缩 (mm/帧)
-
-static constexpr uint16_t kTriggerThreshold = 512;   // 扳机触发阈值
-
-static int8_t sign(double value) {
-    if (value > 0) return 1;
-    else if (value < 0) return -1;
-    else return 0;
-}
-
-void Chassis_Xbox_Data_Process();
-void MF_control_Process();
-void Normal_control_Process();
-void Aim_State_xy_Process();
-void Aim_State_omega_Process();
 
 void controlInit() {
     if (!chassis_data_pub.IsValid()) {
@@ -155,14 +127,8 @@ void controlTask(void *argument) {
     PID_Init(&deg);
 
     // 模式状态
-    static bool control_mode = false;    // false=队友模式, true=用户模式
+    static bool control_mode = false;    // false=队友模式, true=调试模式
     static bool last_select = false;     // btnSelect上一帧状态
-
-    // 切换型按键上一帧状态（边缘检测用）
-    static bool last_btnX = false;
-    static bool last_btnB = false;
-    static bool last_btnLS = false;
-    static bool last_btnRS = false;
 
     controlInit();
     for (;;) {
@@ -184,123 +150,18 @@ void controlTask(void *argument) {
             }
             last_select = control_xbox_cmd.btnSelect;
 
-            // ==========================================
-            //  用户模式 (mode = 1)
-            // ==========================================
             if (control_mode) {
-
-                // ---- 底盘：摇杆直驱 ----
-                if (ABS(control_xbox_cmd.joyLHori - kJoyCenter) > kJoyDeadZoneLeft)
-                {
-                    robot_v_aim_cmd.linear_x_ = (int)(control_xbox_cmd.joyLHori - kJoyCenter - sign(control_xbox_cmd.joyLHori - kJoyCenter)*kJoyDeadZoneLeft) / ((float)(kJoyCenter - kJoyDeadZoneLeft)) * MAX_VELOCITY_LINEAR;
-                }
-                else { robot_v_aim_cmd.linear_x_ = 0.0f; }
-
-                if (ABS(control_xbox_cmd.joyLVert - kJoyCenter) > kJoyDeadZoneLeft)
-                {
-                    robot_v_aim_cmd.linear_y_ = -(int)(control_xbox_cmd.joyLVert - kJoyCenter - sign(control_xbox_cmd.joyLVert - kJoyCenter)*kJoyDeadZoneLeft) / ((float)(kJoyCenter - kJoyDeadZoneLeft)) * MAX_VELOCITY_LINEAR;
-                }
-                else { robot_v_aim_cmd.linear_y_ = 0.0f; }
-
-                if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > kJoyDeadZoneRight)
-                {
-                    robot_v_aim_cmd.omega_ = -(int)(control_xbox_cmd.joyRHori - kJoyCenter - sign(control_xbox_cmd.joyRHori - kJoyCenter)*kJoyDeadZoneRight) / ((float)(kJoyCenter - kJoyDeadZoneRight)) * MAX_VELOCITY_ANGULAR;
-                }
-                else { robot_v_aim_cmd.omega_ = 0.0f; }
-                // 无头旋转：场地坐标系 → 车身坐标系
-                float joy_angle_deg = atan2(robot_v_aim_cmd.linear_y_, robot_v_aim_cmd.linear_x_) / kDegToRad;
-                float joy_mag = sqrt(robot_v_aim_cmd.linear_x_ * robot_v_aim_cmd.linear_x_ + robot_v_aim_cmd.linear_y_ * robot_v_aim_cmd.linear_y_);
-                robot_v_aim_cmd.linear_x_ = joy_mag * cos((joy_angle_deg - control_position.yaw) * kDegToRad);
-                robot_v_aim_cmd.linear_y_ = joy_mag * sin((joy_angle_deg - control_position.yaw) * kDegToRad);
-
-                chassis_data_pub.Publish(robot_v_aim_cmd);
-
-                // ---- 上身控制指令 ----
-                upbody_cmd_msg = {};
-                upbody_cmd_msg.active = true;
-
-
-                // ▼ 持续型：trigLT电梯上升 / trigRT电梯下降
-                if (control_xbox_cmd.trigLT > kTriggerThreshold)
-                    upbody_cmd_msg.lift_delta = kLiftStep;
-                if (control_xbox_cmd.trigRT > kTriggerThreshold)
-                    upbody_cmd_msg.lift_delta = -kLiftStep;
-
-                // ▼ 持续型：btnLB武器手上升 / btnRB武器手下降
-                if (control_xbox_cmd.btnLB)
-                    upbody_cmd_msg.weapon_lift_delta = kWeaponLiftStep;
-                if (control_xbox_cmd.btnRB)
-                    upbody_cmd_msg.weapon_lift_delta = -kWeaponLiftStep;
-                  
-                // ▼ 持续型：btnDirUp吸取手上升 / btnDirDown吸取手下降
-                if (control_xbox_cmd.btnDirUp)
-                    upbody_cmd_msg.pick_lift_delta = kPickLiftStep;
-                if (control_xbox_cmd.btnDirDown)
-                    upbody_cmd_msg.pick_lift_delta = -kPickLiftStep;
-
-                // ▼ 持续型：btnDirLeft云台逆时针 / btnDirRight云台顺时针
-                if (control_xbox_cmd.btnDirLeft)
-                    upbody_cmd_msg.pick_yaw_delta = kPickYawStep;
-                if (control_xbox_cmd.btnDirRight)
-                    upbody_cmd_msg.pick_yaw_delta = -kPickYawStep;
-
-                // ▼ 持续型：右摇杆前推吸取手伸 / 后拉吸取手缩
-                {
-                    int32_t rvert_diff = (int32_t)control_xbox_cmd.joyRVert - (int32_t)kJoyCenter;
-                    if (rvert_diff > (int32_t)kJoyDeadZoneRight)
-                        upbody_cmd_msg.pick_extend_delta = -kPickExtendStep;
-                    else if (rvert_diff < -(int32_t)kJoyDeadZoneRight)
-                        upbody_cmd_msg.pick_extend_delta = kPickExtendStep;
-                }
-
-                // ▼ 持续型：btnY武器手伸 / btnA武器手缩
-                if (control_xbox_cmd.btnY)
-                    upbody_cmd_msg.weapon_extend_delta = kWeaponExtendStep;
-                if (control_xbox_cmd.btnA)
-                    upbody_cmd_msg.weapon_extend_delta = -kWeaponExtendStep;
-
-                // ▼ 切换型：btnX吸盘真空泵（上升沿触发）
-                if (control_xbox_cmd.btnX && !last_btnX)
-                    upbody_cmd_msg.pump_toggle = true;
-                last_btnX = control_xbox_cmd.btnX;
-
-                // ▼ 切换型：btnB吸盘电磁阀（上升沿触发）
-                if (control_xbox_cmd.btnB && !last_btnB)
-                    upbody_cmd_msg.valve_toggle = true;
-                last_btnB = control_xbox_cmd.btnB;
-
-                // ▼ 切换型：btnLS夹爪开合（上升沿触发）
-                if (control_xbox_cmd.btnLS && !last_btnLS)
-                    upbody_cmd_msg.claw_toggle = true;
-                last_btnLS = control_xbox_cmd.btnLS;
-
-                // ▼ 切换型：btnRS腕部舵机翻转（上升沿触发）
-                if (control_xbox_cmd.btnRS && !last_btnRS)
-                    upbody_cmd_msg.wrist_toggle = true;
-                last_btnRS = control_xbox_cmd.btnRS;
-
-                upbody_cmd_pub.Publish(upbody_cmd_msg);
-                //保留本次xbox数据
-                control_xbox_cmd_Last = control_xbox_cmd;
-                chassis_data_pub.Publish(robot_v_aim_cmd);
-
-                //底盘速度归零
-                robot_v_aim_cmd.linear_x_ = 0.0f;
-                robot_v_aim_cmd.linear_y_ = 0.0f;
-                robot_v_aim_cmd.omega_ = 0.0f;
-
-            // ==========================================
-            //  队友模式 (mode = 0)：现有逻辑不变
-            // ==========================================
-                
+                // ===== 调试模式 =====
+                Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);
 
             } else {
+                // ===== 队友模式 =====
                 Chassis_Xbox_Data_Process();
-                //保留本次xbox数据
-                control_xbox_cmd_Last = control_xbox_cmd;
-                chassis_data_pub.Publish(robot_v_aim_cmd);
             }
 
+            // 保留本次xbox数据
+            control_xbox_cmd_Last = control_xbox_cmd;
+            chassis_data_pub.Publish(robot_v_aim_cmd);
         }
 
         if(control_ir_sub.TryGet(&control_ir_msg)) {
@@ -325,265 +186,7 @@ void controlTask(void *argument) {
           // }
         //}
 
+
         vTaskDelayUntil(&currentTime, 5);
     }
-}
-
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////函数///////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// 处理xbox数据 → 底盘控制指令（队友模式/无头模式用）
-void Chassis_Xbox_Data_Process()
-{
-  if (ABS(control_xbox_cmd.joyLHori - kJoyCenter) > kJoyDeadZoneLeft)
-  {
-    xbox_cmd.linear_x_ = (int)(control_xbox_cmd.joyLHori - kJoyCenter - sign(control_xbox_cmd.joyLHori - kJoyCenter)*kJoyDeadZoneLeft) / ((float)(kJoyCenter - kJoyDeadZoneLeft)) * MAX_VELOCITY_LINEAR;
-  }
-  else
-  {
-    xbox_cmd.linear_x_ = 0.0f;
-  }
-
-  if (ABS(control_xbox_cmd.joyLVert - kJoyCenter) > kJoyDeadZoneLeft)
-  {
-    xbox_cmd.linear_y_ = -(int)(control_xbox_cmd.joyLVert - kJoyCenter - sign(control_xbox_cmd.joyLVert - kJoyCenter)*kJoyDeadZoneLeft) / ((float)(kJoyCenter - kJoyDeadZoneLeft)) * MAX_VELOCITY_LINEAR;
-  }
-  else
-  {
-    xbox_cmd.linear_y_ = 0.0f;
-  }
-
-  if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > kJoyDeadZoneRight)
-  {
-    xbox_cmd.omega_ = -(int)(control_xbox_cmd.joyRHori - kJoyCenter - sign(control_xbox_cmd.joyRHori - kJoyCenter)*kJoyDeadZoneRight) / ((float)(kJoyCenter - kJoyDeadZoneRight)) * MAX_VELOCITY_ANGULAR;
-  }
-  else
-  {
-    xbox_cmd.omega_ = 0.0f;
-  }
-
-  if(control_xbox_cmd.btnB != control_xbox_cmd_Last.btnB)
-    {
-      if(control_xbox_cmd.btnB == true){
-        MF_control_mode = !MF_control_mode;
-
-        /* ======= 若是进入MF控制模式，计算最近的MF点位，并自动移动过去 ====== */
-        // if(MF_control_mode)
-        // {
-        //   int8_t closest_x = 0;
-        //   int8_t closest_y = 0;
-        //   float min_distance = 100.0f;//初始化一个较大的距离值
-        //   for(int x=0;x<6;x++){
-        //     for(int y=0;y<5;y++){
-        //       if(robot_position_MF[x][y][0] != 0.0f && robot_position_MF[x][y][1] != 0.0f){
-        //         float diatance_now = (state_aim_cmd.linear_x_ - robot_position_MF[x][y][0])*(state_aim_cmd.linear_x_ - robot_position_MF[x][y][0])
-        //                            + (state_aim_cmd.linear_y_ - robot_position_MF[x][y][1])*(state_aim_cmd.linear_y_ - robot_position_MF[x][y][1]);
-        //         if(diatance_now < min_distance){
-        //         closest_x = x;
-        //         closest_y = y;
-        //         }
-        //       }
-        //     }
-        //   }
-        //   MF_x= closest_x;
-        //   MF_y= closest_y;
-        // }
-        /* ======= 逻辑结束 ====== */
-
-      }
-    }
-
-  if(MF_control_mode)
-  {
-    MF_control_Process();
-  }
-  else
-  {
-    Normal_control_Process();
-  }
-
-}
-
-void Normal_control_Process(){
-
-    if(control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS)
-    {
-      if(control_xbox_cmd.btnLS == true){
-        headless_xy_mode = !headless_xy_mode;
-      }
-    }
-    
-    //切换omega模式（按下右摇杆RS切换）
-    if(control_xbox_cmd.btnRS != control_xbox_cmd_Last.btnRS)
-    {
-      if(control_xbox_cmd.btnRS == true){
-        headless_omega_mode = !headless_omega_mode;
-      }
-    }
-
-
-    if(headless_xy_mode)
-    {//xy手控模式：摇杆控制速度，直接进入速度环PID
-      xbox_angle_deg = atan2(xbox_cmd.linear_y_,xbox_cmd.linear_x_)/kDegToRad;
-      v_aim = sqrt(xbox_cmd.linear_x_ * xbox_cmd.linear_x_ + xbox_cmd.linear_y_ * xbox_cmd.linear_y_);
-
-      robot_v_aim_cmd.linear_x_ = v_aim * cos((xbox_angle_deg - control_position.yaw)*kDegToRad);
-      robot_v_aim_cmd.linear_y_ = v_aim * sin((xbox_angle_deg - control_position.yaw)*kDegToRad);
-
-      state_aim_cmd.linear_x_ = control_position.x;
-      state_aim_cmd.linear_y_ = control_position.y;
-    }
-    else
-    {
-      //xy定位模式：摇杆负责里程计误差修正，方向键控制目标位置，进入目标位置环PID
-
-      //MF半自动控制，按下B就切换到MF控制模式
-      if(control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS)
-      {
-        if(control_xbox_cmd.btnB == true){
-          headless_xy_mode = !headless_xy_mode;
-        }
-      }
-
-
-      if(control_xbox_cmd.btnY == 1){//按Y复位回零点
-        if(control_xbox_cmd_Last.btnY == 0){
-          state_aim_cmd.linear_x_ = 0.0f;
-          state_aim_cmd.linear_y_ = 0.0f;
-        }
-      }
-      else{
-        //上下控制
-        if(control_xbox_cmd.btnDirUp == 1){
-          if(control_xbox_cmd_Last.btnDirUp == 0){
-            state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ + 1.0f;
-          }
-        }else if(control_xbox_cmd.btnDirDown == 1){
-          if(control_xbox_cmd_Last.btnDirDown == 0){
-            state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ - 1.0f;
-          }
-        }
-        
-        //左右控制
-        if(control_xbox_cmd.btnDirLeft == 1){
-          if(control_xbox_cmd_Last.btnDirLeft == 0){
-            state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ - 1.0f;
-          }
-        }else if(control_xbox_cmd.btnDirRight == 1){
-          if(control_xbox_cmd_Last.btnDirRight == 0){
-            state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ + 1.0f;
-          }
-        }
-      }
-
-      Aim_State_xy_Process();
-      
-    }
-
-
-    if(headless_omega_mode)
-    {//omega手控模式：右摇杆控制角速度，直接进入速度环PID
-      robot_v_aim_cmd.omega_ = xbox_cmd.omega_;
-      state_aim_cmd.omega_ = control_position.yaw ;
-    }
-    else
-    {//omega定位模式：右摇杆控制目标角度，进入目标角度环PID
-
-      if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > 30000)
-      {
-        if((control_xbox_cmd.joyRHori - kJoyCenter) > 0){
-          state_aim_cmd.omega_ = -90.0f;
-        }else{
-          state_aim_cmd.omega_ = 90.0f;
-        }
-      }else if (ABS(control_xbox_cmd.joyRVert - kJoyCenter) > 30000)
-      {
-        if((control_xbox_cmd.joyRVert - kJoyCenter) > 0){
-          state_aim_cmd.omega_ = 180.0f;
-        }else{
-          state_aim_cmd.omega_ = 0.0f;
-        }
-      }
-
-      Aim_State_omega_Process();
-
-    }
-
-  }
-
-void MF_control_Process()
-{
-  if(MF_x == 0 || MF_x == 5){//检测到在最左边或者最右边时，才允许上下控制
-    if(control_xbox_cmd.btnDirUp == 1){
-      if(control_xbox_cmd_Last.btnDirUp == 0){
-        if(MF_y < 5){
-          MF_y = MF_y + 1;
-        }
-      }
-    }else if(control_xbox_cmd.btnDirDown == 1){
-      if(control_xbox_cmd_Last.btnDirDown == 0){
-        if(MF_y > 0){
-          MF_y = MF_y - 1;
-        }
-      }
-    }
-  }
-  
-  if(MF_y == 0 || MF_y == 4){//检测到在最上边或者最下边时，才允许左右控制
-    if(control_xbox_cmd.btnDirLeft == 1){
-      if(control_xbox_cmd_Last.btnDirLeft == 0){
-        if(MF_x < 6){
-          MF_x = MF_x + 1;
-        }
-      }
-    }else if(control_xbox_cmd.btnDirRight == 1){
-      if(control_xbox_cmd_Last.btnDirRight == 0){
-        if(MF_x > 0){
-          MF_x = MF_x - 1;
-        }
-      }
-    }
-  }
-
-  state_aim_cmd.linear_x_ = -robot_position_MF[MF_x][MF_y][0];
-  state_aim_cmd.linear_y_ = robot_position_MF[MF_x][MF_y][1];
-  state_aim_cmd.omega_    = robot_position_MF[MF_x][MF_y][2];
-
-  Aim_State_xy_Process();
-  Aim_State_omega_Process();
-
-}
-
-
-void Aim_State_xy_Process()
-{
-  //里程计定位修正
-  position_correction_x = position_correction_x + 0.001f*xbox_cmd.linear_x_;
-  position_correction_y = position_correction_y + 0.001f*xbox_cmd.linear_y_;
-
-  //计算目标位置与当前实际位置的误差，进入PID
-  error_x            = state_aim_cmd.linear_x_ - control_position.x;
-  error_y            = state_aim_cmd.linear_y_ - control_position.y;
-  state_xy_error     = sqrt(error_x*error_x + error_y*error_y);
-  state_xy_angle_deg = atan2(error_y,error_x)/kDegToRad;
-  xy_pid_output      = PID_Calculate(&linear,0.0f,state_xy_error);
-  robot_v_aim_cmd.linear_x_  = xy_pid_output * cos((state_xy_angle_deg - control_position.yaw)*kDegToRad);
-  robot_v_aim_cmd.linear_y_  = xy_pid_output * sin((state_xy_angle_deg - control_position.yaw)*kDegToRad);
-}
-
-void Aim_State_omega_Process()
-{
-  //计算角度误差并进行PID控制
-  float error_dir = state_aim_cmd.omega_ - control_position.yaw;
-  if (fabs(error_dir) < 1.5f){
-    error_dir = 0.0f;
-  }else if(fabs(error_dir) > 180.0 ){
-    if(error_dir > 0) error_dir = error_dir - 360.0 ;
-    else error_dir = error_dir + 360.0 ;
-  }
-
-  robot_v_aim_cmd.omega_ = kDegToRad*PID_Calculate(&deg,control_position.yaw,control_position.yaw + error_dir);
 }
