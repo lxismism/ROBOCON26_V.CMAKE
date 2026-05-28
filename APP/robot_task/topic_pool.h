@@ -100,6 +100,16 @@ typedef struct {
   bool claw_toggle;
   bool wrist_toggle;
 
+  // ===== 全身绝对姿态模式（set_absolute_pose=true 时生效，忽略delta） =====
+  bool set_absolute_pose;
+  float pick_lift_target_mm;
+  float pick_yaw_target_deg;
+  float pick_extend_target_mm;
+  float weapon_lift_target_mm;
+  float weapon_extend_target_mm;
+  float lift_target_mm;
+
+
 } pub_upbody_cmd;
 
 

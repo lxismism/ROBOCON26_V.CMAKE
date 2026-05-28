@@ -89,8 +89,8 @@ pub_chassis_cmd state_aim_cmd{
 };
 
 // 车体目标角度环 PID
-PID_t linear{.Kp = 1.68f,.Ki = 0.11f,.Kd = 0.0f,.MaxOut = 0.75*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-PID_t deg{.Kp = 1.70f,.Ki = 0.32f,.Kd = 0.000001f,.MaxOut = MAX_VELOCITY_ANGULAR*0.5*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
+PID_t linear{.Kp = 1.68f,.Ki = 0.11f,.Kd = 0.0f,.MaxOut = 0.85*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+PID_t deg{.Kp = 1.70f,.Ki = 0.32f,.Kd = 0.000001f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
 
 
 void controlInit() {
@@ -127,8 +127,9 @@ void controlTask(void *argument) {
     PID_Init(&deg);
 
     // 模式状态
-    static bool control_mode = false;    // false=队友模式, true=调试模式
-    static bool last_select = false;     // btnSelect上一帧状态
+    static int control_mode = 0;    // 0=队友模式, 1=调试模式, 2=上层调试模式
+    static bool last_select = false;
+
 
     controlInit();
     for (;;) {
@@ -144,20 +145,25 @@ void controlTask(void *argument) {
         /* 从xbox数据订阅者中获取数据 */
         if (control_xbox_sub.TryGet(&control_xbox_cmd)) {
 
-            // ===== btnSelect 模式切换（上升沿触发） =====
+            // ===== btnSelect 模式切换（目前共3个模式） =====
             if (control_xbox_cmd.btnSelect && !last_select) {
-                control_mode = !control_mode;
+                control_mode = (control_mode + 1) % 3;  // 0→1→2→0→...
             }
             last_select = control_xbox_cmd.btnSelect;
 
-            if (control_mode) {
-                // ===== 调试模式 =====
-                Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);
 
-            } else {
-                // ===== 队友模式 =====
-                Chassis_Xbox_Data_Process();
+            switch (control_mode) {
+                case 0:
+                    Chassis_Xbox_Data_Process();                    // 队友模式
+                    break;
+                case 1:
+                    Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);  // 调试模式
+                    break;
+                case 2:
+                    UpperDebug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg); // 上层调试模式
+                    break;
             }
+
 
             // 保留本次xbox数据
             control_xbox_cmd_Last = control_xbox_cmd;

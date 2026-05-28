@@ -14,6 +14,7 @@
 
 #include "FreeRTOS.h"       // ← 加这行，必须在 topic_pool.h 之前
 #include "topic_pool.h"
+#include "topics.hpp"   
 #include <cmath>                          
 
 // ===== 摇杆 + 坐标常量 =====            
@@ -23,39 +24,62 @@ inline constexpr uint16_t kJoyDeadZoneRight = 2000;
 inline constexpr float kDegToRad = M_PI / 180.0f;
 
 #ifndef ABS                               
-#define ABS(x) ((x) < 0 ? -(x) : (x))     
+#define ABS(x) ((x) < 0 ? -(x) : (x))   
 #endif                                    
 
-// ===== 辅助工具 =====                     
+// ===== 动作渐变速度（mm/s 或 °/s） =====
+inline constexpr float kPickLiftSpeed   = 60.0f;  // 吸取手抬升
+inline constexpr float kPickYawSpeed    = 120.0f; // 云台旋转
+inline constexpr float kPickExtendSpeed = 40.0f;  // 吸取手伸缩
 
-/** @brief 符号函数 —— 正数返回1，负数返回-1，零返回0 */
-int8_t sign(double value);
+// ===== 渐变状态：记录当前中间目标和终点 =====
+struct PickRamp {
+    bool  active = false;
+    float cur_lift_mm   = 0.0f;
+    float cur_yaw_deg   = 0.0f;
+    float cur_extend_mm = 0.0f;
+    float end_lift_mm   = 0.0f;
+    float end_yaw_deg   = 0.0f;
+    float end_extend_mm = 0.0f;
+};
 
-// ===== 摇杆处理 =====                  
+// ===== 机器人全身姿态 =====
 
-/**
- * @brief 单轴摇杆 → 速度（含死区处理）
- *
- * 将16位ADC摇杆原始值（0~65535，中心=32767）经死区过滤后，
- * 线性映射为 [-max_vel, +max_vel] 范围内的速度值
- *
- * @param raw       摇杆原始值
- * @param deadzone  死区阈值，偏离中心小于此值则输出0
- * @param max_vel   最大速度（m/s 或 rad/s）
- * @return float    速度值
- */
+struct RobotPose {
+    float pick_lift_mm;
+    float pick_yaw_deg;
+    float pick_extend_mm;
+    float weapon_lift_mm;
+    float weapon_extend_mm;
+    float lift_mm;
+};
+
+inline constexpr RobotPose kPose_KFS_Low  = {0.0f,   392.0f, 181.6f, 0.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_KFS_Mid  = {159.2f, 392.0f, 181.6f, 0.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_KFS_High = {392.6f, 392.0f, 181.6f, 0.0f, 0.0f, 0.0f};
+
+inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};  // 复位
+
+
+// ===== 摇杆处理 =====
+
 float JoyToVelocity(uint16_t raw, uint16_t deadzone, float max_vel);
 
-// ===== 坐标变换 =====                  
+// ===== 坐标变换 =====
 
-/**
- * @brief 场地坐标系旋转（无头模式核心变换）
- *
- * 摇杆推"前"总是对应场地的前方，而不是机器人当前朝向的前方。
- * 本质：将速度向量 (vx, vy) 绕原点旋转 -yaw_deg 度
- *
- * @param vx       [in/out] x方向速度
- * @param vy       [in/out] y方向速度
- * @param yaw_deg  机器人当前偏航角（度）
- */
 void ApplyFieldCentricRotation(float& vx, float& vy, float yaw_deg);
+
+// ===== 绝对姿态动作 =====
+
+void Action_GoToPose(pub_upbody_cmd& msg, const RobotPose& pose);
+
+// ===== 自包含动作（内部构造消息+发布，调用方一行搞定） =====
+void Action_KFS_Low (TypedTopicPublisher<pub_upbody_cmd>& pub);
+void Action_KFS_Mid (TypedTopicPublisher<pub_upbody_cmd>& pub);
+void Action_KFS_High(TypedTopicPublisher<pub_upbody_cmd>& pub);
+
+// ===== 渐变动作（每帧调用，自动按速度逼近终点） =====
+
+void Ramp_Start(PickRamp& ramp, const RobotPose& pose);
+bool Ramp_Step(PickRamp& ramp, float dt);
+void Ramp_ToMsg(const PickRamp& ramp, pub_upbody_cmd& msg);

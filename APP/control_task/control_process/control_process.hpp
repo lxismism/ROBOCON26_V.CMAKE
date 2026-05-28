@@ -26,7 +26,6 @@
  */
 void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd& msg);
 
-
 // ===== 队友模式 =====
 
 /** @brief 队友模式入口：摇杆处理 + MF / Normal 模式分发 */
@@ -43,3 +42,13 @@ void Aim_State_xy_Process();
 
 /** @brief 目标角度 → PID → 角速度指令 */
 void Aim_State_omega_Process();
+
+// ===== 上层调试模式 =====
+
+/**
+ * @brief 上层调试模式 —— 底盘摇杆直驱 + 方向键触发动作链
+ *
+ * btnDirUp=吸取顶端KFS, btnDirRight=吸取中层KFS, btnDirDown=吸取底层KFS
+ * 摇杆与调试模式的底盘控制相同，其余按键暂时置空
+ */
+void UpperDebug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd& msg);

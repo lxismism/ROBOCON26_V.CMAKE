@@ -22,7 +22,7 @@
 
 // 最大消息结构体字节数
 #ifndef TOPICS_MAX_MESSAGE_SIZE
-#define TOPICS_MAX_MESSAGE_SIZE 32U
+#define TOPICS_MAX_MESSAGE_SIZE 64U
 #endif
 
 // 最大历史长度(订阅者缓冲队列最大长度)

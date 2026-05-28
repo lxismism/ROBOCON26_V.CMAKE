@@ -64,6 +64,18 @@ void posCtrlTask(void *argument) {
 
         lift.addTargetDelta(upbody_msg.lift_delta);
 
+        // --- 绝对姿态模式：直接覆盖所有机构目标值 ---
+        if (upbody_msg.set_absolute_pose) {
+            pick_hand.lift_target_deg_     = upbody_msg.pick_lift_target_mm     / PickHand::kLiftMmPerDeg;
+            pick_hand.yaw_target_deg_      = upbody_msg.pick_yaw_target_deg;
+            pick_hand.extend_target_deg_   = upbody_msg.pick_extend_target_mm   / PickHand::kExtendMmPerDeg;
+
+            weapon_hand.lift_target_deg_   = upbody_msg.weapon_lift_target_mm   / WeaponHand::kLiftMmPerDeg;
+            weapon_hand.extend_target_deg_ = upbody_msg.weapon_extend_target_mm / WeaponHand::kExtendMmPerDeg;
+
+            lift.target_deg_               = upbody_msg.lift_target_mm          / Lift::kMmPerDeg;
+        }
+
 
         // --- 切换型：执行GPIO/舵机动作（仅上升沿单帧为true） ---
         if (upbody_msg.pump_toggle)
