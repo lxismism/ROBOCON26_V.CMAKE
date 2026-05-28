@@ -17,6 +17,7 @@
 #include "chassis_task.h"
 #include "topics.hpp"
 #include <cmath>
+#include <cstdint>
 
 // ===== 上身控制常量（每帧步进量，1000Hz 控制频率） =====
 static constexpr float kLiftStep = 0.2f;
@@ -328,12 +329,70 @@ void MF_control_Process() {
         }
     }
 
-    state_aim_cmd.linear_x_ = -robot_position_MF[MF_x][MF_y][0];
-    state_aim_cmd.linear_y_ = robot_position_MF[MF_x][MF_y][1];
-    state_aim_cmd.omega_    = robot_position_MF[MF_x][MF_y][2];
+    /*上层机构执行*/
+    switch ((int8_t)robot_position_MF[MF_x][MF_y][3]) {
+        case 1:
+            //最低高台高度
 
-    Aim_State_xy_Process();
+            break;
+        case 2:
+            //中间高台高度
+
+            break;
+        case 3:
+            //最高高台任务
+
+            break;
+        default:
+            break;
+    }
+
+    if(control_xbox_cmd.btnRB == 1){
+        //设置伸出去为目标状态
+
+        //车辆缓慢向前移动
+        switch ((int16_t)robot_position_MF[MF_x][MF_y][2]) {
+            case 0:
+                //0度任务
+                robot_v_aim_cmd.linear_x_ = 0.0f;
+                robot_v_aim_cmd.linear_y_ = 0.05f;
+                break;
+
+            case 90:
+                //90度任务
+                robot_v_aim_cmd.linear_x_ = -0.05f;
+                robot_v_aim_cmd.linear_y_ = 0.0f;
+                break;
+
+            case -90:
+                //-90度任务
+                robot_v_aim_cmd.linear_x_ = 0.05f;
+                robot_v_aim_cmd.linear_y_ = 0.0f;
+                break;
+
+            case 180:
+                //180度任务
+                robot_v_aim_cmd.linear_x_ = 0.0f;
+                robot_v_aim_cmd.linear_y_ = -0.05f;
+                break;
+
+            default:
+                break;
+        }
+
+    }else{
+        //设置0为目标状态
+
+        //只有当按钮未按下时进行点跟踪
+        state_aim_cmd.linear_x_ = -robot_position_MF[MF_x][MF_y][0];
+        state_aim_cmd.linear_y_ = robot_position_MF[MF_x][MF_y][1];
+        Aim_State_xy_Process();
+    }
+
+    //角度跟踪
+    state_aim_cmd.omega_    = robot_position_MF[MF_x][MF_y][2];
     Aim_State_omega_Process();
+
 }
 
 
