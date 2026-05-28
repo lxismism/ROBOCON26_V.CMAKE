@@ -49,7 +49,7 @@ pub_Position_Data control_position_msg{};
 pub_Position_Data control_position{};
 //定位修正参数
 static float position_correction_x = 0.0f;
-static float position_correction_y = 0.0f;
+static float position_correction_y = -0.28f;
 static const float position_center_distance = 0.28f;
 
 /* 订阅IR_data信息 */
@@ -89,8 +89,8 @@ static pub_chassis_cmd state_aim_cmd{
 };
 
 //车体目标角度环pid
-static PID_t linear{.Kp = 1.68f,.Ki = 0.11f,.Kd = 0.0f,.MaxOut = 0.75*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-static PID_t deg{.Kp = 1.70f,.Ki = 0.32f,.Kd = 0.000001f,.MaxOut = MAX_VELOCITY_ANGULAR*0.5*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
+static PID_t linear{.Kp = 1.68f,.Ki = 0.11f,.Kd = 0.0f,.MaxOut = 0.9*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+static PID_t deg{.Kp = 1.70f,.Ki = 0.32f,.Kd = 0.000001f,.MaxOut = MAX_VELOCITY_ANGULAR*0.8*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
 
 // 摇杆常量
 static constexpr uint16_t kJoyCenter = 32767;
@@ -433,15 +433,6 @@ void Normal_control_Process(){
     {
       //xy定位模式：摇杆负责里程计误差修正，方向键控制目标位置，进入目标位置环PID
 
-      //MF半自动控制，按下B就切换到MF控制模式
-      if(control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS)
-      {
-        if(control_xbox_cmd.btnB == true){
-          headless_xy_mode = !headless_xy_mode;
-        }
-      }
-
-
       if(control_xbox_cmd.btnY == 1){//按Y复位回零点
         if(control_xbox_cmd_Last.btnY == 0){
           state_aim_cmd.linear_x_ = 0.0f;
@@ -512,7 +503,7 @@ void MF_control_Process()
   if(MF_x == 0 || MF_x == 5){//检测到在最左边或者最右边时，才允许上下控制
     if(control_xbox_cmd.btnDirUp == 1){
       if(control_xbox_cmd_Last.btnDirUp == 0){
-        if(MF_y < 5){
+        if(MF_y < 4){
           MF_y = MF_y + 1;
         }
       }
@@ -528,7 +519,7 @@ void MF_control_Process()
   if(MF_y == 0 || MF_y == 4){//检测到在最上边或者最下边时，才允许左右控制
     if(control_xbox_cmd.btnDirLeft == 1){
       if(control_xbox_cmd_Last.btnDirLeft == 0){
-        if(MF_x < 6){
+        if(MF_x < 5){
           MF_x = MF_x + 1;
         }
       }
@@ -554,8 +545,8 @@ void MF_control_Process()
 void Aim_State_xy_Process()
 {
   //里程计定位修正
-  position_correction_x = position_correction_x + 0.001f*xbox_cmd.linear_x_;
-  position_correction_y = position_correction_y + 0.001f*xbox_cmd.linear_y_;
+  position_correction_x = position_correction_x + 0.0005f*xbox_cmd.linear_x_;
+  position_correction_y = position_correction_y + 0.0005f*xbox_cmd.linear_y_;
 
   //计算目标位置与当前实际位置的误差，进入PID
   error_x            = state_aim_cmd.linear_x_ - control_position.x;
