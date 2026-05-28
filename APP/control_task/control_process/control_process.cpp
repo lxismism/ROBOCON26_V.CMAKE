@@ -300,7 +300,7 @@ void MF_control_Process() {
     if (MF_x == 0 || MF_x == 5) {
         if (control_xbox_cmd.btnDirUp == 1) {
             if (control_xbox_cmd_Last.btnDirUp == 0) {
-                if (MF_y < 5) {
+                if (MF_y < 4) {
                     MF_y = MF_y + 1;
                 }
             }
@@ -316,7 +316,7 @@ void MF_control_Process() {
     if (MF_y == 0 || MF_y == 4) {
         if (control_xbox_cmd.btnDirLeft == 1) {
             if (control_xbox_cmd_Last.btnDirLeft == 0) {
-                if (MF_x < 6) {
+                if (MF_x < 5) {
                     MF_x = MF_x + 1;
                 }
             }
@@ -428,4 +428,68 @@ void Aim_State_omega_Process() {
     }
 
     robot_v_aim_cmd.omega_ = kDegToRad * PID_Calculate(&deg, control_position.yaw, control_position.yaw + error_dir);
+}
+
+//  上层调试模式
+// =====================================================
+void UpperDebug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd& msg) {
+
+    // ---- 底盘：摇杆直驱（始终运行）----
+    robot_v_aim_cmd.linear_x_ = JoyToVelocity(control_xbox_cmd.joyLHori, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
+    robot_v_aim_cmd.linear_y_ = -JoyToVelocity(control_xbox_cmd.joyLVert, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
+    robot_v_aim_cmd.omega_    = -JoyToVelocity(control_xbox_cmd.joyRHori, kJoyDeadZoneRight, MAX_VELOCITY_ANGULAR);
+    ApplyFieldCentricRotation(robot_v_aim_cmd.linear_x_, robot_v_aim_cmd.linear_y_, control_position.yaw);
+    chassis_data_pub.Publish(robot_v_aim_cmd);
+
+    // ---- 渐变状态机（跨帧保持）----
+    static PickRamp ramp;
+
+    if (ramp.active) {
+        // 每帧走一步，发布中间目标
+        Ramp_Step(ramp, 0.005f);
+        msg = {};
+        msg.active = true;
+        Ramp_ToMsg(ramp, msg);
+        pub.Publish(msg);
+    }
+
+    // ---- 吸盘控制（上升沿，随时可用）----
+    static bool last_btnX = false;
+    static bool last_btnB = false;
+    if (control_xbox_cmd.btnX && !last_btnX) {
+        pub_upbody_cmd toggle_msg = {};
+        toggle_msg.active = true;
+        toggle_msg.pump_toggle = true;
+        pub.Publish(toggle_msg);
+    }
+    if (control_xbox_cmd.btnB && !last_btnB) {
+        pub_upbody_cmd toggle_msg = {};
+        toggle_msg.active = true;
+        toggle_msg.valve_toggle = true;
+        pub.Publish(toggle_msg);
+    }
+    last_btnX = control_xbox_cmd.btnX;
+    last_btnB = control_xbox_cmd.btnB;
+
+    // ---- 动作链 + 复位触发（渐变空闲时才响应）----
+    static bool last_btnDirUp   = false;
+    static bool last_btnDirRight = false;
+    static bool last_btnDirDown = false;
+    static bool last_btnY       = false;
+
+    if (!ramp.active) {
+        if (control_xbox_cmd.btnDirUp && !last_btnDirUp)
+            Ramp_Start(ramp, kPose_KFS_High);
+        if (control_xbox_cmd.btnDirRight && !last_btnDirRight)
+            Ramp_Start(ramp, kPose_KFS_Mid);
+        if (control_xbox_cmd.btnDirDown && !last_btnDirDown)
+            Ramp_Start(ramp, kPose_KFS_Low);
+        if (control_xbox_cmd.btnY && !last_btnY)
+            Ramp_Start(ramp, kPose_Home);
+    }
+
+    last_btnDirUp    = control_xbox_cmd.btnDirUp;
+    last_btnDirRight = control_xbox_cmd.btnDirRight;
+    last_btnDirDown  = control_xbox_cmd.btnDirDown;
+    last_btnY        = control_xbox_cmd.btnY;
 }
