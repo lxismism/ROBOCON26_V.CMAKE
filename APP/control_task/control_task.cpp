@@ -280,6 +280,9 @@ void controlTask(void *argument) {
                 last_btnRS = control_xbox_cmd.btnRS;
 
                 upbody_cmd_pub.Publish(upbody_cmd_msg);
+                //保留本次xbox数据
+                control_xbox_cmd_Last = control_xbox_cmd;
+                chassis_data_pub.Publish(robot_v_aim_cmd);
 
                 //底盘速度归零
                 robot_v_aim_cmd.linear_x_ = 0.0f;
@@ -293,14 +296,12 @@ void controlTask(void *argument) {
 
             } else {
                 Chassis_Xbox_Data_Process();
+                //保留本次xbox数据
+                control_xbox_cmd_Last = control_xbox_cmd;
+                chassis_data_pub.Publish(robot_v_aim_cmd);
             }
 
-          //保留本次xbox数据
-          control_xbox_cmd_Last = control_xbox_cmd;
         }
-        // 发布底盘控制指令
-        chassis_data_pub.Publish(robot_v_aim_cmd);
-        
 
         if(control_ir_sub.TryGet(&control_ir_msg)) {
           //红外信号处理放这
