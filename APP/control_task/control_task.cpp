@@ -70,6 +70,8 @@ bool headless_omega_mode = true;
 bool MF_control_mode = false;
 int8_t MF_x = 0;
 int8_t MF_y = 0;
+float MF_close_position_x = 0.0f;
+float MF_close_position_y = 0.0f;
 
 float error_x;
 float error_y;

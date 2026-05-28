@@ -54,6 +54,8 @@ extern bool headless_omega_mode;
 extern bool MF_control_mode;
 extern int8_t MF_x;
 extern int8_t MF_y;
+extern float MF_close_position_x;
+extern float MF_close_position_y;
 
 // 目标状态
 extern pub_chassis_cmd robot_v_aim_cmd;
