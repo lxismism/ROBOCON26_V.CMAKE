@@ -20,8 +20,8 @@ void Lift::init() {
   // ---- 左侧电机速度PID (3508) ----
   PID_Init(&left_v_pid_);
   left_v_pid_ = {
-    .Kp = 3000.0f,
-    .Ki = 500.0f,
+    .Kp = 4000.0f,
+    .Ki = 1000.0f,
     .Kd = 0.0f,
     .MaxOut = 100000.0f,
     .IntegralLimit = 5000.0f,
@@ -32,8 +32,8 @@ void Lift::init() {
   // ---- 右侧电机速度PID (3508) ----
   PID_Init(&right_v_pid_);
   right_v_pid_ = {
-    .Kp = 3000.0f,
-    .Ki = 500.0f,
+    .Kp = 4000.0f,
+    .Ki = 1000.0f,
     .Kd = 0.0f,
     .MaxOut = 100000.0f,
     .IntegralLimit = 5000.0f,
@@ -44,7 +44,7 @@ void Lift::init() {
   //平台位置环
   PID_Init(&platfrom_pos_pid_);
   platfrom_pos_pid_ = {
-    .Kp = 0.1f,
+    .Kp = 0.15f,
     .Ki = 0.0f,
     .Kd = 0.0f,
     .MaxOut = 5.0f, //位置环输出速度目标，单位为弧度/秒
