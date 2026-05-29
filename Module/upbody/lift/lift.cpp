@@ -62,7 +62,7 @@ void Lift::update() {
     return;
   }
 
-  static uint8_t prescaler_cnt = 0;
+  prescaler_cnt = 0;
 
   float cur_left_h_deg_ = left_motor_->getCurrentSumPos();     //左电机角度（度），反映左夹板高度
   float cur_right_h_deg_ = -right_motor_->getCurrentSumPos();  //-1*右电机角度（度），反映右夹板高度
@@ -100,8 +100,6 @@ void Lift::update() {
     // 目前仅占位，不改变控制逻辑
   }
 
-  static float target_v_left_;
-  static float target_v_right_;
   //平台位置环
   if(prescaler_cnt >= 10)
   {
@@ -115,11 +113,11 @@ void Lift::update() {
 
   // ---- 左侧速度环 ----
   float left_v_out = PID_Calculate(&left_v_pid_, cur_left_v_, target_v_left_);
-  left_motor_->setMotorCmd(left_v_out); //电流(0.001A)
+  left_motor_->setMotorCmd(left_v_out); //电流(mA)
 
   // ---- 右侧速度环 ----
   float right_v_out = PID_Calculate(&right_v_pid_, cur_right_v_, target_v_right_);
-  right_motor_->setMotorCmd(-right_v_out);  //电流(0.001A)
+  right_motor_->setMotorCmd(-right_v_out);  //电流(mA)
 
   prescaler_cnt++;
 }

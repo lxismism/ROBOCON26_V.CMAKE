@@ -25,8 +25,8 @@ public:
 
   // ---------- 各电机 PID ----------
   PID_t platfrom_pos_pid_;  // 平台位置环，ref为平台高度（度），out为弧度/秒
-  PID_t left_v_pid_;        // 平台左侧速度环，ref为左侧速度（弧度/秒），out为电流（0.0001A）
-  PID_t right_v_pid_;       // 平台右侧速度环，ref为右侧速度（弧度/秒），out为电流（0.0001A）
+  PID_t left_v_pid_;        // 平台左侧速度环，ref为左侧速度（弧度/秒），out为电流（mA）
+  PID_t right_v_pid_;       // 平台右侧速度环，ref为右侧速度（弧度/秒），out为电流（mA）
 
   float sync_error;
 
@@ -68,6 +68,8 @@ public:
 
 private:
   float platform_pos_out_;
+  uint8_t prescaler_cnt;
+  float target_v_left_;
+  float target_v_right_;
   float clampTarget(float target_mm, float current_mm, float min_mm, float max_mm);
-
 };
