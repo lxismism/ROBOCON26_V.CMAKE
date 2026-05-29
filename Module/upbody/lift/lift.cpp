@@ -21,11 +21,11 @@ void Lift::init() {
   PID_Init(&left_v_pid_);
   left_v_pid_ = {
     .Kp = 3000.0f,
-    .Ki = 1.0f,
+    .Ki = 500.0f,
     .Kd = 0.0f,
-    .MaxOut = 15000.0f,
+    .MaxOut = 100000.0f,
     .IntegralLimit = 5000.0f,
-    .DeadBand = 0.5f,
+    .DeadBand = 0.0f,
     .Improve = Integral_Limit | Derivative_On_Measurement | IMCREATEMENT_OF_OUT
   };
 
@@ -33,11 +33,11 @@ void Lift::init() {
   PID_Init(&right_v_pid_);
   right_v_pid_ = {
     .Kp = 3000.0f,
-    .Ki = 1.0f,
+    .Ki = 500.0f,
     .Kd = 0.0f,
-    .MaxOut = 15000.0f,
+    .MaxOut = 100000.0f,
     .IntegralLimit = 5000.0f,
-    .DeadBand = 0.5f,
+    .DeadBand = 0.0f,
     .Improve = Integral_Limit | Derivative_On_Measurement | IMCREATEMENT_OF_OUT
   };
 
@@ -61,8 +61,6 @@ void Lift::update() {
   if (left_motor_ == nullptr || right_motor_ == nullptr) {
     return;
   }
-
-  prescaler_cnt = 0;
 
   float cur_left_h_deg_ = left_motor_->getCurrentSumPos();     //左电机角度（度），反映左夹板高度
   float cur_right_h_deg_ = -right_motor_->getCurrentSumPos();  //-1*右电机角度（度），反映右夹板高度
@@ -105,8 +103,8 @@ void Lift::update() {
   {
     platform_pos_out_ = PID_Calculate(&platfrom_pos_pid_, cur_platform_h_deg_, target_deg_);
     //同步控制
-    target_v_left_ = platform_pos_out_ - sync_error * 0.05f;  //左侧速度目标 = 平台位置输出 - 同步误差补偿
-    target_v_right_ = platform_pos_out_ + sync_error * 0.05f;
+    target_v_left_ = platform_pos_out_ - sync_error * 0.1f;  //左侧速度目标 = 平台位置输出 - 同步误差补偿
+    target_v_right_ = platform_pos_out_ + sync_error * 0.1f;
 
     prescaler_cnt = 0;
   }
