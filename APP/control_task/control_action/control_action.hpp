@@ -33,7 +33,7 @@ inline constexpr float kPickYawSpeed    = 160.0f; // 云台旋转
 inline constexpr float kPickExtendSpeed = 40.0f;
 inline constexpr float kWeaponLiftSpeed   = 40.0f;   // 武器手抬升 mm/s
 inline constexpr float kWeaponExtendSpeed = 30.0f;   // 武器手伸缩 mm/s
-inline constexpr float kLiftSpeed         = 60.0f;   // 电梯抬升 mm/s
+inline constexpr float kLiftSpeed         = 30.0f;   // 电梯抬升 mm/s
 
 
 // ===== 渐变状态：记录当前中间目标和终点 =====
@@ -73,14 +73,14 @@ struct RobotPose {
     float lift_mm;
 };
 
-inline constexpr RobotPose kPose_KFS_Low  = {0.0f,   392.0f, 181.6f, 0.0f, 0.0f, 0.0f};
-inline constexpr RobotPose kPose_KFS_Mid  = {159.2f, 392.0f, 181.6f, 0.0f, 0.0f, 0.0f};
-inline constexpr RobotPose kPose_KFS_High = {392.6f, 392.0f, 181.6f, 0.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_KFS_Low  = {0.0f,   392.0f, 0.0f, 347.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_KFS_Mid  = {159.2f, 392.0f, 0.0f, 347.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_KFS_High = {352.6f, 392.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};  // 复位
 
-inline constexpr RobotPose kPose_Place1   = {390.4f, -292.0f, 0.59f, 0.0f, 0.0f, 0.0f};  // 放置远处
-inline constexpr RobotPose kPose_Place2   = {390.0f, -49.0f, 1.19f, 0.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_Place1   = {390.4f, -292.0f, 70.59f, 347.0f, 0.0f, 240.0f};  // 放置远处
+inline constexpr RobotPose kPose_Place2   = {390.0f, -99.0f, 0.0f, 347.0f, 0.0f, 240.0f};
 
 // ===== 摇杆处理 =====
 

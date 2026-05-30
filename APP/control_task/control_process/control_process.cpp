@@ -182,6 +182,15 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
     if (MF_control_mode) {
         MF_control_Process();
 
+        // RB 按住：底盘前移(队友代码) + 吸取手前伸
+        if (control_xbox_cmd.btnRB == 1 && !mf_placing && !mf_ramp.active) {
+            pub_upbody_cmd tmp = {};
+            tmp.active = true;
+            tmp.pick_extend_delta = 1.2f;
+            upbody_pub.Publish(tmp);
+        }
+
+
         // 每帧推进渐变
         if (mf_ramp.active) {
             Ramp_Step(mf_ramp, 0.005f);
@@ -193,27 +202,29 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
             mf_placing = false;
         }
 
-        // MF模式下的泵/阀/放置按键（渐变空闲时响应）
+                // 真空泵/阀（始终可用，不受渐变限制）
         static bool last_btnX_mf = false;
-        static bool last_btnA_mf = false;
-        static bool mf_place_toggle = false;
+        if (control_xbox_cmd.btnX && !last_btnX_mf) {
+            upbody_msg = {};
+            upbody_msg.active = true;
+            upbody_msg.pump_toggle  = true;
+            upbody_msg.valve_toggle = true;
+            upbody_pub.Publish(upbody_msg);
+        }
+        last_btnX_mf = control_xbox_cmd.btnX;
 
+        // 放置（渐变空闲时响应）
+        static bool last_btnA_mf  = false;
+        static bool mf_place_toggle = false;
         if (!mf_ramp.active) {
-            if (control_xbox_cmd.btnX && !last_btnX_mf) {
-                upbody_msg = {};
-                upbody_msg.active = true;
-                upbody_msg.pump_toggle = true;
-                upbody_pub.Publish(upbody_msg);
-            }
             if (control_xbox_cmd.btnA && !last_btnA_mf) {
                 mf_placing = true;
                 Ramp_Start(mf_ramp, mf_place_toggle ? kPose_Place2 : kPose_Place1);
                 mf_place_toggle = !mf_place_toggle;
             }
-
         }
-        last_btnX_mf = control_xbox_cmd.btnX;
         last_btnA_mf = control_xbox_cmd.btnA;
+
 
     } else {
         last_mf_action = -1;
@@ -385,22 +396,22 @@ void MF_control_Process() {
         switch ((int16_t)robot_position_MF[MF_x][MF_y][2]) {
             case 0:
 
-                MF_close_position_y = MF_close_position_y + 0.001f;
+                MF_close_position_y = MF_close_position_y + 0.0015f;
                 break;
 
             case 90:
 
-                MF_close_position_x = MF_close_position_x - 0.001f;
+                MF_close_position_x = MF_close_position_x - 0.0015f;
                 break;
 
             case -90:
 
-                 MF_close_position_x = MF_close_position_x + 0.001f;
+                 MF_close_position_x = MF_close_position_x + 0.0015f;
                 break;
 
             case 180:
 
-                MF_close_position_y = MF_close_position_y - 0.001f;
+                MF_close_position_y = MF_close_position_y - 0.0015f;
                 break;
 
             default:

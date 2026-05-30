@@ -43,7 +43,7 @@ void WeaponHand::update() {
   }
 
   // ===== 1. 抬升电机位置环 =====
-  float cur_lift = lift_motor_->getCurrentSumPos();
+  float cur_lift = -lift_motor_->getCurrentSumPos();
 
   if (!lift_inited_) {
     lift_target_deg_ = cur_lift;
@@ -56,7 +56,7 @@ void WeaponHand::update() {
 
 
   float lift_out = PID_Calculate(&lift_pid_, cur_lift, lift_target_deg_);
-  lift_motor_->setMotorCmd(lift_out);
+  lift_motor_->setMotorCmd(-lift_out);
 
   // ===== 2. 伸缩电机位置环 =====
   float cur_extend = -extend_motor_->getCurrentSumPos();

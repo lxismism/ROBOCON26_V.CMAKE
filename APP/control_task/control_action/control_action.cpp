@@ -109,6 +109,15 @@ void Ramp_Start(RampState& ramp, const RobotPose& pose) {
                  && ramp.cur_pick_yaw_deg <= 0.0f)
             ramp.phase = 4;
     }
+    // 放置姿态：需要先升+转到安全位，最后才伸
+    if (ramp.phase == 1 && pose.pick_extend_mm > ramp.cur_pick_extend_mm) {
+        ramp.phase = 5;
+    }
+    // 缩回后还需要限制 extend 最后伸
+    if (ramp.phase == 3 && going_to_danger) {
+        ramp.phase = 5;  // extend retract 已完成，直接进入 lift→yaw→extend 序列
+    }
+
 }
 
 bool Ramp_Step(RampState& ramp, float dt) {
@@ -133,7 +142,7 @@ bool Ramp_Step(RampState& ramp, float dt) {
     // ---- 吸取手云台 ----
     bool pick_yaw_done = true;
     if (fabsf(ramp.cur_pick_yaw_deg - ramp.end_pick_yaw_deg) > 0.1f) {
-        if (ramp.phase != 1 && ramp.phase != 3) {
+        if (ramp.phase != 1 && ramp.phase != 3 && ramp.phase != 5) {
             float step = kPickYawSpeed * dt;
             if (ramp.cur_pick_yaw_deg < ramp.end_pick_yaw_deg) {
                 ramp.cur_pick_yaw_deg += step;
@@ -149,7 +158,7 @@ bool Ramp_Step(RampState& ramp, float dt) {
     // ---- 吸取手伸缩 ----
     bool pick_extend_done = true;
     if (fabsf(ramp.cur_pick_extend_mm - ramp.end_pick_extend_mm) > 0.01f) {
-        if (ramp.phase != 4) {
+        if (ramp.phase != 4 && ramp.phase != 5 && ramp.phase != 6) {
             float step = kPickExtendSpeed * dt;
             if (ramp.cur_pick_extend_mm < ramp.end_pick_extend_mm) {
                 ramp.cur_pick_extend_mm += step;
@@ -214,6 +223,8 @@ bool Ramp_Step(RampState& ramp, float dt) {
     if (ramp.phase == 2 && pick_yaw_done)       ramp.phase = 0;
     if (ramp.phase == 3 && pick_extend_done)    ramp.phase = 0;
     if (ramp.phase == 4 && ramp.cur_pick_yaw_deg > 0.0f) ramp.phase = 0;
+    if (ramp.phase == 5 && pick_lift_done)      ramp.phase = 6;
+    if (ramp.phase == 6 && pick_yaw_done)       ramp.phase = 0;
 
     if (pick_lift_done && pick_yaw_done && pick_extend_done
         && weapon_lift_done && weapon_extend_done && lift_done)
