@@ -27,6 +27,17 @@ typedef struct {
   void *data_addr; // 数据地址，使用时把地址赋值给这个指针，数值强转为uint8_t
 } UART_TxMsg;
 
+typedef enum {
+    Left = -1,
+    right = 1,
+}FieldSide_t;
+
+typedef enum {
+    MC = 1,
+    MF = 2,
+    Arena = 3,
+}RobotMode_t;
+
 typedef struct {
   bool btnY;
   bool btnA;

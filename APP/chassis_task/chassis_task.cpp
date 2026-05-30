@@ -21,6 +21,9 @@
 
 #include <array>
 
+extern const FieldSide_t field_side;
+extern const float robot_center_to_gimbal_x;
+
 // 任务句柄
 osThreadId_t ChassisTaskHandle;
 
@@ -78,48 +81,57 @@ void chassisTask(void *argument) {
 }
 
 const float robot_position_MF[6][5][4] = {//用于在梅林半自动控制车辆移动
-  //[MF_x][MF_y] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
+  //[MF_x][MF_y] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw, 云台高度}
 {
-        {2.1f, 0.1f, 0.0f  , 2.0f},
-        {2.1f, 1.7f, 90.0f , 2.0f},
-        {2.1f, 2.9f, 90.0f , 1.0f},
-        {2.1f, 4.1f, 90.0f , 2.0f},
-        {2.1f, 4.9f, 180.0f, 2.0f}
+        {2.1f*field_side, 0.1f                                      , 0.0f  , 2.0f},
+        {2.1f*field_side, 1.3f - field_side*robot_center_to_gimbal_x, -90.0f*field_side , 2.0f},
+        {2.1f*field_side, 2.5f - field_side*robot_center_to_gimbal_x, -90.0f*field_side , 1.0f},
+        {2.1f*field_side, 3.7f - field_side*robot_center_to_gimbal_x, -90.0f*field_side , 2.0f},
+        {2.1f*field_side, 4.9f                                      , 180.0f, 2.0f}
 
     },
     {
-        {2.9f, 0.1f, 0.0f, 2.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {3.7f, 4.9f, 180.0f, 2.0f}
+        {3.3f*field_side + robot_center_to_gimbal_x, 0.1f, 0.0f, 2.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {3.3f*field_side - robot_center_to_gimbal_x, 4.9f, 180.0f, 2.0f}
     },
     {
-        {4.1f, 0.1f, 0.0f, 1.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {4.9f, 4.9f, 180.0f, 3.0f}
+        {4.5f*field_side + robot_center_to_gimbal_x, 0.1f, 0.0f, 1.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {4.5f*field_side - robot_center_to_gimbal_x, 4.9f, 180.0f, 3.0f}
     },
     {
-        {5.3f, 0.1f, 0.0f, 2.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {6.1f, 4.9f, 180.0f, 2.0f}
+        {5.7f*field_side + robot_center_to_gimbal_x, 0.1f, 0.0f, 2.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {5.7f*field_side - robot_center_to_gimbal_x, 4.9f, 180.0f, 2.0f}
     },
     {
-        {6.5f, 0.1f, 0.0f, 1.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f, 0.0f},
-        {7.3f, 4.9f, 180.0f, 1.0f}
+        {6.9f*field_side + robot_center_to_gimbal_x, 0.1f, 0.0f, 1.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+        {6.9f*field_side - robot_center_to_gimbal_x, 4.9f, 180.0f, 1.0f}
     },
     {
-        {8.1f, 0.1f, 0.0f  , 2.0f},
-        {8.1f, 0.9f, -90.0f, 1.0f},
-        {8.1f, 2.1f, -90.0f, 2.0f},
-        {8.1f, 3.3f, -90.0f, 1.0f},
-        {8.1f, 4.9f, 180.0f, 2.0f}
+        {8.1f*field_side, 0.1f                                      , 0.0f  , 2.0f},
+        {8.1f*field_side, 1.3f + field_side*robot_center_to_gimbal_x, 90.0f*field_side, 1.0f},
+        {8.1f*field_side, 2.5f + field_side*robot_center_to_gimbal_x, 90.0f*field_side, 2.0f},
+        {8.1f*field_side, 3.7f + field_side*robot_center_to_gimbal_x, 90.0f*field_side, 1.0f},
+        {8.1f*field_side, 4.9f                                      , 180.0f, 2.0f}
     }
+};
+
+const float robot_position_Arena[3][3] = {//用于在九宫格自动控制车辆移动
+  //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
+    {-0.227f*field_side - field_side*robot_center_to_gimbal_x, 4.399f, -90.0f*( field_side + 1)/2},
+
+    {-0.727f*field_side + robot_center_to_gimbal_x           , 4.399f, 0.0f},
+
+    {-1.227f*field_side + field_side*robot_center_to_gimbal_x, 4.399f, -90.0f*(-field_side + 1)/2}
 };

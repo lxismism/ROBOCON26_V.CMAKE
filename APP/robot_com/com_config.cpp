@@ -588,7 +588,7 @@ void DebugSerialTask(void *argument) {
   static char debug_buffer[256];
 
   extern OmniChassis Omnichassis_solver;
-  // extern pub_chassis_cmd State_Aim_cmd;
+  extern pub_chassis_cmd state_Aim_cmd;
   extern pub_Position_Data control_position_msg;
   extern pub_Position_Data control_position;
   extern Lift lift;

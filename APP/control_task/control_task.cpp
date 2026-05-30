@@ -52,7 +52,7 @@ pub_Position_Data control_position{};
 // 定位修正参数
 float position_correction_x = 0.0f;
 float position_correction_y = -0.28f;
-static const float position_center_distance = 0.28f;
+const float position_center_distance = 0.28f;
 
 TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
 pub_ir_data control_ir_msg{};
@@ -61,17 +61,26 @@ TypedTopicSubscriber<QR_code_data_t> qr_code_data_sub("qr_code_data", 8);
 QR_code_data_t control_qr_code_data{};
 
 // ===== 控制状态变量 =====
+RobotMode_t robot_mode = MF; // 当前机器人模式，默认为MF
+
 float xbox_angle_deg;
 float v_aim;
 
 bool headless_xy_mode = true;
 bool headless_omega_mode = true;
 
-bool MF_control_mode = false;
+bool Normal_control_mode = true;
+
 int8_t MF_x = 0;
 int8_t MF_y = 0;
 float MF_close_position_x = 0.0f;
 float MF_close_position_y = 0.0f;
+
+int8_t Arena_x = 0;
+float Arena_close_position_y = 0.0f;
+
+const FieldSide_t field_side = Left;
+const float robot_center_to_gimbal_x = 0.4f;
 
 float error_x;
 float error_y;
@@ -153,7 +162,12 @@ void controlTask(void *argument) {
             }
             last_select = control_xbox_cmd.btnSelect;
 
-
+            if(control_xbox_cmd.btnShare == 1 && control_xbox_cmd_Last.btnShare) {
+                robot_mode = MF;
+            }else if(control_xbox_cmd.btnStart == 1 && control_xbox_cmd_Last.btnStart){
+                robot_mode = Arena;
+            }
+    
             switch (control_mode) {
                 case 0:
                     Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
@@ -162,6 +176,7 @@ void controlTask(void *argument) {
                 case 1:
                     Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);  // 调试模式
                     break;
+                    
                 case 2:
                     UpperDebug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg); // 上层调试模式
                     break;
