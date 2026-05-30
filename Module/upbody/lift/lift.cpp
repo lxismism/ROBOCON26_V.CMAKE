@@ -20,31 +20,31 @@ void Lift::init() {
   // ---- 左侧电机速度PID (3508) ----
   PID_Init(&left_v_pid_);
   left_v_pid_ = {
-    .Kp = 3000.0f,
-    .Ki = 1.0f,
+    .Kp = 4000.0f,
+    .Ki = 1000.0f,
     .Kd = 0.0f,
-    .MaxOut = 15000.0f,
+    .MaxOut = 100000.0f,
     .IntegralLimit = 5000.0f,
-    .DeadBand = 0.5f,
+    .DeadBand = 0.0f,
     .Improve = Integral_Limit | Derivative_On_Measurement | IMCREATEMENT_OF_OUT
   };
 
   // ---- 右侧电机速度PID (3508) ----
   PID_Init(&right_v_pid_);
   right_v_pid_ = {
-    .Kp = 3000.0f,
-    .Ki = 1.0f,
+    .Kp = 4000.0f,
+    .Ki = 1000.0f,
     .Kd = 0.0f,
-    .MaxOut = 15000.0f,
+    .MaxOut = 100000.0f,
     .IntegralLimit = 5000.0f,
-    .DeadBand = 0.5f,
+    .DeadBand = 0.0f,
     .Improve = Integral_Limit | Derivative_On_Measurement | IMCREATEMENT_OF_OUT
   };
 
   //平台位置环
   PID_Init(&platfrom_pos_pid_);
   platfrom_pos_pid_ = {
-    .Kp = 0.1f,
+    .Kp = 0.15f,
     .Ki = 0.0f,
     .Kd = 0.0f,
     .MaxOut = 5.0f, //位置环输出速度目标，单位为弧度/秒
@@ -61,8 +61,6 @@ void Lift::update() {
   if (left_motor_ == nullptr || right_motor_ == nullptr) {
     return;
   }
-
-  static uint8_t prescaler_cnt = 0;
 
   float cur_left_h_deg_ = left_motor_->getCurrentSumPos();     //左电机角度（度），反映左夹板高度
   float cur_right_h_deg_ = -right_motor_->getCurrentSumPos();  //-1*右电机角度（度），反映右夹板高度
@@ -100,26 +98,24 @@ void Lift::update() {
     // 目前仅占位，不改变控制逻辑
   }
 
-  static float target_v_left_;
-  static float target_v_right_;
   //平台位置环
   if(prescaler_cnt >= 10)
   {
     platform_pos_out_ = PID_Calculate(&platfrom_pos_pid_, cur_platform_h_deg_, target_deg_);
     //同步控制
-    target_v_left_ = platform_pos_out_ - sync_error * 0.05f;  //左侧速度目标 = 平台位置输出 - 同步误差补偿
-    target_v_right_ = platform_pos_out_ + sync_error * 0.05f;
+    target_v_left_ = platform_pos_out_ - sync_error * 0.1f;  //左侧速度目标 = 平台位置输出 - 同步误差补偿
+    target_v_right_ = platform_pos_out_ + sync_error * 0.1f;
 
     prescaler_cnt = 0;
   }
 
   // ---- 左侧速度环 ----
   float left_v_out = PID_Calculate(&left_v_pid_, cur_left_v_, target_v_left_);
-  left_motor_->setMotorCmd(left_v_out); //电流(0.001A)
+  left_motor_->setMotorCmd(left_v_out); //电流(mA)
 
   // ---- 右侧速度环 ----
   float right_v_out = PID_Calculate(&right_v_pid_, cur_right_v_, target_v_right_);
-  right_motor_->setMotorCmd(-right_v_out);  //电流(0.001A)
+  right_motor_->setMotorCmd(-right_v_out);  //电流(mA)
 
   prescaler_cnt++;
 }
