@@ -40,10 +40,6 @@ public:
   float travel_max_mm_{257.3f};        // 最大抬升行程（1425° × 65/360）
   // min = ground_clearance, max = ground_clearance + travel_max
 
-
-  // ---------- 角度限位 ----------
-  float min_deg_{0.0f};
-  float max_deg_{1425.0f};
   // ---------- 同步误差阈值（单位：度，超出则报警） ----------
   float sync_error_threshold_{5.0f};
   // ---------- 首次初始化标志 ----------

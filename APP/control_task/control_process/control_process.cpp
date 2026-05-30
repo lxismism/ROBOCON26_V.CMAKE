@@ -75,8 +75,10 @@ extern float state_xy_angle_deg;
 extern float xy_pid_output;
 
 // ===== 梅林模式渐变状态 =====
-static PickRamp mf_ramp;
+static RampState mf_ramp;
 static int8_t last_mf_action = -1;
+
+static bool mf_placing = false;   // 放置进行中，禁止梯度打断
 
 
 // =====================================================
@@ -180,6 +182,15 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
     if (MF_control_mode) {
         MF_control_Process();
 
+        // RB 按住：底盘前移(队友代码) + 吸取手前伸
+        if (control_xbox_cmd.btnRB == 1 && !mf_placing && !mf_ramp.active) {
+            pub_upbody_cmd tmp = {};
+            tmp.active = true;
+            tmp.pick_extend_delta = 1.2f;
+            upbody_pub.Publish(tmp);
+        }
+
+
         // 每帧推进渐变
         if (mf_ramp.active) {
             Ramp_Step(mf_ramp, 0.005f);
@@ -187,27 +198,33 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
             upbody_msg.active = true;
             Ramp_ToMsg(mf_ramp, upbody_msg);
             upbody_pub.Publish(upbody_msg);
+        } else {
+            mf_placing = false;
         }
 
-        // MF模式下的泵/阀/放置按键（渐变空闲时响应）
+                // 真空泵/阀（始终可用，不受渐变限制）
         static bool last_btnX_mf = false;
-        static bool last_btnA_mf = false;
-        static bool mf_place_toggle = false;
+        if (control_xbox_cmd.btnX && !last_btnX_mf) {
+            upbody_msg = {};
+            upbody_msg.active = true;
+            upbody_msg.pump_toggle  = true;
+            upbody_msg.valve_toggle = true;
+            upbody_pub.Publish(upbody_msg);
+        }
+        last_btnX_mf = control_xbox_cmd.btnX;
 
+        // 放置（渐变空闲时响应）
+        static bool last_btnA_mf  = false;
+        static bool mf_place_toggle = false;
         if (!mf_ramp.active) {
-            if (control_xbox_cmd.btnX && !last_btnX_mf) {
-                upbody_msg = {};
-                upbody_msg.active = true;
-                upbody_msg.pump_toggle = true;
-                upbody_pub.Publish(upbody_msg);
-            }
             if (control_xbox_cmd.btnA && !last_btnA_mf) {
+                mf_placing = true;
                 Ramp_Start(mf_ramp, mf_place_toggle ? kPose_Place2 : kPose_Place1);
                 mf_place_toggle = !mf_place_toggle;
             }
         }
-        last_btnX_mf = control_xbox_cmd.btnX;
         last_btnA_mf = control_xbox_cmd.btnA;
+
 
     } else {
         last_mf_action = -1;
@@ -348,21 +365,21 @@ void MF_control_Process() {
     switch ((int8_t)robot_position_MF[MF_x][MF_y][3]) {
         case 1:
             //最低高台高度
-            if (last_mf_action != 1) {
+            if (last_mf_action != 1 && !mf_placing) {
                 Ramp_Start(mf_ramp, kPose_KFS_Low);
                 last_mf_action = 1;
             }
             break;
         case 2:
             //中间高台高度
-            if (last_mf_action != 2) {
+            if (last_mf_action != 2 && !mf_placing) {
                 Ramp_Start(mf_ramp, kPose_KFS_Mid);
                 last_mf_action = 2;
             }
             break;
         case 3:
             //最高高台任务
-            if (last_mf_action != 3) {
+            if (last_mf_action != 3 && !mf_placing) {
                 Ramp_Start(mf_ramp, kPose_KFS_High);
                 last_mf_action = 3;
             }
@@ -379,22 +396,22 @@ void MF_control_Process() {
         switch ((int16_t)robot_position_MF[MF_x][MF_y][2]) {
             case 0:
 
-                MF_close_position_y = MF_close_position_y + 0.001f;
+                MF_close_position_y = MF_close_position_y + 0.0015f;
                 break;
 
             case 90:
 
-                MF_close_position_x = MF_close_position_x - 0.001f;
+                MF_close_position_x = MF_close_position_x - 0.0015f;
                 break;
 
             case -90:
 
-                 MF_close_position_x = MF_close_position_x + 0.001f;
+                 MF_close_position_x = MF_close_position_x + 0.0015f;
                 break;
 
             case 180:
 
-                MF_close_position_y = MF_close_position_y - 0.001f;
+                MF_close_position_y = MF_close_position_y - 0.0015f;
                 break;
 
             default:
@@ -472,7 +489,7 @@ void UpperDebug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbod
     last_btnB = control_xbox_cmd.btnB;
 
     // ---- 渐变状态机 ----
-    static PickRamp ramp;
+    static RampState ramp;
 
     if (ramp.active) {
         // 每帧走一步，把中间目标 + 泵/阀写进同一条消息
