@@ -47,15 +47,25 @@ extern pub_Position_Data control_position;
 // 定位修正
 extern float position_correction_x;
 extern float position_correction_y;
+extern const float position_center_distance = 0.28f;
 
 // 控制模式状态
+extern RobotMode_t robot_mode;
+
 extern bool headless_xy_mode;
 extern bool headless_omega_mode;
-extern bool MF_control_mode;
+// MF 模式相关
+extern bool Normal_control_mode;
 extern int8_t MF_x;
 extern int8_t MF_y;
 extern float MF_close_position_x;
 extern float MF_close_position_y;
+// Arena模式相关
+extern int8_t Arena_x;
+extern float Arena_close_position_y;
+
+extern const FieldSide_t field_side;
+extern const float robot_center_to_gimbal_x;
 
 // 目标状态
 extern pub_chassis_cmd robot_v_aim_cmd;
@@ -172,63 +182,42 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
     xbox_cmd.linear_y_ = -JoyToVelocity(control_xbox_cmd.joyLVert, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
     xbox_cmd.omega_    = -JoyToVelocity(control_xbox_cmd.joyRHori, kJoyDeadZoneRight, MAX_VELOCITY_ANGULAR);
 
-    // btnB 上升沿切换梅林模式
+    // btnB 上升沿切换普通模式
     if (control_xbox_cmd.btnB != control_xbox_cmd_Last.btnB) {
         if (control_xbox_cmd.btnB == true) {
-            MF_control_mode = !MF_control_mode;
+            Normal_control_mode = !Normal_control_mode;
         }
     }
 
-    if (MF_control_mode) {
-        MF_control_Process();
-
-        // RB 按住：底盘前移(队友代码) + 吸取手前伸
-        if (control_xbox_cmd.btnRB == 1 && !mf_placing && !mf_ramp.active) {
-            pub_upbody_cmd tmp = {};
-            tmp.active = true;
-            tmp.pick_extend_delta = 1.2f;
-            upbody_pub.Publish(tmp);
-        }
-
-
-        // 每帧推进渐变
-        if (mf_ramp.active) {
-            Ramp_Step(mf_ramp, 0.005f);
-            upbody_msg = {};
-            upbody_msg.active = true;
-            Ramp_ToMsg(mf_ramp, upbody_msg);
-            upbody_pub.Publish(upbody_msg);
-        } else {
-            mf_placing = false;
-        }
-
-                // 真空泵/阀（始终可用，不受渐变限制）
-        static bool last_btnX_mf = false;
-        if (control_xbox_cmd.btnX && !last_btnX_mf) {
-            upbody_msg = {};
-            upbody_msg.active = true;
-            upbody_msg.pump_toggle  = true;
-            upbody_msg.valve_toggle = true;
-            upbody_pub.Publish(upbody_msg);
-        }
-        last_btnX_mf = control_xbox_cmd.btnX;
-
-        // 放置（渐变空闲时响应）
-        static bool last_btnA_mf  = false;
-        static bool mf_place_toggle = false;
-        if (!mf_ramp.active) {
-            if (control_xbox_cmd.btnA && !last_btnA_mf) {
-                mf_placing = true;
-                Ramp_Start(mf_ramp, mf_place_toggle ? kPose_Place2 : kPose_Place1);
-                mf_place_toggle = !mf_place_toggle;
-            }
-        }
-        last_btnA_mf = control_xbox_cmd.btnA;
-
-
-    } else {
+    if(Normal_control_mode){
         last_mf_action = -1;
         Normal_control_Process();
+    }else {
+        switch (robot_mode) {
+            case MF:{
+                MF_control_Process(upbody_pub, upbody_msg);
+                break;
+            }
+
+            case Arena:{
+                Arena_control_Process();
+                break;
+            }
+            
+            default:
+                break;
+        }
+    }
+    
+    //按Y清零定位
+    if (control_xbox_cmd.btnY == 1 && control_xbox_cmd_Last.btnY == 0) {
+        
+        position_correction_x = -control_position_msg.x + position_center_distance*sin(control_position.yaw*kDegToRad);
+        position_correction_y =  control_position_msg.y - position_center_distance*cos(control_position.yaw*kDegToRad);
+
+        state_aim_cmd.linear_x_ = 0.0f;
+        state_aim_cmd.linear_y_ = 0.0f;
+
     }
 }
 
@@ -267,34 +256,28 @@ void Normal_control_Process() {
 
        
 
-        if (control_xbox_cmd.btnY == 1) {
-            if (control_xbox_cmd_Last.btnY == 0) {
-                state_aim_cmd.linear_x_ = 0.0f;
-                state_aim_cmd.linear_y_ = 0.0f;
+        
+        // 上下控制
+        if (control_xbox_cmd.btnDirUp == 1) {
+            if (control_xbox_cmd_Last.btnDirUp == 0) {
+                state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ + 1.0f;
             }
-        } else {
-            // 上下控制
-            if (control_xbox_cmd.btnDirUp == 1) {
-                if (control_xbox_cmd_Last.btnDirUp == 0) {
-                    state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ + 1.0f;
-                }
-            } else if (control_xbox_cmd.btnDirDown == 1) {
-                if (control_xbox_cmd_Last.btnDirDown == 0) {
-                    state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ - 1.0f;
-                }
-            }
-
-            // 左右控制
-            if (control_xbox_cmd.btnDirLeft == 1) {
-                if (control_xbox_cmd_Last.btnDirLeft == 0) {
-                    state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ - 1.0f;
-                }
-            } else if (control_xbox_cmd.btnDirRight == 1) {
-                if (control_xbox_cmd_Last.btnDirRight == 0) {
-                    state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ + 1.0f;
-                }
+        } else if (control_xbox_cmd.btnDirDown == 1) {
+            if (control_xbox_cmd_Last.btnDirDown == 0) {
+                state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ - 1.0f;
             }
         }
+        // 左右控制
+        if (control_xbox_cmd.btnDirLeft == 1) {
+            if (control_xbox_cmd_Last.btnDirLeft == 0) {
+                state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ - 1.0f;
+            }
+        } else if (control_xbox_cmd.btnDirRight == 1) {
+            if (control_xbox_cmd_Last.btnDirRight == 0) {
+                state_aim_cmd.linear_x_ = state_aim_cmd.linear_x_ + 1.0f;
+            }
+        }
+        
 
         Aim_State_xy_Process();
     }
@@ -327,7 +310,7 @@ void Normal_control_Process() {
 // =====================================================
 //  梅林半自动网格定位
 // =====================================================
-void MF_control_Process() {
+void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
     // 在网格边缘时，方向键移动网格坐标
     if (MF_x == 0 || MF_x == 5) {
         if (control_xbox_cmd.btnDirUp == 1) {
@@ -396,22 +379,22 @@ void MF_control_Process() {
         switch ((int16_t)robot_position_MF[MF_x][MF_y][2]) {
             case 0:
 
-                MF_close_position_y = MF_close_position_y + 0.0015f;
+                MF_close_position_y = MF_close_position_y + 0.002f;
                 break;
 
             case 90:
 
-                MF_close_position_x = MF_close_position_x - 0.0015f;
+                MF_close_position_x = MF_close_position_x - 0.002f;
                 break;
 
             case -90:
 
-                 MF_close_position_x = MF_close_position_x + 0.0015f;
+                 MF_close_position_x = MF_close_position_x + 0.002f;
                 break;
 
             case 180:
 
-                MF_close_position_y = MF_close_position_y - 0.0015f;
+                MF_close_position_y = MF_close_position_y - 0.002f;
                 break;
 
             default:
@@ -421,14 +404,87 @@ void MF_control_Process() {
     }else{
         MF_close_position_x = 0.0f;
         MF_close_position_y = 0.0f;
-
     }
 
-    state_aim_cmd.linear_x_ = -robot_position_MF[MF_x][MF_y][0] + MF_close_position_x;
+    state_aim_cmd.linear_x_ = robot_position_MF[MF_x][MF_y][0] + MF_close_position_x;
     state_aim_cmd.linear_y_ = robot_position_MF[MF_x][MF_y][1] + MF_close_position_y;
     Aim_State_xy_Process();
 
     state_aim_cmd.omega_    = robot_position_MF[MF_x][MF_y][2];
+    Aim_State_omega_Process();
+
+    
+    // RB 按住：底盘前移(队友代码) + 吸取手前伸
+    if (control_xbox_cmd.btnRB == 1 && !mf_placing && !mf_ramp.active) {
+        pub_upbody_cmd tmp = {};
+        tmp.active = true;
+        tmp.pick_extend_delta = 1.2f;
+        upbody_pub.Publish(tmp);
+    }
+
+
+    // 每帧推进渐变
+    if (mf_ramp.active) {
+        Ramp_Step(mf_ramp, 0.005f);
+        upbody_msg = {};
+        upbody_msg.active = true;
+        Ramp_ToMsg(mf_ramp, upbody_msg);
+        upbody_pub.Publish(upbody_msg);
+    } else {
+        mf_placing = false;
+    }
+
+    // 真空泵/阀（始终可用，不受渐变限制）
+    static bool last_btnX_mf = false;
+    if (control_xbox_cmd.btnX && !last_btnX_mf) {
+        upbody_msg = {};
+        upbody_msg.active = true;
+        upbody_msg.pump_toggle  = true;
+        upbody_msg.valve_toggle = true;
+        upbody_pub.Publish(upbody_msg);
+    }
+    last_btnX_mf = control_xbox_cmd.btnX;
+
+    // 放置（渐变空闲时响应）
+    static bool last_btnA_mf  = false;
+    static bool mf_place_toggle = false;
+    if (!mf_ramp.active) {
+        if (control_xbox_cmd.btnA && !last_btnA_mf) {
+            mf_placing = true;
+            Ramp_Start(mf_ramp, mf_place_toggle ? kPose_Place2 : kPose_Place1);
+            mf_place_toggle = !mf_place_toggle;
+        }
+    }
+    last_btnA_mf = control_xbox_cmd.btnA;
+
+}
+
+
+// =====================================================
+//  九宫格半自动网格定位
+// =====================================================
+void Arena_control_Process() {
+    if (control_xbox_cmd.btnDirRight == 1 && control_xbox_cmd_Last.btnDirRight == 0) {
+        if (Arena_x < 2) {
+            Arena_x = Arena_x + 1;
+        }    
+    } else if (control_xbox_cmd.btnDirLeft == 1 && control_xbox_cmd_Last.btnDirLeft == 0) {
+        if (Arena_x > 0) {
+            Arena_x = Arena_x - 1;
+        }
+    }
+
+    if(control_xbox_cmd.btnRB == 1){
+        Arena_close_position_y = Arena_close_position_y + 0.0015f;
+    }else{
+        Arena_close_position_y = 0.0f;
+    }
+
+    state_aim_cmd.linear_x_ = robot_position_Arena[Arena_x][0];
+    state_aim_cmd.linear_y_ = robot_position_Arena[Arena_x][1] + Arena_close_position_y;
+    Aim_State_xy_Process();
+
+    state_aim_cmd.omega_    = robot_position_Arena[Arena_x][2];
     Aim_State_omega_Process();
 
 }

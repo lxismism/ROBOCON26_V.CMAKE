@@ -69,7 +69,7 @@ struct RobotPose {
     float pick_yaw_deg;
     float pick_extend_mm;
     float weapon_lift_mm;
-    float weapon_extend_mm;
+    float weapon_extend_mm; 
     float lift_mm;
 };
 
