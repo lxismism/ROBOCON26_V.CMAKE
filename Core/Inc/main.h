@@ -59,10 +59,10 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define PUMP_PICK_Pin GPIO_PIN_3
 #define PUMP_PICK_GPIO_Port GPIOG
-#define GPIO_RESERVED3_Pin GPIO_PIN_4
-#define GPIO_RESERVED3_GPIO_Port GPIOG
-#define VALVE_CLAW_Pin GPIO_PIN_5
+#define VALVE_CLAW_Pin GPIO_PIN_4
 #define VALVE_CLAW_GPIO_Port GPIOG
+#define GPIO_RESERVED3_Pin GPIO_PIN_5
+#define GPIO_RESERVED3_GPIO_Port GPIOG
 #define GPIO_RESERVED1_Pin GPIO_PIN_6
 #define GPIO_RESERVED1_GPIO_Port GPIOG
 #define GPIO_RESERVED2_Pin GPIO_PIN_7

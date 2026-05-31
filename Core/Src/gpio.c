@@ -58,7 +58,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOF, GPIO_PIN_9, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOG, PUMP_PICK_Pin|GPIO_RESERVED3_Pin|VALVE_CLAW_Pin|GPIO_RESERVED1_Pin
+  HAL_GPIO_WritePin(GPIOG, PUMP_PICK_Pin|VALVE_CLAW_Pin|GPIO_RESERVED3_Pin|GPIO_RESERVED1_Pin
                           |GPIO_RESERVED2_Pin|VALVE_PICK_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PF9 */
@@ -68,9 +68,9 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PUMP_PICK_Pin GPIO_RESERVED3_Pin VALVE_CLAW_Pin GPIO_RESERVED1_Pin
+  /*Configure GPIO pins : PUMP_PICK_Pin VALVE_CLAW_Pin GPIO_RESERVED3_Pin GPIO_RESERVED1_Pin
                            GPIO_RESERVED2_Pin VALVE_PICK_Pin */
-  GPIO_InitStruct.Pin = PUMP_PICK_Pin|GPIO_RESERVED3_Pin|VALVE_CLAW_Pin|GPIO_RESERVED1_Pin
+  GPIO_InitStruct.Pin = PUMP_PICK_Pin|VALVE_CLAW_Pin|GPIO_RESERVED3_Pin|GPIO_RESERVED1_Pin
                           |GPIO_RESERVED2_Pin|VALVE_PICK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;

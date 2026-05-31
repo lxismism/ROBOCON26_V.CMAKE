@@ -154,13 +154,16 @@ void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd
     static bool last_btnLS = false;
     static bool last_btnRS = false;
 
-    if (control_xbox_cmd.btnX && !last_btnX)
-        msg.pump_toggle = true;
-    last_btnX = control_xbox_cmd.btnX;
-
-    if (control_xbox_cmd.btnB && !last_btnB)
+    if (control_xbox_cmd.btnX && !last_btnX) {
+        msg.pump_toggle  = true;
         msg.valve_toggle = true;
+    }
+    last_btnX = control_xbox_cmd.btnX;
+    
+    if (control_xbox_cmd.btnB && !last_btnB)
+        msg.claw_toggle = true;
     last_btnB = control_xbox_cmd.btnB;
+
 
     if (control_xbox_cmd.btnLS && !last_btnLS)
         msg.claw_toggle = true;
