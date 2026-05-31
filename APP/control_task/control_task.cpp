@@ -61,7 +61,7 @@ TypedTopicSubscriber<QR_code_data_t> qr_code_data_sub("qr_code_data", 8);
 QR_code_data_t control_qr_code_data{};
 
 // ===== 控制状态变量 =====
-RobotMode_t robot_mode = MF; // 当前机器人模式，默认为MF
+RobotMode_t robot_mode = MC; // 当前机器人模式，默认为MF
 
 float xbox_angle_deg;
 float v_aim;
@@ -70,6 +70,9 @@ bool headless_xy_mode = true;
 bool headless_omega_mode = true;
 
 bool Normal_control_mode = true;
+
+int8_t MC_y = 0;
+float MC_close_position_x = 0.0f;
 
 int8_t MF_x = 0;
 int8_t MF_y = 0;
@@ -100,8 +103,8 @@ pub_chassis_cmd state_aim_cmd{
 };
 
 // 车体目标角度环 PID
-PID_t linear{.Kp = 1.68f,.Ki = 0.11f,.Kd = 0.0f,.MaxOut = 0.85*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-PID_t deg{.Kp = 1.70f,.Ki = 0.32f,.Kd = 0.000001f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
+PID_t linear{.Kp = 4.68f,.Ki = 0.01f,.Kd = 0.55f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+PID_t deg{.Kp = 2.20f,.Ki = 0.25f,.Kd = 0.1f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
 
 
 void controlInit() {
@@ -156,31 +159,33 @@ void controlTask(void *argument) {
         /* 从xbox数据订阅者中获取数据 */
         if (control_xbox_sub.TryGet(&control_xbox_cmd)) {
 
-            // ===== btnSelect 模式切换（目前共3个模式） =====
-            if (control_xbox_cmd.btnSelect && !last_select) {
-                control_mode = (control_mode + 1) % 3;  // 0→1→2→0→...
-            }
-            last_select = control_xbox_cmd.btnSelect;
-
-            if(control_xbox_cmd.btnShare == 1 && control_xbox_cmd_Last.btnShare) {
+            // // ===== btnSelect 模式切换（目前共3个模式） =====
+            // if (control_xbox_cmd.btnSelect && !last_select) {
+            //     control_mode = (control_mode + 1) % 3;  // 0→1→2→0→...
+            // }
+            // last_select = control_xbox_cmd.btnSelect;
+            if(control_xbox_cmd.btnSelect == 1 && control_xbox_cmd_Last.btnSelect == 0) {
+                robot_mode = MC;
+            }else if(control_xbox_cmd.btnShare == 1 && control_xbox_cmd_Last.btnShare == 0) {
                 robot_mode = MF;
-            }else if(control_xbox_cmd.btnStart == 1 && control_xbox_cmd_Last.btnStart){
+            }else if(control_xbox_cmd.btnStart == 1 && control_xbox_cmd_Last.btnStart == 0){
                 robot_mode = Arena;
             }
+            Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
     
-            switch (control_mode) {
-                case 0:
-                    Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
-                    break;
+            // switch (control_mode) {
+            //     case 0:
+            //         Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
+            //         break;
 
-                case 1:
-                    Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);  // 调试模式
-                    break;
+            //     case 1:
+            //         Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);  // 调试模式
+            //         break;
                     
-                case 2:
-                    UpperDebug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg); // 上层调试模式
-                    break;
-            }
+            //     case 2:
+            //         UpperDebug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg); // 上层调试模式
+            //         break;
+            // }
 
 
             // 保留本次xbox数据
