@@ -90,6 +90,11 @@ static int8_t last_mf_action = -1;
 
 static bool mf_placing = false;   // 放置进行中，禁止梯度打断
 
+// ===== 九宫格模式渐变状态 =====
+static RampState arena_ramp;
+static int8_t last_arena_action = -1;
+
+
 
 // =====================================================
 //  调试模式（原用户模式）
@@ -203,7 +208,7 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
             }
 
             case Arena:{
-                Arena_control_Process();
+                Arena_control_Process(upbody_pub, upbody_msg);
                 break;
             }
             
@@ -466,7 +471,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 // =====================================================
 //  九宫格半自动网格定位
 // =====================================================
-void Arena_control_Process() {
+void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
     if (control_xbox_cmd.btnDirRight == 1 && control_xbox_cmd_Last.btnDirRight == 0) {
         if (Arena_x < 2) {
             Arena_x = Arena_x + 1;
@@ -489,6 +494,44 @@ void Arena_control_Process() {
 
     state_aim_cmd.omega_    = robot_position_Arena[Arena_x][2];
     Aim_State_omega_Process();
+
+    /*上层机构执行*/
+    switch ((int16_t)state_aim_cmd.omega_) {
+        case 0:
+            if (last_arena_action != 0) {
+                Ramp_Start(arena_ramp, kPose_Grid9_Bot12);
+                last_arena_action = 0;
+            }
+            break;
+        case -90:
+            if (last_arena_action != -90) {
+                Ramp_Start(arena_ramp, kPose_Grid9_Bot3);
+                last_arena_action = -90;
+            }
+            break;
+        default:
+            last_arena_action = -1;
+            break;
+    }
+
+    // 每帧推进渐变
+    if (arena_ramp.active) {
+        Ramp_Step(arena_ramp, 0.005f);
+        upbody_msg = {};
+        upbody_msg.active = true;
+        Ramp_ToMsg(arena_ramp, upbody_msg);
+        upbody_pub.Publish(upbody_msg);
+    }
+        // 真空泵/阀（始终可用）
+    static bool last_btnX_arena = false;
+    if (control_xbox_cmd.btnX && !last_btnX_arena) {
+        pub_upbody_cmd toggle_msg = {};
+        toggle_msg.active = true;
+        toggle_msg.pump_toggle  = true;
+        toggle_msg.valve_toggle = true;
+        upbody_pub.Publish(toggle_msg);
+    }
+    last_btnX_arena = control_xbox_cmd.btnX;
 
 }
 
