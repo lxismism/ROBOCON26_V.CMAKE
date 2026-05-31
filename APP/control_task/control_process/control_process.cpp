@@ -54,8 +54,12 @@ extern RobotMode_t robot_mode;
 
 extern bool headless_xy_mode;
 extern bool headless_omega_mode;
-// MF 模式相关
+
 extern bool Normal_control_mode;
+// MC 模式相关
+extern int8_t MC_y;
+extern float MC_close_position_x;
+// MF 模式相关
 extern int8_t MF_x;
 extern int8_t MF_y;
 extern float MF_close_position_x;
@@ -202,6 +206,11 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
         Normal_control_Process();
     }else {
         switch (robot_mode) {
+            case MC:{
+                MC_control_Process(upbody_pub, upbody_msg);
+                break;
+            }
+
             case MF:{
                 MF_control_Process(upbody_pub, upbody_msg);
                 break;
@@ -314,6 +323,32 @@ void Normal_control_Process() {
     }
 }
 
+
+// =====================================================
+//  武馆半自动网格定位
+// =====================================================
+void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
+    if (control_xbox_cmd.btnDirUp == 1) {
+        if (control_xbox_cmd_Last.btnDirUp == 0) {
+            if (MC_y < 3) {
+                MC_y = MC_y + 1;
+            }
+        }
+    } else if (control_xbox_cmd.btnDirDown == 1) {
+        if (control_xbox_cmd_Last.btnDirDown == 0) {
+            if (MC_y > 0) {
+                MC_y = MC_y - 1;
+            }
+        }
+    }
+
+    state_aim_cmd.linear_x_ = robot_position_MC[MC_y][0];
+    state_aim_cmd.linear_y_ = robot_position_MC[MC_y][1];
+    Aim_State_xy_Process();
+
+    state_aim_cmd.omega_    = robot_position_MC[MC_y][2];
+    Aim_State_omega_Process();
+}
 
 // =====================================================
 //  梅林半自动网格定位
