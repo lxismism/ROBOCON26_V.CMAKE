@@ -35,7 +35,10 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
 void Normal_control_Process();
 
 /** @brief 梅林半自动网格定位模式 */
-void MF_control_Process();
+void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg);
+
+/** @brief 九宫格半自动网格定位模式 */
+void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg);
 
 /** @brief XY 目标位置 → PID → 场地坐标系速度指令 */
 void Aim_State_xy_Process();
