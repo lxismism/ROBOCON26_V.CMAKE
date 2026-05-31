@@ -135,3 +135,14 @@ const float robot_position_Arena[3][3] = {//用于在九宫格自动控制车辆
 
     {-1.227f*field_side + field_side*robot_center_to_gimbal_x, 4.399f - 0.5f, -90.0f*(-field_side + 1)/2}
 };
+
+const float robot_position_MC[4][3] = {//用于在九宫格自动控制车辆移动
+  //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
+    {1.0f*field_side, 2.2187f, 90.0f*field_side},
+
+    {1.0f*field_side, 2.4187f, 90.0f*field_side},
+
+    {1.0f*field_side, 2.6187f, 90.0f*field_side},
+
+    {1.0f*field_side, 2.8187f, 90.0f*field_side}
+};
