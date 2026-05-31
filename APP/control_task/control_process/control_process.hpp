@@ -38,7 +38,11 @@ void Normal_control_Process();
 void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg);
 
 /** @brief 九宫格半自动网格定位模式 */
+<<<<<<< HEAD
 void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg);
+=======
+void Arena_control_Process();
+>>>>>>> 6a3ec22266c142ec797d22b12d7a674600121a58
 
 /** @brief XY 目标位置 → PID → 场地坐标系速度指令 */
 void Aim_State_xy_Process();
