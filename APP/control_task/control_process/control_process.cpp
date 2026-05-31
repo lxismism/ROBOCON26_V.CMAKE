@@ -84,15 +84,14 @@ extern float state_xy_error;
 extern float state_xy_angle_deg;
 extern float xy_pid_output;
 
-// ===== 梅林模式渐变状态 =====
-static RampState mf_ramp;
-static int8_t last_mf_action = -1;
 
 static bool mf_placing = false;   // 放置进行中，禁止梯度打断
 
 // ===== 九宫格模式渐变状态 =====
-static RampState arena_ramp;
-static int8_t last_arena_action = -1;
+static RampState mf_ramp;  
+static int8_t last_mf_action = -1;      
+static int8_t last_arena_action = -1;    
+
 
 
 
@@ -499,13 +498,13 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     switch ((int16_t)state_aim_cmd.omega_) {
         case 0:
             if (last_arena_action != 0) {
-                Ramp_Start(arena_ramp, kPose_Grid9_Bot12);
+                Ramp_Start(mf_ramp, kPose_Grid9_Bot12);
                 last_arena_action = 0;
             }
             break;
         case -90:
             if (last_arena_action != -90) {
-                Ramp_Start(arena_ramp, kPose_Grid9_Bot3);
+                Ramp_Start(mf_ramp, kPose_Grid9_Bot3);
                 last_arena_action = -90;
             }
             break;
@@ -515,13 +514,14 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     }
 
     // 每帧推进渐变
-    if (arena_ramp.active) {
-        Ramp_Step(arena_ramp, 0.005f);
+    if (mf_ramp.active) {
+        Ramp_Step(mf_ramp, 0.005f);
         upbody_msg = {};
         upbody_msg.active = true;
-        Ramp_ToMsg(arena_ramp, upbody_msg);
+        Ramp_ToMsg(mf_ramp, upbody_msg);
         upbody_pub.Publish(upbody_msg);
     }
+
         // 真空泵/阀（始终可用）
     static bool last_btnX_arena = false;
     if (control_xbox_cmd.btnX && !last_btnX_arena) {
@@ -533,6 +533,18 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     }
     last_btnX_arena = control_xbox_cmd.btnX;
 
+    // 获取KFS（渐变空闲时响应，先近后远）
+    static bool last_btnA_arena = false;
+    static bool get_toggle = false;  // false=Get2(近), true=Get1(远)
+    if (!mf_ramp.active) {
+        if (control_xbox_cmd.btnA && !last_btnA_arena) {
+            Ramp_Start(mf_ramp, get_toggle ? kPose_Get1 : kPose_Get2);
+            get_toggle = !get_toggle;
+        }
+    }
+    last_btnA_arena = control_xbox_cmd.btnA;
+   
+    
 }
 
 

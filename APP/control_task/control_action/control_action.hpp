@@ -29,17 +29,19 @@ inline constexpr float kDegToRad = M_PI / 180.0f;
 
 // ===== 动作渐变速度（mm/s 或 °/s） =====
 inline constexpr float kPickLiftSpeed   = 190.0f;  // 吸取手抬升
-inline constexpr float kPickYawSpeed    = 160.0f; // 云台旋转
-inline constexpr float kPickExtendSpeed = 40.0f;
+inline constexpr float kPickYawSpeed    = 180.0f; // 云台旋转
+inline constexpr float kPickExtendSpeed = 60.0f;
 inline constexpr float kWeaponLiftSpeed   = 60.0f;   // 武器手抬升 mm/s
 inline constexpr float kWeaponExtendSpeed = 30.0f;   // 武器手伸缩 mm/s
-inline constexpr float kLiftSpeed         = 50.0f;   // 电梯抬升 mm/s
+inline constexpr float kLiftSpeed         = 35.0f;   // 电梯抬升 mm/s
 
 
 // ===== 渐变状态：记录当前中间目标和终点 =====
 struct RampState {
     bool  active = false;
     int   phase  = 0;
+    float phase7_start_lift = 0.0f;   // Phase7 起始抬升高度
+
 
     // 吸取手
     float cur_pick_lift_mm   = 0.0f;
@@ -80,7 +82,7 @@ inline constexpr RobotPose kPose_KFS_High = {352.6f, 392.0f, 0.0f, 347.0f, 0.0f,
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};  // 复位
 
 inline constexpr RobotPose kPose_Place1   = {258.1f, -292.0f, 160.59f, 347.0f, 0.0f, 240.0f};  // 放置远处
-inline constexpr RobotPose kPose_Place2   = {258.1f, -120.0f, 10.0f, 347.0f, 0.0f, 240.0f};
+inline constexpr RobotPose kPose_Place2   = {258.1f, -120.0f, 40.0f, 347.0f, 0.0f, 240.0f};
 
 // 九宫格底层吸取
 inline constexpr RobotPose kPose_Grid9_Bot12 = {246.80f, 403.0f, 0.0f, 347.0f, 0.0f, 240.0f};  // 底层左1/2格
