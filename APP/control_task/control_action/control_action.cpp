@@ -118,16 +118,22 @@ void Ramp_Start(RampState& ramp, const RobotPose& pose) {
         ramp.phase = 5;  // extend retract 已完成，直接进入 lift→yaw→extend 序列
     }
     
-    // Arena Get→Grid9：先抬升5cm再缩回
-    if (leaving_danger && pose.pick_extend_mm < 1.0f
-        && ramp.cur_pick_extend_mm > 1.0f) {
-        ramp.phase = 7;
-        ramp.phase7_start_lift = ramp.cur_pick_lift_mm;
-    }
-    // Place→KFS：先缩回再转云台，最后降抬升
+
+    // Place→KFS：先缩回再转云台（Phase 8 在前）
     if (leaving_danger && ramp.cur_pick_extend_mm > 1.0f && pose.pick_extend_mm < 5.0f) {
         ramp.phase = 8;
     }
+    // Arena Get→Grid9：先抬升再缩回（Phase 7 在后，覆盖 Phase 8）
+    if (leaving_danger && pose.pick_extend_mm < 1.0f
+        && ramp.cur_pick_extend_mm > 1.0f
+        && pose.pick_lift_mm >= ramp.cur_pick_lift_mm) {    // ← 加这行
+        ramp.phase = 7;
+        ramp.phase7_start_lift = ramp.cur_pick_lift_mm;
+        ramp.saved_end_pick_lift_mm = ramp.end_pick_lift_mm;
+        ramp.end_pick_lift_mm = 392.6f;  // 暂时抬高到顶
+
+    }
+
 
 
 }
@@ -242,8 +248,11 @@ bool Ramp_Step(RampState& ramp, float dt) {
     if (ramp.phase == 4 && ramp.cur_pick_yaw_deg > 0.0f) ramp.phase = 0;
     if (ramp.phase == 5 && pick_lift_done)      ramp.phase = 6;
     if (ramp.phase == 6 && pick_yaw_done)       ramp.phase = 0;
-    if (ramp.phase == 7 && (ramp.cur_pick_lift_mm - ramp.phase7_start_lift >= 50.0f || pick_lift_done))
-        ramp.phase = 3;  // 抬升到位，进入缩回
+    if (ramp.phase == 7 && pick_lift_done) {
+        ramp.end_pick_lift_mm = ramp.saved_end_pick_lift_mm;  // 恢复原目标
+        ramp.phase = 3;
+    }
+
     if (ramp.phase == 8 && pick_extend_done)    ramp.phase = 2;  // 缩回完成，进入云台旋转
 
 
