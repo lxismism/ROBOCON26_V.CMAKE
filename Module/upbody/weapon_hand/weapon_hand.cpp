@@ -15,24 +15,25 @@
 #include "main.h"
 #include "weapon_hand.hpp"
 
+
 void WeaponHand::init() {
   // ---- 抬升电机 PID (3508) ----
   PID_Init(&lift_pid_);
-  lift_pid_.Kp = 40.0f;
-  lift_pid_.Ki = 40.0f;
-  lift_pid_.Kd = 9.0f;
-  lift_pid_.MaxOut = 8000.0f;
-  lift_pid_.IntegralLimit = 5000.0f;
-  lift_pid_.DeadBand = 0.5f;
+  lift_pid_.Kp = 40.0f;  //原来是40
+  lift_pid_.Ki = 20.0f;  //原来40  //还没试这个
+  lift_pid_.Kd = 19.0f;  //9
+  lift_pid_.MaxOut = 8000.0f;  //8000
+  lift_pid_.IntegralLimit = 5000.0f;  //5000
+  lift_pid_.DeadBand = 0.5f;  //0.5
   lift_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 
   // ---- 伸缩电机 PID (2006) ----
   PID_Init(&extend_pid_);
-  extend_pid_.Kp = 40.0f;
-  extend_pid_.Ki = 40.0f;
-  extend_pid_.Kd = 6.0f;
-  extend_pid_.MaxOut = 5000.0f;
-  extend_pid_.IntegralLimit = 3000.0f;
+  extend_pid_.Kp = 40.0f;  //原来40
+  extend_pid_.Ki = 40.0f;  //40
+  extend_pid_.Kd = 6.0f;   //6
+  extend_pid_.MaxOut = 5000.0f;  //5000
+  extend_pid_.IntegralLimit = 3000.0f;  //3000
   extend_pid_.DeadBand = 0.5f;
   extend_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 }
@@ -46,7 +47,8 @@ void WeaponHand::update() {
   float cur_lift = -lift_motor_->getCurrentSumPos();
 
   if (!lift_inited_) {
-    lift_target_deg_ = cur_lift;
+    lift_target_deg_ = cur_lift;  
+
     lift_inited_ = true;
   }
 
@@ -56,7 +58,8 @@ void WeaponHand::update() {
 
 
   float lift_out = PID_Calculate(&lift_pid_, cur_lift, lift_target_deg_);
-  lift_motor_->setMotorCmd(-lift_out);
+  lift_out += lift_gravity_comp_;  //加上重力补偿
+  lift_motor_->setMotorCmd(lift_out);
 
   // ===== 2. 伸缩电机位置环 =====
   float cur_extend = -extend_motor_->getCurrentSumPos();

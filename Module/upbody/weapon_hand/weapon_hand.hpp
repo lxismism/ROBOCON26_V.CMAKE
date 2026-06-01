@@ -35,6 +35,10 @@ public:
   float lift_target_deg_{0.0f};
   float extend_target_deg_{0.0f};
 
+  // ---------- 重力补偿 ----------
+   //float lift_gravity_comp_{68.6f};  //武器手抬升重力补偿值
+   float lift_gravity_comp_{0.0f};
+
   // ---------- 换算系数 ----------
   static constexpr float kLiftMmPerDeg = 90.0f / 360.0f;
   static constexpr float kExtendMmPerDeg = 44.0f * 3.14159f / 360.0f;

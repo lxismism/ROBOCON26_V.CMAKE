@@ -24,7 +24,7 @@ static constexpr float kLiftStep = 0.2f;
 static constexpr float kPickLiftStep = 0.4f;
 static constexpr float kPickYawStep = 1.0f;
 static constexpr float kPickExtendStep = 0.2f;
-static constexpr float kWeaponLiftStep = 0.25f;
+static constexpr float kWeaponLiftStep = 5.0f;  //0.25
 static constexpr float kWeaponExtendStep = 0.4f;
 static constexpr uint16_t kTriggerThreshold = 512;
 

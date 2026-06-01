@@ -16,6 +16,7 @@
 #include "Motor.hpp"
 #include "chassis_solution.hpp"
 #include "com_config.h"
+#include "pid_controller.h"
 #include "topic_pool.h"
 #include "topics.hpp"
 
