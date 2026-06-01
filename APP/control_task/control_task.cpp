@@ -73,6 +73,8 @@ bool Normal_control_mode = true;
 
 int8_t MC_y = 0;
 float MC_close_position_x = 0.0f;
+bool MC_headless_xy_mode = false;
+bool MC_headless_omega_mode = false;
 
 int8_t MF_x = 0;
 int8_t MF_y = 0;

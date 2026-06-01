@@ -59,6 +59,8 @@ extern bool Normal_control_mode;
 // MC 模式相关
 extern int8_t MC_y;
 extern float MC_close_position_x;
+extern bool MC_headless_xy_mode;
+extern bool MC_headless_omega_mode;
 // MF 模式相关
 extern int8_t MF_x;
 extern int8_t MF_y;
@@ -88,15 +90,14 @@ extern float state_xy_error;
 extern float state_xy_angle_deg;
 extern float xy_pid_output;
 
-// ===== 梅林模式渐变状态 =====
-static RampState mf_ramp;
-static int8_t last_mf_action = -1;
 
 static bool mf_placing = false;   // 放置进行中，禁止梯度打断
 
 // ===== 九宫格模式渐变状态 =====
-static RampState arena_ramp;
-static int8_t last_arena_action = -1;
+static RampState mf_ramp;  
+static int8_t last_mf_action = -1;      
+static int8_t last_arena_action = -1;    
+
 
 
 
@@ -328,6 +329,20 @@ void Normal_control_Process() {
 //  武馆半自动网格定位
 // =====================================================
 void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
+    // btnLS 上升沿切换 xy 模式
+    if (control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS) {
+        if (control_xbox_cmd.btnLS == true) {
+            MC_headless_xy_mode = !MC_headless_xy_mode;
+        }
+    }
+
+    // btnRS 上升沿切换 omega 模式
+    if (control_xbox_cmd.btnRS != control_xbox_cmd_Last.btnRS) {
+        if (control_xbox_cmd.btnRS == true) {
+            MC_headless_omega_mode = !MC_headless_omega_mode;
+        }
+    }
+
     if (control_xbox_cmd.btnDirUp == 1) {
         if (control_xbox_cmd_Last.btnDirUp == 0) {
             if (MC_y < 3) {
@@ -342,12 +357,63 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         }
     }
 
-    state_aim_cmd.linear_x_ = robot_position_MC[MC_y][0];
-    state_aim_cmd.linear_y_ = robot_position_MC[MC_y][1];
-    Aim_State_xy_Process();
+    if (MC_headless_xy_mode) {
+        // xy 手控模式：摇杆 → 速度，直接进入速度环 PID
+        xbox_angle_deg = atan2(xbox_cmd.linear_y_, xbox_cmd.linear_x_) / kDegToRad;
+        v_aim = sqrt(xbox_cmd.linear_x_ * xbox_cmd.linear_x_ + xbox_cmd.linear_y_ * xbox_cmd.linear_y_);
 
-    state_aim_cmd.omega_    = robot_position_MC[MC_y][2];
-    Aim_State_omega_Process();
+        robot_v_aim_cmd.linear_x_ = v_aim * cos((xbox_angle_deg - control_position.yaw) * kDegToRad);
+        robot_v_aim_cmd.linear_y_ = v_aim * sin((xbox_angle_deg - control_position.yaw) * kDegToRad);
+
+        state_aim_cmd.linear_x_ = control_position.x;
+        state_aim_cmd.linear_y_ = control_position.y;
+    } else {
+        state_aim_cmd.linear_x_ = robot_position_MC[MC_y][0];
+        state_aim_cmd.linear_y_ = robot_position_MC[MC_y][1];
+        Aim_State_xy_Process();
+    }
+
+    if (MC_headless_omega_mode) {
+        // omega 定位模式：右摇杆推到极限 → 设定目标角度
+        state_aim_cmd.omega_ = 0.0f;
+        Aim_State_omega_Process();
+
+    } else {
+        state_aim_cmd.omega_    = robot_position_MC[MC_y][2];
+        Aim_State_omega_Process();
+    }
+
+        // ---- 武器手控制 ----
+    upbody_msg = {};
+    upbody_msg.active = true;
+
+    // 持续型：btnLB 缩 / btnRB 伸
+    if (control_xbox_cmd.btnLB)
+        upbody_msg.weapon_extend_delta = -kWeaponExtendStep;
+    if (control_xbox_cmd.btnRB)
+        upbody_msg.weapon_extend_delta = kWeaponExtendStep;
+
+    // 持续型：右摇杆前推抬升 / 后拉下降
+    {
+        int32_t rvert_diff = (int32_t)control_xbox_cmd.joyRVert - (int32_t)kJoyCenter;
+        if (rvert_diff > (int32_t)kJoyDeadZoneRight)
+            upbody_msg.weapon_lift_delta = -kWeaponLiftStep;
+        else if (rvert_diff < -(int32_t)kJoyDeadZoneRight)
+            upbody_msg.weapon_lift_delta = kWeaponLiftStep;
+    }
+
+    // 切换型：btnX 夹爪开合 / btnA 腕部翻转
+    static bool last_btnX_mc = false;
+    static bool last_btnA_mc = false;
+    if (control_xbox_cmd.btnX && !last_btnX_mc)
+        upbody_msg.claw_toggle = true;
+    if (control_xbox_cmd.btnA && !last_btnA_mc)
+        upbody_msg.wrist_toggle = true;
+    last_btnX_mc = control_xbox_cmd.btnX;
+    last_btnA_mc = control_xbox_cmd.btnA;
+
+    upbody_pub.Publish(upbody_msg);
+
 }
 
 // =====================================================
@@ -531,32 +597,35 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     Aim_State_omega_Process();
 
     /*上层机构执行*/
-    switch ((int16_t)state_aim_cmd.omega_) {
-        case 0:
-            if (last_arena_action != 0) {
-                Ramp_Start(arena_ramp, kPose_Grid9_Bot12);
-                last_arena_action = 0;
-            }
-            break;
-        case -90:
-            if (last_arena_action != -90) {
-                Ramp_Start(arena_ramp, kPose_Grid9_Bot3);
-                last_arena_action = -90;
-            }
-            break;
-        default:
-            last_arena_action = -1;
-            break;
+    if (!mf_ramp.active) {
+        switch ((int16_t)state_aim_cmd.omega_) {
+            case 0:
+                if (last_arena_action != 0) {
+                    Ramp_Start(mf_ramp, kPose_Grid9_Bot12);
+                    last_arena_action = 0;
+                }
+                break;
+            case -90:
+                if (last_arena_action != -90) {
+                    Ramp_Start(mf_ramp, kPose_Grid9_Bot3);
+                    last_arena_action = -90;
+                }
+                break;
+            default:
+                last_arena_action = -1;
+                break;
+        }
     }
 
     // 每帧推进渐变
-    if (arena_ramp.active) {
-        Ramp_Step(arena_ramp, 0.005f);
+    if (mf_ramp.active) {
+        Ramp_Step(mf_ramp, 0.005f);
         upbody_msg = {};
         upbody_msg.active = true;
-        Ramp_ToMsg(arena_ramp, upbody_msg);
+        Ramp_ToMsg(mf_ramp, upbody_msg);
         upbody_pub.Publish(upbody_msg);
     }
+
         // 真空泵/阀（始终可用）
     static bool last_btnX_arena = false;
     if (control_xbox_cmd.btnX && !last_btnX_arena) {
@@ -568,6 +637,20 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     }
     last_btnX_arena = control_xbox_cmd.btnX;
 
+    // 获取KFS（渐变空闲时响应，先近后远）
+    static bool last_btnA_arena = false;
+    static bool get_toggle = false;  // false=Get2(近), true=Get1(远)
+    if (!mf_ramp.active) {
+        if (control_xbox_cmd.btnA && !last_btnA_arena) {
+            Ramp_Start(mf_ramp, get_toggle ? kPose_Get1 : kPose_Get2);
+            get_toggle = !get_toggle;
+            last_arena_action = -1;    // ← 加这行
+        }
+    }
+
+    last_btnA_arena = control_xbox_cmd.btnA;
+   
+    
 }
 
 
