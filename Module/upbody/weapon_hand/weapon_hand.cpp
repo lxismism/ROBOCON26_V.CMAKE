@@ -59,7 +59,7 @@ void WeaponHand::update() {
 
   float lift_out = PID_Calculate(&lift_pid_, cur_lift, lift_target_deg_);
   lift_out += lift_gravity_comp_;  //加上重力补偿
-  lift_motor_->setMotorCmd(lift_out);
+  lift_motor_->setMotorCmd(-lift_out);
 
   // ===== 2. 伸缩电机位置环 =====
   float cur_extend = -extend_motor_->getCurrentSumPos();

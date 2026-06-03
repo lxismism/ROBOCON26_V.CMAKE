@@ -106,7 +106,7 @@ pub_chassis_cmd state_aim_cmd{
 
 // 车体目标角度环 PID
 PID_t linear{.Kp = 4.68f,.Ki = 0.01f,.Kd = 0.55f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-PID_t deg{.Kp = 2.20f,.Ki = 0.25f,.Kd = 0.1f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
+PID_t deg{.Kp = 2.10f,.Ki = 0.22f,.Kd = 0.08f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
 
 
 void controlInit() {

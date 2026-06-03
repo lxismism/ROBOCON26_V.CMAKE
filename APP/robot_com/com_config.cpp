@@ -607,7 +607,7 @@ void DebugSerialTask(void *argument) {
   for(;;)
   {
     // int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%03d,%d.%03d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
-    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%03d,%d.%03d\n",
+    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%03d,%d.%03d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
                                               // static_cast<int>(pid_LU.Ref), (static_cast<int>(abs(pid_LU.Ref * 100)))%100,
                                               // static_cast<int>(pid_LU.Measure), (static_cast<int>(abs(pid_LU.Measure * 100)))%100,
                                               // static_cast<int>(pid_RU.Ref), (static_cast<int>(abs(pid_RU.Ref * 100)))%100,
@@ -617,15 +617,26 @@ void DebugSerialTask(void *argument) {
                                               // static_cast<int>(pid_RD.Ref), (static_cast<int>(abs(pid_RD.Ref * 100)))%100,
                                               // static_cast<int>(pid_RD.Measure), (static_cast<int>(abs(pid_RD.Measure * 100)))%100,
                                               static_cast<int>((control_position.x - state_aim_cmd.linear_x_)*10), (static_cast<int>(fabs((control_position.x * 1000 - state_aim_cmd.linear_x_ * 1000)*10)))%1000,
-                                              static_cast<int>((control_position.y - state_aim_cmd.linear_y_)*10), (static_cast<int>(fabs((control_position.y * 1000 - state_aim_cmd.linear_y_ * 1000)*10)))%1000
-                                              // static_cast<int>(control_position.yaw), (static_cast<int>(abs(control_position.yaw * 100)))%100,
+                                              static_cast<int>((control_position.y - state_aim_cmd.linear_y_)*10), (static_cast<int>(fabs((control_position.y * 1000 - state_aim_cmd.linear_y_ * 1000)*10)))%1000,
+                                              static_cast<int>(control_position.yaw), (static_cast<int>(abs(control_position.yaw * 100)))%100,              //角度环实际值
                                               // static_cast<int>(state_aim_cmd.linear_x_), (static_cast<int>(abs(state_aim_cmd.linear_x_ * 100)))%100,
                                               // static_cast<int>(state_aim_cmd.linear_y_), (static_cast<int>(abs(state_aim_cmd.linear_y_ * 100)))%100,
-                                              // static_cast<int>(state_aim_cmd.omega_), (static_cast<int>(abs(state_aim_cmd.omega_ * 100)))%100,
-                                              // static_cast<int>(weapon_hand.lift_target_deg_), (static_cast<int>(abs(weapon_hand.lift_target_deg_ * 100)))%100,
-                                              // static_cast<int>(weapon_lift_motor.sum_pos_), (static_cast<int>(abs(weapon_lift_motor.sum_pos_ * 100)))%100,
+                                              static_cast<int>(state_aim_cmd.omega_), (static_cast<int>(abs(state_aim_cmd.omega_ * 100)))%100,               //角度环目标值
+                                              // static_cast<int>(weapon_hand.lift_target_deg_), (static_cast<int>(abs(weapon_hand.lift_target_deg_ * 100)))%100,   //武器手抬升目标值
+                                              // static_cast<int>(weapon_lift_motor.sum_pos_), (static_cast<int>(abs(weapon_lift_motor.sum_pos_ * 100)))%100,       //武器手抬升实际值
                                               // static_cast<int>(weapon_hand.lift_pid_.Output), (static_cast<int>(abs(weapon_hand.lift_pid_.Output * 100)))%100
-                                              
+                                              static_cast<int>(weapon_hand.extend_target_deg_), (static_cast<int>(abs(weapon_hand.extend_target_deg_)))%100,     //武器手伸缩目标值
+                                              static_cast<int>(weapon_extend_motor.sum_pos_), (static_cast<int>(abs(weapon_extend_motor.sum_pos_)))%100,     //武器手伸缩实际值
+                                              static_cast<int>(pick_hand.lift_target_deg_), (static_cast<int>(abs(pick_hand.lift_target_deg_)))%100,     //吸取手抬升目标值
+                                              static_cast<int>(picker_lift_motor.sum_pos_), (static_cast<int>(abs(picker_lift_motor.sum_pos_)))%100,     //吸取手抬升实际值
+                                              static_cast<int>(pick_hand.yaw_target_deg_), (static_cast<int>(abs(pick_hand.yaw_target_deg_)))%100,     //吸取手云台目标值
+                                              static_cast<int>(picker_yaw_motor.sum_pos_), (static_cast<int>(abs(picker_yaw_motor.sum_pos_)))%100,     //吸取手云台实际值
+
+                                              static_cast<int>(pick_hand.extend_target_deg_), (static_cast<int>(abs(pick_hand.extend_target_deg_)))%100,     //吸取手伸缩目标值
+                                              static_cast<int>(picker_extend_motor.sum_pos_), (static_cast<int>(abs(picker_extend_motor.sum_pos_)))%100,     //吸取手伸缩实际值
+
+
+
     );
     // int len = snprintf(debug_buffer, sizeof(debug_buffer), "platform: %d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
     //                                           static_cast<int>(lift.platfrom_pos_pid_.Ref), (static_cast<int>(abs(lift.platfrom_pos_pid_.Ref * 100)))%100,
