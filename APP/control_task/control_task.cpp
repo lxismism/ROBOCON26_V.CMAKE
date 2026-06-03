@@ -161,33 +161,34 @@ void controlTask(void *argument) {
         /* 从xbox数据订阅者中获取数据 */
         if (control_xbox_sub.TryGet(&control_xbox_cmd)) {
 
-            // // ===== btnSelect 模式切换（目前共3个模式） =====
-            // if (control_xbox_cmd.btnSelect && !last_select) {
-            //     control_mode = (control_mode + 1) % 3;  // 0→1→2→0→...
-            // }
-            // last_select = control_xbox_cmd.btnSelect;
-            if(control_xbox_cmd.btnSelect == 1 && control_xbox_cmd_Last.btnSelect == 0) {
-                robot_mode = MC;
-            }else if(control_xbox_cmd.btnShare == 1 && control_xbox_cmd_Last.btnShare == 0) {
-                robot_mode = MF;
-            }else if(control_xbox_cmd.btnStart == 1 && control_xbox_cmd_Last.btnStart == 0){
-                robot_mode = Arena;
+            // ===== btnSelect 模式切换（目前共3个模式） =====
+            if (control_xbox_cmd.btnSelect && !last_select) {
+                control_mode = (control_mode + 1) % 3;  // 0→1→2→0→...
             }
-            Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
-    
-            // switch (control_mode) {
-            //     case 0:
-            //         Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
-            //         break;
-
-            //     case 1:
-            //         Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);  // 调试模式
-            //         break;
-                    
-            //     case 2:
-            //         UpperDebug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg); // 上层调试模式
-            //         break;
+            last_select = control_xbox_cmd.btnSelect;
+            // // ===== 比赛半自动模式（调试时注释掉） =====
+            // if(control_xbox_cmd.btnSelect == 1 && control_xbox_cmd_Last.btnSelect == 0) {
+            //     robot_mode = MC;
+            // }else if(control_xbox_cmd.btnShare == 1 && control_xbox_cmd_Last.btnShare == 0) {
+            //     robot_mode = MF;
+            // }else if(control_xbox_cmd.btnStart == 1 && control_xbox_cmd_Last.btnStart == 0){
+            //     robot_mode = Arena;
             // }
+            // Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
+
+            switch (control_mode) {
+                case 0:
+                    Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
+                    break;
+
+                case 1:
+                    Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);  // 调试模式
+                    break;
+
+                case 2:
+                    UpperDebug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg); // 上层调试模式
+                    break;
+            }
 
 
             // 保留本次xbox数据
