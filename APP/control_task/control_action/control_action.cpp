@@ -100,7 +100,7 @@ void Ramp_Start(RampState& ramp, const RobotPose& pose) {
     } else {
         ramp.phase = 0;
     }
-
+ 
     // 伸缩安全策略
     if (ramp.phase == 0) {
         if (pose.pick_extend_mm < 1.0f && ramp.cur_pick_extend_mm > 1.0f)
