@@ -586,6 +586,7 @@ void uart10SendTask(void *argument) {
 void DebugSerialTask(void *argument) {
   (void)argument;
   static char debug_buffer[256];
+  static char title[12];
 
   extern OmniChassis Omnichassis_solver;
   extern pub_chassis_cmd state_Aim_cmd;
@@ -602,6 +603,19 @@ void DebugSerialTask(void *argument) {
 
   for(;;)
   {
+    //电机在线检测
+    title[0] =  chassis_motor1.isOffline() ? 'X' : 'O';
+    title[1] =  chassis_motor2.isOffline() ? 'X' : 'O';
+    title[2] =  chassis_motor3.isOffline() ? 'X' : 'O';
+    title[3] =  chassis_motor4.isOffline() ? 'X' : 'O';
+    title[4] =  picker_yaw_motor.isOffline() ? 'X' : 'O';
+    title[5] =  picker_extend_motor.isOffline() ? 'X' : 'O';
+    title[6] =  weapon_extend_motor.isOffline() ? 'X' : 'O';
+    title[7] =  lift_left_motor.isOffline() ? 'X' : 'O';
+    title[8] =  lift_right_motor.isOffline() ? 'X' : 'O';
+    title[9] =  picker_lift_motor.isOffline() ? 'X' : 'O';
+    title[10] = weapon_lift_motor.isOffline() ? 'X' : 'O';
+
     // int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%03d,%d.%03d,%d.%02d\n",
     //                                           static_cast<int>(pid_LU.Ref), (static_cast<int>(abs(pid_LU.Ref * 100)))%100,
     //                                           static_cast<int>(pid_LU.Measure), (static_cast<int>(abs(pid_LU.Measure * 100)))%100,
@@ -615,7 +629,8 @@ void DebugSerialTask(void *argument) {
     //                                           static_cast<int>(control_position.y), (static_cast<int>(abs(control_position.y * 1000)))%1000,
     //                                           static_cast<int>(control_position.yaw), (static_cast<int>(abs(control_position.yaw * 100)))%100
     // );
-    int len = snprintf(debug_buffer, sizeof(debug_buffer), "platform: %d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
+    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%splatform: %d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
+                                              title,
                                               static_cast<int>(lift.platfrom_pos_pid_.Ref), (static_cast<int>(abs(lift.platfrom_pos_pid_.Ref * 100)))%100,
                                               static_cast<int>(lift.platfrom_pos_pid_.Measure), (static_cast<int>(abs(lift.platfrom_pos_pid_.Measure * 100)))%100,
                                               static_cast<int>(lift.left_v_pid_.Ref), (static_cast<int>(abs(lift.left_v_pid_.Ref * 100)))%100,
