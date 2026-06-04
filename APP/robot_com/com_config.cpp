@@ -626,14 +626,14 @@ void DebugSerialTask(void *argument) {
                                               // static_cast<int>(weapon_lift_motor.sum_pos_), (static_cast<int>(abs(weapon_lift_motor.sum_pos_ * 100)))%100,       //武器手抬升实际值
                                               // static_cast<int>(weapon_hand.lift_pid_.Output), (static_cast<int>(abs(weapon_hand.lift_pid_.Output * 100)))%100
                                               static_cast<int>(weapon_hand.extend_target_deg_), (static_cast<int>(abs(weapon_hand.extend_target_deg_)))%100,     //武器手伸缩目标值
-                                              static_cast<int>(weapon_extend_motor.sum_pos_), (static_cast<int>(abs(weapon_extend_motor.sum_pos_)))%100,     //武器手伸缩实际值
+                                              static_cast<int>(-weapon_extend_motor.sum_pos_), (static_cast<int>(abs(-weapon_extend_motor.sum_pos_)))%100,     //武器手伸缩实际值
                                               static_cast<int>(pick_hand.lift_target_deg_), (static_cast<int>(abs(pick_hand.lift_target_deg_)))%100,     //吸取手抬升目标值
-                                              static_cast<int>(picker_lift_motor.sum_pos_), (static_cast<int>(abs(picker_lift_motor.sum_pos_)))%100,     //吸取手抬升实际值
+                                              static_cast<int>(-picker_lift_motor.sum_pos_), (static_cast<int>(abs(-picker_lift_motor.sum_pos_)))%100,     //吸取手抬升实际值
                                               static_cast<int>(pick_hand.yaw_target_deg_), (static_cast<int>(abs(pick_hand.yaw_target_deg_)))%100,     //吸取手云台目标值
                                               static_cast<int>(picker_yaw_motor.sum_pos_), (static_cast<int>(abs(picker_yaw_motor.sum_pos_)))%100,     //吸取手云台实际值
 
                                               static_cast<int>(pick_hand.extend_target_deg_), (static_cast<int>(abs(pick_hand.extend_target_deg_)))%100,     //吸取手伸缩目标值
-                                              static_cast<int>(picker_extend_motor.sum_pos_), (static_cast<int>(abs(picker_extend_motor.sum_pos_)))%100,     //吸取手伸缩实际值
+                                              static_cast<int>(-picker_extend_motor.sum_pos_), (static_cast<int>(abs(-picker_extend_motor.sum_pos_)))%100     //吸取手伸缩实际值
 
 
 

@@ -29,12 +29,12 @@ void WeaponHand::init() {
 
   // ---- 伸缩电机 PID (2006) ----
   PID_Init(&extend_pid_);
-  extend_pid_.Kp = 40.0f;  //原来40
-  extend_pid_.Ki = 40.0f;  //40
-  extend_pid_.Kd = 6.0f;   //6
+  extend_pid_.Kp = 90.0f;  //原来40
+  extend_pid_.Ki = 20.0f;  //40
+  extend_pid_.Kd = 10.0f;   //6
   extend_pid_.MaxOut = 5000.0f;  //5000
-  extend_pid_.IntegralLimit = 3000.0f;  //3000
-  extend_pid_.DeadBand = 0.5f;
+  extend_pid_.IntegralLimit = 800.0f;  //3000
+  extend_pid_.DeadBand = 0.1f;
   extend_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 }
 
