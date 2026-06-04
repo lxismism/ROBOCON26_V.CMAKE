@@ -100,7 +100,7 @@ WeaponHand weapon_hand;
 Lift lift;
 // ---------- 腕部舵机（TIM2_CH3, PA2） ----------
 extern TIM_HandleTypeDef htim2;
-PM20sServo wrist_servo(htim2, TIM_CHANNEL_3);
+PM20sServo wrist_servo(htim13, TIM_CHANNEL_1);
 
 
 
@@ -221,8 +221,8 @@ uint8_t comServiceInit() {
   picker_extend_motor.init();
   weapon_extend_motor.init();
 
-  lift_left_motor.init();
-  lift_right_motor.init();
+  lift_left_motor.init(100);
+  lift_right_motor.init(100);
   picker_lift_motor.init();
   weapon_lift_motor.init();
 

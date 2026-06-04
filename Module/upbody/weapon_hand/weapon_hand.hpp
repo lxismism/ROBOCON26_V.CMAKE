@@ -60,7 +60,7 @@ public:
   void update();
 
   // ======== 新增：GPIO控制方法 ========
-  void clawToggle();    // 夹爪开合切换（气缸电磁阀PG5）
+  void clawToggle();    // 夹爪开合切换（气缸电磁阀PG4）
   void wristFlip();     // 腕部舵机翻转切换（朝上↔朝前）
 
   // ======== mm接口 ========
