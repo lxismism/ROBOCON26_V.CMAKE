@@ -177,7 +177,6 @@ pub_upbody_cmd upbody_cmd_msg{};
 //IR模块（基于uart10）
 TypedTopicPublisher<pub_ir_data> ir_data_pub("ir_data");
 pub_ir_data ir_data{};
-TickType_t last_F1_received_time = 0; // 上次接收到0xF1的时间戳
 TickType_t last_data_received_time = 0; // 上次接收到数据的时间
 
 TypedTopicSubscriber<pub_ir_cmd> ir_cmd_sub("ir_cmd", 8);
@@ -491,7 +490,9 @@ void uart10RxProcessTask(void *argument) {
   typedef enum {
     wait_for_data_HEAD,
     wait_for_data1,
-    wait_for_data2
+    wait_for_data2,
+    wait_for_data3,
+    wait_for_data_END
   }ir_data_rx_state_t;
 
   ir_data_rx_state_t ir_data_rx_state = wait_for_data_HEAD;
@@ -505,8 +506,7 @@ void uart10RxProcessTask(void *argument) {
     while(uart10_port.Read(packet)) {
       // 处理接收到的IR数据
       for(uint16_t i = 0; i < packet.len; ++i) {
-        if(packet.data[i] == 0xF1)        last_F1_received_time = xTaskGetTickCount();
-        else if(packet.data[i] == 0xAA)   ir_data_rx_state = wait_for_data1;
+        if(packet.data[i] == 0xAA)   ir_data_rx_state = wait_for_data1;
         else
         {
           switch (ir_data_rx_state) {
@@ -519,9 +519,21 @@ void uart10RxProcessTask(void *argument) {
               break;
             case wait_for_data2:
               ir_data.data2 = packet.data[i];
+              ir_data_rx_state = wait_for_data3;
+              break;
+            case wait_for_data3:
+              ir_data.data3 = packet.data[i];
+              ir_data_rx_state = wait_for_data_END;
+              //last_data_received_time = xTaskGetTickCount();
+              //ir_data_pub.Publish(ir_data);
+              break;
+            case wait_for_data_END:
+              if(packet.data[i] == 0xBB) {
+                last_data_received_time = xTaskGetTickCount();
+                if(ir_data.data1 == ir_data.data2 && ir_data.data2 == ir_data.data3)
+                  ir_data_pub.Publish(ir_data);
+              }
               ir_data_rx_state = wait_for_data_HEAD;
-              last_data_received_time = xTaskGetTickCount();
-              ir_data_pub.Publish(ir_data);
               break;
           }
         }   
@@ -541,15 +553,13 @@ void uart10SendTask(void *argument) {
   }
 
   uint8_t tx[5];
-  tx[0] = 0xFA;
-  tx[1] = 0xF1;
-  tx[2] = 0xAA; // 数据帧头
+  tx[0] = 0xAA; // 数据帧头
+  tx[4] = 0xBB; // 数据帧尾
 
   TickType_t currentTime = xTaskGetTickCount();
   TickType_t last_transmit_time = 0;
 
   typedef enum {
-    wait_for_F1,
     wait_for_transmit,
     wait_for_data,
   } ir_data_tx_state_t;
@@ -558,24 +568,18 @@ void uart10SendTask(void *argument) {
   for(;;)
   {
     switch (ir_data_tx_state) {
-      case wait_for_F1:
-        if(currentTime > last_F1_received_time && last_F1_received_time != 0)
-        {
-          ir_data_tx_state = wait_for_transmit;
-          last_F1_received_time = 0; // 重置，等待下一次F1帧到来
-        }
-        break;
       case wait_for_transmit:
-        if(currentTime - last_transmit_time >= 200 && currentTime - last_data_received_time >= 200)
+        if(currentTime - last_transmit_time >= 150 && currentTime - last_data_received_time >= 150)
           ir_data_tx_state = wait_for_data;
         break;
       case wait_for_data:
         if (ir_cmd_sub.TryGet(&ir_cmd)) {
-          tx[3] = ir_cmd.tx_data[0];
-          tx[4] = ir_cmd.tx_data[1];
+          tx[1] = ir_cmd.tx_data[0];
+          tx[2] = ir_cmd.tx_data[1];
+          tx[3] = ir_cmd.tx_data[2];
           uart10_port.writeDma(tx, sizeof(tx));
           last_transmit_time = xTaskGetTickCount();
-          ir_data_tx_state = wait_for_F1;
+          ir_data_tx_state = wait_for_transmit;
         }
         break;
     }
