@@ -62,11 +62,11 @@ void Lift::update() {
     return;
   }
 
-  float cur_left_h_deg_ = left_motor_->getCurrentSumPos();     //左电机角度（度），反映左夹板高度
-  float cur_right_h_deg_ = -right_motor_->getCurrentSumPos();  //-1*右电机角度（度），反映右夹板高度
+  float cur_left_h_deg_ = -left_motor_->getCurrentSumPos();     //左电机角度（度），反映左夹板高度
+  float cur_right_h_deg_ = right_motor_->getCurrentSumPos();  //-1*右电机角度（度），反映右夹板高度
 
-  float cur_left_v_ = left_motor_->getCurrentSpeed();     //左电机速度（弧度/s），反映左夹板速度
-  float cur_right_v_ = -right_motor_->getCurrentSpeed();  //-1*右电机速度（弧度/s），反映右夹板速度
+  float cur_left_v_ = -left_motor_->getCurrentSpeed();     //左电机速度（弧度/s），反映左夹板速度
+  float cur_right_v_ = right_motor_->getCurrentSpeed();  //-1*右电机速度（弧度/s），反映右夹板速度
 
   float cur_platform_h_deg_ = (cur_left_h_deg_ + cur_right_h_deg_) * 0.5f;   //左右电机角度均值（度），反映平台高度
   float cur_platform_v_ = (cur_left_v_ + cur_right_v_) * 0.5f;   //左右速度均值（弧度/s），反映平台升降速度
@@ -111,11 +111,11 @@ void Lift::update() {
 
   // ---- 左侧速度环 ----
   float left_v_out = PID_Calculate(&left_v_pid_, cur_left_v_, target_v_left_);
-  left_motor_->setMotorCmd(left_v_out); //电流(mA)
+  left_motor_->setMotorCmd(-left_v_out); //电流(mA)
 
   // ---- 右侧速度环 ----
   float right_v_out = PID_Calculate(&right_v_pid_, cur_right_v_, target_v_right_);
-  right_motor_->setMotorCmd(-right_v_out);  //电流(mA)
+  right_motor_->setMotorCmd(right_v_out);  //电流(mA)
 
   prescaler_cnt++;
 }
@@ -135,16 +135,16 @@ void Lift::addTargetDelta(float delta_mm) {
 
 float Lift::getCurrentHeightMm() const {
   if (left_motor_ == nullptr || right_motor_ == nullptr) return 0.0f;
-  float cur_left = left_motor_->getCurrentSumPos();
-  float cur_right = -right_motor_->getCurrentSumPos();
+  float cur_left = -left_motor_->getCurrentSumPos();
+  float cur_right = right_motor_->getCurrentSumPos();
   return (cur_left + cur_right) * 0.5f * kMmPerDeg + ground_clearance_mm_;
 
 }
 
 float Lift::getSyncErrorMm() const {
   if (left_motor_ == nullptr || right_motor_ == nullptr) return 0.0f;
-  float cur_left = left_motor_->getCurrentSumPos();
-  float cur_right = -right_motor_->getCurrentSumPos();
+  float cur_left = -left_motor_->getCurrentSumPos();
+  float cur_right = right_motor_->getCurrentSumPos();
   return std::fabs(cur_left - cur_right) * kMmPerDeg;
 }
 

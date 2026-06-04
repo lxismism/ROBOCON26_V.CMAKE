@@ -10,6 +10,7 @@
  * @attention btnSelect 切换模式：0=队友模式(现有逻辑), 1=调试模式(上身按键映射)
  * @note 持续型按键每帧累加步进量；切换型按键仅上升沿触发
  */
+#include "main.h"
 #include "control_task.h"
 #include "control_process.hpp"
 #include "control_action.hpp"
@@ -18,6 +19,7 @@
 #include "topics.hpp"
 #include <cmath>
 #include <cstdint>
+
 
 // ===== 上身控制常量（每帧步进量，1000Hz 控制频率） =====
 static constexpr float kLiftStep = 0.2f;
@@ -94,9 +96,9 @@ extern float xy_pid_output;
 static bool mf_placing = false;   // 放置进行中，禁止梯度打断
 
 // ===== 九宫格模式渐变状态 =====
-static RampState mf_ramp;  
+static ActionController upbody_ctrl;
 static int8_t last_mf_action = -1;      
-static int8_t last_arena_action = -1;    
+static int8_t last_arena_x = -1;
 
 
 
@@ -204,6 +206,9 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
 
     if(Normal_control_mode){
         last_mf_action = -1;
+        if (control_xbox_cmd.btnLB && !control_xbox_cmd_Last.btnLB) {
+            upbody_ctrl.GoHome();
+        }
         Normal_control_Process();
     }else {
         switch (robot_mode) {
@@ -456,23 +461,20 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     /*上层机构执行*/
     switch ((int8_t)robot_position_MF[MF_x][MF_y][3]) {
         case 1:
-            //最低高台高度
             if (last_mf_action != 1 && !mf_placing) {
-                Ramp_Start(mf_ramp, kPose_KFS_Low);
+                upbody_ctrl.GrabKFS(kPose_KFS_Low);
                 last_mf_action = 1;
             }
             break;
         case 2:
-            //中间高台高度
             if (last_mf_action != 2 && !mf_placing) {
-                Ramp_Start(mf_ramp, kPose_KFS_Mid);
+                upbody_ctrl.GrabKFS(kPose_KFS_Mid);
                 last_mf_action = 2;
             }
             break;
         case 3:
-            //最高高台任务
             if (last_mf_action != 3 && !mf_placing) {
-                Ramp_Start(mf_ramp, kPose_KFS_High);
+                upbody_ctrl.GrabKFS(kPose_KFS_High);
                 last_mf_action = 3;
             }
             break;
@@ -488,22 +490,22 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         switch ((int16_t)robot_position_MF[MF_x][MF_y][2]) {
             case 0:
 
-                MF_close_position_y = MF_close_position_y + 0.002f;
+                MF_close_position_y = MF_close_position_y + 0.0015f;
                 break;
 
             case 90:
 
-                MF_close_position_x = MF_close_position_x - 0.002f;
+                MF_close_position_x = MF_close_position_x - 0.0015f;
                 break;
 
             case -90:
 
-                 MF_close_position_x = MF_close_position_x + 0.002f;
+                 MF_close_position_x = MF_close_position_x + 0.0015f;
                 break;
 
             case 180:
 
-                MF_close_position_y = MF_close_position_y - 0.002f;
+                MF_close_position_y = MF_close_position_y - 0.0015f;
                 break;
 
             default:
@@ -524,7 +526,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
     
     // RB 按住：底盘前移(队友代码) + 吸取手前伸
-    if (control_xbox_cmd.btnRB == 1 && !mf_placing && !mf_ramp.active) {
+    if (control_xbox_cmd.btnRB == 1 && !mf_placing && !upbody_ctrl.IsActive()) {
         pub_upbody_cmd tmp = {};
         tmp.active = true;
         tmp.pick_extend_delta = 1.2f;
@@ -533,15 +535,13 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
 
     // 每帧推进渐变
-    if (mf_ramp.active) {
-        Ramp_Step(mf_ramp, 0.005f);
-        upbody_msg = {};
-        upbody_msg.active = true;
-        Ramp_ToMsg(mf_ramp, upbody_msg);
-        upbody_pub.Publish(upbody_msg);
-    } else {
+    upbody_ctrl.Update(0.005f, upbody_pub);
+    if (!upbody_ctrl.IsActive() && mf_placing) {
+        HAL_GPIO_WritePin(PUMP_LIFT_GPIO_Port, PUMP_LIFT_Pin, GPIO_PIN_RESET);
         mf_placing = false;
     }
+
+
 
     // 真空泵/阀（始终可用，不受渐变限制）
     static bool last_btnX_mf = false;
@@ -556,15 +556,24 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
     // 放置（渐变空闲时响应）
     static bool last_btnA_mf  = false;
-    static bool mf_place_toggle = false;
-    if (!mf_ramp.active) {
+    static int mf_place_cycle = 0;   // 0=Place1, 1=Place2, 2=Place3
+    if (!upbody_ctrl.IsActive()) {
         if (control_xbox_cmd.btnA && !last_btnA_mf) {
             mf_placing = true;
-            Ramp_Start(mf_ramp, mf_place_toggle ? kPose_Place2 : kPose_Place1);
-            mf_place_toggle = !mf_place_toggle;
+            if (mf_place_cycle == 0)
+                upbody_ctrl.PlaceKFS(kPose_Place1);
+            else if (mf_place_cycle == 1)
+                upbody_ctrl.PlaceKFS(kPose_Place2);
+            else
+                upbody_ctrl.PlaceKFS(kPose_Place3);
+            mf_place_cycle = (mf_place_cycle + 1) % 3;
+            HAL_GPIO_WritePin(PUMP_LIFT_GPIO_Port, PUMP_LIFT_Pin, GPIO_PIN_SET);
+
         }
     }
+
     last_btnA_mf = control_xbox_cmd.btnA;
+
 
 }
 
@@ -584,7 +593,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     }
 
     if(control_xbox_cmd.btnRB == 1){
-        Arena_close_position_y = Arena_close_position_y + 0.0015f;
+        if(Arena_close_position_y < 0.6f)Arena_close_position_y = Arena_close_position_y + 0.0012f;
     }else{
         Arena_close_position_y = 0.0f;
     }
@@ -597,34 +606,22 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     Aim_State_omega_Process();
 
     /*上层机构执行*/
-    if (!mf_ramp.active) {
+    if (!upbody_ctrl.IsActive() && last_arena_x != Arena_x) {
         switch ((int16_t)state_aim_cmd.omega_) {
             case 0:
-                if (last_arena_action != 0) {
-                    Ramp_Start(mf_ramp, kPose_Grid9_Bot12);
-                    last_arena_action = 0;
-                }
+                upbody_ctrl.GrabKFS(kPose_Grid9_Bot12);
                 break;
             case -90:
-                if (last_arena_action != -90) {
-                    Ramp_Start(mf_ramp, kPose_Grid9_Bot3);
-                    last_arena_action = -90;
-                }
-                break;
-            default:
-                last_arena_action = -1;
+                upbody_ctrl.GrabKFS(kPose_Grid9_Bot3);
                 break;
         }
+        last_arena_x = Arena_x;
     }
 
+
     // 每帧推进渐变
-    if (mf_ramp.active) {
-        Ramp_Step(mf_ramp, 0.005f);
-        upbody_msg = {};
-        upbody_msg.active = true;
-        Ramp_ToMsg(mf_ramp, upbody_msg);
-        upbody_pub.Publish(upbody_msg);
-    }
+    upbody_ctrl.Update(0.005f, upbody_pub);
+
 
         // 真空泵/阀（始终可用）
     static bool last_btnX_arena = false;
@@ -640,13 +637,14 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     // 获取KFS（渐变空闲时响应，先近后远）
     static bool last_btnA_arena = false;
     static bool get_toggle = false;  // false=Get2(近), true=Get1(远)
-    if (!mf_ramp.active) {
+    if (!upbody_ctrl.IsActive()) {
         if (control_xbox_cmd.btnA && !last_btnA_arena) {
-            Ramp_Start(mf_ramp, get_toggle ? kPose_Get1 : kPose_Get2);
+            upbody_ctrl.GetKFS(get_toggle ? kPose_Get1 : kPose_Get2);
             get_toggle = !get_toggle;
-            last_arena_action = -1;    // ← 加这行
+            last_arena_x = -1;
         }
     }
+
 
     last_btnA_arena = control_xbox_cmd.btnA;
    
@@ -678,7 +676,7 @@ void Aim_State_xy_Process() {
 // =====================================================
 void Aim_State_omega_Process() {
     float error_dir = state_aim_cmd.omega_ - control_position.yaw;
-    if (fabs(error_dir) < 1.5f) {
+    if (fabs(error_dir) < 0.3f) {
         error_dir = 0.0f;
     } else if (fabs(error_dir) > 180.0f) {
         if (error_dir > 0) error_dir = error_dir - 360.0f;
@@ -709,25 +707,18 @@ void UpperDebug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbod
     last_btnB = control_xbox_cmd.btnB;
 
     // ---- 渐变状态机 ----
-    static RampState ramp;
+    static ActionController debug_ctrl;
 
-    if (ramp.active) {
-        // 每帧走一步，把中间目标 + 泵/阀写进同一条消息
-        Ramp_Step(ramp, 0.005f);
-        msg = {};
-        msg.active = true;
-        Ramp_ToMsg(ramp, msg);
-        if (pump_trigger)  msg.pump_toggle  = true;
-        if (valve_trigger) msg.valve_toggle = true;
-        pub.Publish(msg);
-    } else if (pump_trigger || valve_trigger) {
-        // 渐变空闲时，泵/阀独立发一条消息
+    debug_ctrl.Update(0.005f, pub);
+    // 泵/阀独立发消息
+    if (pump_trigger || valve_trigger) {
         msg = {};
         msg.active = true;
         if (pump_trigger)  msg.pump_toggle  = true;
         if (valve_trigger) msg.valve_toggle = true;
         pub.Publish(msg);
     }
+
 
     // ---- 动作链 + 复位（渐变空闲时才响应）----
     static bool last_btnDirUp    = false;
@@ -736,19 +727,25 @@ void UpperDebug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbod
     static bool last_btnY        = false;
     static bool last_btnA        = false; 
 
-    static bool place_toggle     = false;  // false=Place1, true=Place2 
+    static int place_cycle = 0;
+    
+    if (!debug_ctrl.IsActive()) {
+        if (control_xbox_cmd.btnDirUp    && !last_btnDirUp)    debug_ctrl.GrabKFS(kPose_KFS_High);
+        if (control_xbox_cmd.btnDirRight && !last_btnDirRight) debug_ctrl.GrabKFS(kPose_KFS_Mid);
+        if (control_xbox_cmd.btnDirDown  && !last_btnDirDown)  debug_ctrl.GrabKFS(kPose_KFS_Low);
+        if (control_xbox_cmd.btnY        && !last_btnY)        debug_ctrl.GoHome();
 
-    if (!ramp.active) {
-        if (control_xbox_cmd.btnDirUp    && !last_btnDirUp)    Ramp_Start(ramp, kPose_KFS_High);
-        if (control_xbox_cmd.btnDirRight && !last_btnDirRight) Ramp_Start(ramp, kPose_KFS_Mid);
-        if (control_xbox_cmd.btnDirDown  && !last_btnDirDown)  Ramp_Start(ramp, kPose_KFS_Low);
-        if (control_xbox_cmd.btnY        && !last_btnY)        Ramp_Start(ramp, kPose_Home);
-       
-        if (control_xbox_cmd.btnA        && !last_btnA) {              // ← 加
-            Ramp_Start(ramp, place_toggle ? kPose_Place2 : kPose_Place1);
-            place_toggle = !place_toggle;
+        if (control_xbox_cmd.btnA && !last_btnA) {
+            if (place_cycle == 0)
+                debug_ctrl.PlaceKFS(kPose_Place1);
+            else if (place_cycle == 1)
+                debug_ctrl.PlaceKFS(kPose_Place2);
+            else
+                debug_ctrl.PlaceKFS(kPose_Place3);
+            place_cycle = (place_cycle + 1) % 3;
         }
     }
+
 
     last_btnDirUp    = control_xbox_cmd.btnDirUp;
     last_btnDirRight = control_xbox_cmd.btnDirRight;
