@@ -18,6 +18,7 @@
 #include "portmacro.h"
 #include "usart.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 #pragma pack(1)
 
@@ -129,10 +130,11 @@ typedef struct {
 typedef struct {
   uint8_t data1;
   uint8_t data2;
+  uint8_t data3;
 } pub_ir_data;
 
 typedef struct {
-  uint8_t tx_data[2];
+  uint8_t tx_data[3];
 } pub_ir_cmd;
 
 typedef struct {
