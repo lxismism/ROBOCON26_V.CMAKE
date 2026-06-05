@@ -52,8 +52,8 @@ public:
 
   // ======== 新增：腕部舵机状态 ========
   bool wrist_flipped_{false};   // false=朝上(初始位), true=朝前(下翻90°)
-  static constexpr float kWristUpAngle = 0.0f;     // 朝上的舵机角度（需实测校准）
-  static constexpr float kWristDownAngle = 65.0f;   // 朝前的舵机角度（需实测校准）
+  static constexpr float kWristUpAngle = 85.0f;     // 朝上的舵机角度（需实测校准）
+  static constexpr float kWristDownAngle = 0.0f;   // 朝前的舵机角度（需实测校准）
 
   // ---------- 方法 ----------
   void init();

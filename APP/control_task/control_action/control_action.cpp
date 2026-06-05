@@ -242,14 +242,36 @@ void ActionController::GrabKFS(const RobotPose& pose) {
     Start_(config);
 }
 
+
+void ActionController::GrabKFS_Arena(const RobotPose& pose) {
+    if (ramp_.cur_pick_lift_mm < 300.0f) {
+        ActionConfig step1;
+        step1.target = pose;
+        step1.target.pick_lift_mm     = 392.6f;
+        step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
+        step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
+        step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
+        step1.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
+        step1.priorities.pick_lift    = 0;
+        step1.step_done_mask = 0x01;
+        AddStep(step1);
+    }
+    ActionConfig config;
+    config.target = pose;
+    config.priorities.pick_yaw  = 0;   // 先转云台
+    config.priorities.pick_lift = 1;   // 再降高度
+    AddStep(config);
+    RunSteps();
+}
+
+
+
 void ActionController::PlaceKFS(const RobotPose& pose) {
     ActionConfig step1;
     step1.target = pose;
     step1.target.pick_lift_mm     = 372.6f;
     step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
     step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
-    step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
-    step1.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
     step1.priorities.pick_lift    = 0;
     step1.step_done_mask = 0x01;
     AddStep(step1);
@@ -276,8 +298,6 @@ void ActionController::GetKFS(const RobotPose& pose) {
         step1.target.pick_lift_mm     = 392.6f;
         step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
         step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
-        step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
-        step1.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
         step1.step_done_mask = 0x01;
         AddStep(step1);
     }

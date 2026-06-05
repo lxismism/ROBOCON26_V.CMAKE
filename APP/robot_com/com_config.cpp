@@ -98,8 +98,8 @@ DM4310Motor arm4310_motor(&fdcan2_bus, 0x301, 0, 0x01, 0,
 PickHand pick_hand;
 WeaponHand weapon_hand;
 Lift lift;
-// ---------- 腕部舵机（TIM2_CH3, PA2） ----------
-extern TIM_HandleTypeDef htim2;
+// ---------- 腕部舵机（TIM13_CH1, PF8） ----------
+extern TIM_HandleTypeDef htim13;
 PM20sServo wrist_servo(htim13, TIM_CHANNEL_1);
 
 
