@@ -633,15 +633,24 @@ void DebugSerialTask(void *argument) {
     //                                           static_cast<int>(control_position.y), (static_cast<int>(abs(control_position.y * 1000)))%1000,
     //                                           static_cast<int>(control_position.yaw), (static_cast<int>(abs(control_position.yaw * 100)))%100
     // );
-    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%splatform: %d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
+    // int len = snprintf(debug_buffer, sizeof(debug_buffer), "%splatform: %d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
+    //                                           title,
+    //                                           static_cast<int>(lift.platfrom_pos_pid_.Ref), (static_cast<int>(abs(lift.platfrom_pos_pid_.Ref * 100)))%100,
+    //                                           static_cast<int>(lift.platfrom_pos_pid_.Measure), (static_cast<int>(abs(lift.platfrom_pos_pid_.Measure * 100)))%100,
+    //                                           static_cast<int>(lift.left_v_pid_.Ref), (static_cast<int>(abs(lift.left_v_pid_.Ref * 100)))%100,
+    //                                           static_cast<int>(lift.left_v_pid_.Measure), (static_cast<int>(abs(lift.left_v_pid_.Measure * 100)))%100,
+    //                                           static_cast<int>(lift.right_v_pid_.Ref), (static_cast<int>(abs(lift.right_v_pid_.Ref * 100)))%100,
+    //                                           static_cast<int>(lift.right_v_pid_.Measure), (static_cast<int>(abs(lift.right_v_pid_.Measure * 100)))%100
+    // );
+    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%sxbox:%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
                                               title,
-                                              static_cast<int>(lift.platfrom_pos_pid_.Ref), (static_cast<int>(abs(lift.platfrom_pos_pid_.Ref * 100)))%100,
-                                              static_cast<int>(lift.platfrom_pos_pid_.Measure), (static_cast<int>(abs(lift.platfrom_pos_pid_.Measure * 100)))%100,
-                                              static_cast<int>(lift.left_v_pid_.Ref), (static_cast<int>(abs(lift.left_v_pid_.Ref * 100)))%100,
-                                              static_cast<int>(lift.left_v_pid_.Measure), (static_cast<int>(abs(lift.left_v_pid_.Measure * 100)))%100,
-                                              static_cast<int>(lift.right_v_pid_.Ref), (static_cast<int>(abs(lift.right_v_pid_.Ref * 100)))%100,
-                                              static_cast<int>(lift.right_v_pid_.Measure), (static_cast<int>(abs(lift.right_v_pid_.Measure * 100)))%100
-    );
+                                              xbox_msg.btnY, xbox_msg.btnA, xbox_msg.btnB, xbox_msg.btnX,
+                                              xbox_msg.btnLB, xbox_msg.btnRB, xbox_msg.btnLS, xbox_msg.btnRS,
+                                              xbox_msg.btnSelect, xbox_msg.btnShare, xbox_msg.btnStart, xbox_msg.btnXbox,
+                                              xbox_msg.trigLT, xbox_msg.trigRT,
+                                              xbox_msg.btnDirUp, xbox_msg.btnDirDown, xbox_msg.btnDirLeft, xbox_msg.btnDirRight,
+                                              xbox_msg.joyLHori, xbox_msg.joyLVert, xbox_msg.joyRHori, xbox_msg.joyRVert
+                                              );
     // HAL_UART_Transmit_DMA(&huart5, (const uint8_t *)debug_buffer, sizeof(debug_buffer));
     uart5_port.writeDma(reinterpret_cast<const uint8_t*>(debug_buffer), len);
     vTaskDelayUntil(&currentTime, 10);//10ms发送一次
