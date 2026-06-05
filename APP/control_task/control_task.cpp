@@ -75,6 +75,8 @@ int8_t MC_y = 0;
 float MC_close_position_x = 0.0f;
 bool MC_headless_xy_mode = false;
 bool MC_headless_omega_mode = false;
+const float MC_position_correction_y = 0.03f;
+
 
 int8_t MF_x = 0;
 int8_t MF_y = 0;
@@ -83,6 +85,7 @@ float MF_close_position_y = 0.0f;
 
 int8_t Arena_x = 0;
 float Arena_close_position_y = 0.0f;
+float Arena_close_position_y_Max = 0.5f;
 
 const FieldSide_t field_side = Left;
 const float robot_center_to_gimbal_x = 0.4f;
@@ -92,6 +95,13 @@ float error_y;
 float state_xy_error;
 float state_xy_angle_deg;
 float xy_pid_output;
+float v_xy_plan_Max;
+float v_xy_plan_Actual;
+float Acc_SpeedUp = 2.1f; //加速度，单位m/s^2
+float Acc_SpeedDown = 1.8f; //加速度，单位m/s^2
+float Acc_dt = 0.0f; //加速计时器，单位s
+uint32_t Acc_DWT_CNT = 0;
+float K_planTopid = 0.0f;
 
 pub_chassis_cmd robot_v_aim_cmd{
     .linear_x_ = 0.0f,

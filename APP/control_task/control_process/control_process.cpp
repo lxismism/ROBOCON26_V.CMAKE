@@ -69,6 +69,7 @@ extern float MF_close_position_y;
 // Arena模式相关
 extern int8_t Arena_x;
 extern float Arena_close_position_y;
+extern float Arena_close_position_y_Max;
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
@@ -89,6 +90,13 @@ extern float error_y;
 extern float state_xy_error;
 extern float state_xy_angle_deg;
 extern float xy_pid_output;
+extern float v_xy_plan_Max;
+extern float v_xy_plan_Actual;
+extern float Acc_SpeedUp;
+extern float Acc_SpeedDown;
+extern float Acc_dt;
+extern uint32_t Acc_DWT_CNT;
+extern float K_planTopid;
 
 
 static bool mf_placing = false;   // 放置进行中，禁止梯度打断
@@ -278,11 +286,11 @@ void Normal_control_Process() {
         // 上下控制
         if (control_xbox_cmd.btnDirUp == 1) {
             if (control_xbox_cmd_Last.btnDirUp == 0) {
-                state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ + 1.0f;
+                state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ + 3.0f;
             }
         } else if (control_xbox_cmd.btnDirDown == 1) {
             if (control_xbox_cmd_Last.btnDirDown == 0) {
-                state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ - 1.0f;
+                state_aim_cmd.linear_y_ = state_aim_cmd.linear_y_ - 3.0f;
             }
         }
         // 左右控制
@@ -584,7 +592,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     }
 
     if(control_xbox_cmd.btnRB == 1){
-        Arena_close_position_y = Arena_close_position_y + 0.0015f;
+        if(Arena_close_position_y < Arena_close_position_y_Max)Arena_close_position_y = Arena_close_position_y + 0.0015f;
     }else{
         Arena_close_position_y = 0.0f;
     }
@@ -668,8 +676,26 @@ void Aim_State_xy_Process() {
     state_xy_error     = sqrt(error_x * error_x + error_y * error_y);
     state_xy_angle_deg = atan2(error_y, error_x) / kDegToRad;
     xy_pid_output      = PID_Calculate(&linear, 0.0f, state_xy_error);
-    robot_v_aim_cmd.linear_x_ = xy_pid_output * cos((state_xy_angle_deg - control_position.yaw) * kDegToRad);
-    robot_v_aim_cmd.linear_y_ = xy_pid_output * sin((state_xy_angle_deg - control_position.yaw) * kDegToRad);
+
+    v_xy_plan_Max = sqrt(2.0f*Acc_SpeedDown*state_xy_error);  //规划最大速度
+
+    Acc_dt = DWT_GetDeltaT(&Acc_DWT_CNT);  //获取加速计时器增量，单位s
+    v_xy_plan_Actual = v_xy_plan_Actual + Acc_SpeedUp*Acc_dt;  //速度规划实际值更新
+    if(v_xy_plan_Actual > v_xy_plan_Max) v_xy_plan_Actual = v_xy_plan_Max;
+
+    if(state_xy_error > 1.0f){
+        K_planTopid = 1.0f;
+    }else if(state_xy_error > 0.4f){
+        K_planTopid = (state_xy_error - 0.4f) / 0.6f;
+    }else{
+        K_planTopid = 0.0f;
+    }
+
+    robot_v_aim_cmd.linear_x_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid) * cos((state_xy_angle_deg - control_position.yaw) * kDegToRad);
+    robot_v_aim_cmd.linear_y_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid) * sin((state_xy_angle_deg - control_position.yaw) * kDegToRad);
+    
+
+    //速度规划
 }
 
 
@@ -678,7 +704,7 @@ void Aim_State_xy_Process() {
 // =====================================================
 void Aim_State_omega_Process() {
     float error_dir = state_aim_cmd.omega_ - control_position.yaw;
-    if (fabs(error_dir) < 1.5f) {
+    if (fabs(error_dir) < 0.3f) {
         error_dir = 0.0f;
     } else if (fabs(error_dir) > 180.0f) {
         if (error_dir > 0) error_dir = error_dir - 360.0f;

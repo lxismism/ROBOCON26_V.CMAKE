@@ -104,6 +104,13 @@ public:
         }
     }
 
+    void configureAnglePid(
+        const std::array<SpeedPidParam, kWheelCount> &params) {
+        for (size_t i = 0; i < angle_pid_.size(); ++i) {
+            applyPidParam(angle_pid_[i], params[i]);
+        }
+    }
+
     void configureSingleWheelSpeedPid(WheelIndex wheel,
                                       const SpeedPidParam &param) {
         applyPidParam(speed_pid_[wheel], param);
@@ -170,6 +177,7 @@ private:
     Geometry geometry_{};
     std::array<float, kWheelCount> direction_sign_{};
     std::array<PID_t, kWheelCount> speed_pid_{};
+    std::array<PID_t, kWheelCount> angle_pid_{};
     std::array<float, kWheelCount> target_rad_s_{};
     std::array<float, kWheelCount> pid_output_{};
 };
