@@ -152,10 +152,6 @@ void controlTask(void *argument) {
     PID_Init(&linear);
     PID_Init(&deg);
 
-    // 模式状态
-    static int control_mode = 0;    // 0=队友模式, 1=调试模式, 2=上层调试模式
-    static bool last_select = false;
-
 
     controlInit();
     for (;;) {
@@ -171,11 +167,6 @@ void controlTask(void *argument) {
         /* 从xbox数据订阅者中获取数据 */
         if (control_xbox_sub.TryGet(&control_xbox_cmd)) {
 
-            // // ===== btnSelect 模式切换（目前共3个模式） =====
-            // if (control_xbox_cmd.btnSelect && !last_select) {
-            //     control_mode = (control_mode + 1) % 3;  // 0→1→2→0→...
-            // }
-            // last_select = control_xbox_cmd.btnSelect;
             if(control_xbox_cmd.btnSelect == 1 && control_xbox_cmd_Last.btnSelect == 0) {
                 robot_mode = MC;
             }else if(control_xbox_cmd.btnShare == 1 && control_xbox_cmd_Last.btnShare == 0) {
@@ -185,20 +176,6 @@ void controlTask(void *argument) {
             }
             Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
     
-            // switch (control_mode) {
-            //     case 0:
-            //         Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
-            //         break;
-
-            //     case 1:
-            //         Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);  // 调试模式
-            //         break;
-                    
-            //     case 2:
-            //         UpperDebug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg); // 上层调试模式
-            //         break;
-            // }
-
 
             // 保留本次xbox数据
             control_xbox_cmd_Last = control_xbox_cmd;
