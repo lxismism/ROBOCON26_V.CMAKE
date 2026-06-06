@@ -544,10 +544,11 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
     // 每帧推进渐变
     upbody_ctrl.Update(0.005f, upbody_pub);
-    if (!upbody_ctrl.IsActive() && mf_placing) {
-        HAL_GPIO_WritePin(PUMP_LIFT_GPIO_Port, PUMP_LIFT_Pin, GPIO_PIN_RESET);
+    if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && mf_placing) {
         mf_placing = false;
     }
+
+
 
 
 
@@ -614,13 +615,13 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     Aim_State_omega_Process();
 
     /*上层机构执行*/
-    if (!upbody_ctrl.IsActive() && last_arena_x != Arena_x) {
+    if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && last_arena_x != Arena_x) {
         switch ((int16_t)state_aim_cmd.omega_) {
             case 0:
-                upbody_ctrl.GrabKFS(kPose_Grid9_Bot12);
+                upbody_ctrl.GrabKFS_Arena(kPose_Grid9_Bot12);
                 break;
             case -90:
-                upbody_ctrl.GrabKFS(kPose_Grid9_Bot3);
+                upbody_ctrl.GrabKFS_Arena(kPose_Grid9_Bot3);
                 break;
         }
         last_arena_x = Arena_x;
@@ -652,8 +653,6 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             last_arena_x = -1;
         }
     }
-
-
     last_btnA_arena = control_xbox_cmd.btnA;
    
     
