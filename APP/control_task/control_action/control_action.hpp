@@ -91,9 +91,9 @@ inline constexpr RobotPose kPose_KFS_High = {352.6f, 392.0f, 0.0f, 347.0f, 0.0f,
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};
 
 inline constexpr RobotPose kPose_Place1   = {78.1f, -302.0f, 160.59f, 347.0f, 0.0f, 100.0f};
-inline constexpr RobotPose kPose_Place2   = {78.1f, -139.0f, 70.0f, 347.0f, 0.0f, 100.0f};
+inline constexpr RobotPose kPose_Place2   = {78.1f, -129.0f, 70.0f, 347.0f, 0.0f, 100.0f};
 //inline constexpr RobotPose kPose_Place2   = {128.1f, 0.0f, 40.0f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Place3   = {260.0f, -180.5f, 0.0f, 347.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_Place3   = {280.0f, -190.5f, 0.0f, 347.0f, 0.0f, 0.0f};
 
 
 inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0.0f, 140.0f};

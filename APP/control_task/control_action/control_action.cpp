@@ -259,6 +259,9 @@ void ActionController::GrabKFS_Arena(const RobotPose& pose) {
         step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
         step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
         step1.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
+        
+        step1.speeds.pick_yaw         = 300.0f;
+
         step1.priorities.pick_lift    = 0;
         step1.step_done_mask = 0x01;
         AddStep(step1);
@@ -313,6 +316,8 @@ void ActionController::GetKFS(const RobotPose& pose) {
     ActionConfig config;
     config.target = pose;
     config.priorities.pick_yaw    = 0;
+    config.speeds.pick_extend     = 150.0f;
+    config.speeds.pick_yaw        = 300.0f;
     config.priorities.pick_lift   = 1;
     config.priorities.pick_extend = 2;
     AddStep(config);
@@ -325,6 +330,9 @@ void ActionController::GetKFS(const RobotPose& pose) {
     lift_up.target.pick_extend_mm   = pose.pick_extend_mm;
     lift_up.target.weapon_lift_mm   = pose.weapon_lift_mm;
     lift_up.target.weapon_extend_mm = pose.weapon_extend_mm;
+
+    lift_up.speeds.pick_yaw         = 300.0f;
+
     lift_up.priorities.pick_lift    = 0;
     lift_up.step_done_mask = 0x01;
     AddStep(lift_up);
@@ -332,6 +340,7 @@ void ActionController::GetKFS(const RobotPose& pose) {
     // 缩回吸取手
     ActionConfig retract;
     retract.target = pose;
+    retract.speeds.pick_extend    = 150.0f;
     retract.target.pick_extend_mm   = 0.0f;
     retract.target.pick_yaw_deg     = pose.pick_yaw_deg;
     retract.target.pick_lift_mm     = pose.pick_lift_mm + 70.0f;  // 保持抬高后的位置
