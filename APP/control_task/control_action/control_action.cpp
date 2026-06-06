@@ -228,11 +228,18 @@ void ActionController::Update(float dt, TypedTopicPublisher<pub_upbody_cmd>& pub
         }
     }
     Step_(dt);
+
+    // 动作全部执行完毕 → 立即清零队列计数，保证下次 AddStep 从 0 开始
+    if (!ramp_.active && step_index_ >= step_count_) {
+        step_count_ = 0;
+    }
+
     pub_upbody_cmd msg = {};
     msg.active = true;
     ToMsg_(msg);
     pub.Publish(msg);
 }
+
 
 // ---- 动作函数 ----
 
