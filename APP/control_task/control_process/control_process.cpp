@@ -683,11 +683,12 @@ void Aim_State_xy_Process() {
 
     if(state_xy_error > 1.0f){
         K_planTopid = 1.0f;
-    }else if(state_xy_error > 0.4f){
-        K_planTopid = (state_xy_error - 0.4f) / 0.6f;
+    }else if(state_xy_error > 0.5f){
+        K_planTopid = (state_xy_error - 0.5f) / 0.5f;
     }else{
         K_planTopid = 0.0f;
     }
+    //K_planTopid = 0.0f;
 
     robot_v_aim_cmd.linear_x_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid) * cos((state_xy_angle_deg - control_position.yaw) * kDegToRad);
     robot_v_aim_cmd.linear_y_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid) * sin((state_xy_angle_deg - control_position.yaw) * kDegToRad);
