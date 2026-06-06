@@ -78,14 +78,23 @@ bool MC_headless_omega_mode = false;
 const float MC_position_correction_y = 0.03f;
 
 
-int8_t MF_x = 0;
-int8_t MF_y = 0;
+uint8_t MF_x = 0;
+uint8_t MF_y = 0;
 float MF_close_position_x = 0.0f;
 float MF_close_position_y = 0.0f;
+bool MF_plan_record_Flag = false;
+bool MF_plan_run_Flag = false;
+bool MF_action_Flag = false;
+bool MF_pick_Flag = false;
+bool MF_xy_complete_Flag = false;
+bool MF_omega_complete_Flag = false;
+uint8_t MF_plan_record_i = 0;
+uint8_t MF_plan_run_i = 0;
+MF_plan_t MF_plan_zero = {0,0,0,0};
 
 int8_t Arena_x = 0;
 float Arena_close_position_y = 0.0f;
-float Arena_close_position_y_Max = 0.5f;
+float Arena_close_position_y_Max = 0.64f;
 
 const FieldSide_t field_side = Left;
 const float robot_center_to_gimbal_x = 0.4f;
@@ -169,10 +178,13 @@ void controlTask(void *argument) {
 
             if(control_xbox_cmd.btnSelect == 1 && control_xbox_cmd_Last.btnSelect == 0) {
                 robot_mode = MC;
+                Reset_position();
             }else if(control_xbox_cmd.btnShare == 1 && control_xbox_cmd_Last.btnShare == 0) {
                 robot_mode = MF;
+                Reset_position();
             }else if(control_xbox_cmd.btnStart == 1 && control_xbox_cmd_Last.btnStart == 0){
                 robot_mode = Arena;
+                Reset_position();
             }
             Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
     

@@ -59,3 +59,9 @@ void Aim_State_omega_Process();
  * 摇杆与调试模式的底盘控制相同，其余按键暂时置空
  */
 void UpperDebug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd& msg);
+
+/** @brief 工具函数 清零position定位*/
+void Reset_position();
+
+/** @brief 工具函数 归一化*/
+float Warp_ToRange(float value,float min,float max);

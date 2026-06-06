@@ -52,10 +52,10 @@ const std::array<OmniChassis::SpeedPidParam, OmniChassis::kWheelCount>
         // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右上
         // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 左下
         // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右下
-        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左上
-        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右上
-        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左下
-        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右下
+        OmniChassis::SpeedPidParam(1000.0f, 1800.0f, 0.003f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左上
+        OmniChassis::SpeedPidParam(900.0f, 1700.0f, 0.001f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右上
+        OmniChassis::SpeedPidParam(1350.0f, 2050.0f, 0.0025f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左下
+        OmniChassis::SpeedPidParam(930.0f, 1800.0f, 0.001f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右下
     };
 
 const std::array<OmniChassis::SpeedPidParam, OmniChassis::kWheelCount>
@@ -155,4 +155,17 @@ const float robot_position_MC[4][3] = {//用于在九宫格自动控制车辆移
     {0.6f*field_side, 2.6187f - MC_position_correction_y, 90.0f*field_side},
 
     {0.6f*field_side, 2.8187f - MC_position_correction_y, 90.0f*field_side}
+};
+
+MF_plan_t MF_plan[10] = {
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0}
 };
