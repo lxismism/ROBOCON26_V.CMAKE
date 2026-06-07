@@ -203,6 +203,15 @@ bool ActionController::IsActive() const {
     return ramp_.active;
 }
 
+void ActionController::SyncState(const RobotPose& current) {
+    ramp_.cur_pick_lift_mm     = current.pick_lift_mm;
+    ramp_.cur_pick_yaw_deg     = current.pick_yaw_deg;
+    ramp_.cur_pick_extend_mm   = current.pick_extend_mm;
+    ramp_.cur_weapon_lift_mm   = current.weapon_lift_mm;
+    ramp_.cur_weapon_extend_mm = current.weapon_extend_mm;
+    ramp_.cur_lift_mm          = current.lift_mm;
+}
+
 // ---- 步队列 ----
 
 void ActionController::AddStep(const ActionConfig& config) {

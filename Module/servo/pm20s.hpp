@@ -26,7 +26,7 @@ public:
 
   void setServoAngle(float angle) {
     uint8_t cmd = 0;
-    cmd =  static_cast<uint8_t>(5 + angle/13.5f);
+    cmd =  static_cast<uint8_t>(5 + angle/9.0f);
     switch (channel_id_) {
     case TIM_CHANNEL_1: {
       impl_.Instance->CCR1 = cmd - 1;
