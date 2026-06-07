@@ -34,6 +34,7 @@ void can2SendTask(void *argument);
 void can3SendTask(void *argument);
 void uart2RxProcessTask(void *argument);
 void uart3RxProcessTask(void *argument);
+void uart3SendTask(void *argument);
 void uart4RxProcessTask(void *argument);
 void uart5RxProcessTask(void *argument);
 void uart10RxProcessTask(void *argument);

@@ -33,6 +33,7 @@ extern osThreadId_t CAN2_Send_TaskHandle;
 extern osThreadId_t CAN3_Send_TaskHandle;
 extern osThreadId_t uart2ProcessTaskHandle;
 extern osThreadId_t uart3ProcessTaskHandle;
+extern osThreadId_t uart3SendTaskHandle;
 extern osThreadId_t uart4ProcessTaskHandle;
 extern osThreadId_t uart5ProcessTaskHandle;
 extern osThreadId_t uart10ProcessTaskHandle;  
@@ -123,7 +124,15 @@ void osTaskInit(void) {
   uart3ProcessTaskHandle =
       osThreadNew(uart3RxProcessTask, NULL, &Uart3ProcessTaskHandle_attributes);
 
-  const osThreadAttr_t Uart4ProcessTaskHandle_attributes = {
+  const osThreadAttr_t Uart3SendTaskHandle_attributes = {
+      .name = "Uart3Send_TaskHandle",
+      .stack_size = 256 * 4,
+      .priority = (osPriority_t)osPriorityNormal,
+  };
+  uart3SendTaskHandle =
+      osThreadNew(uart3SendTask, NULL, &Uart3SendTaskHandle_attributes);
+
+      const osThreadAttr_t Uart4ProcessTaskHandle_attributes = {
       .name = "Uart4Process_TaskHandle",
       .stack_size = 256 * 4,
       .priority = (osPriority_t)osPriorityNormal1,

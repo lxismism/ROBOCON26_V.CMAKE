@@ -49,6 +49,7 @@ osThreadId_t CAN1_Send_TaskHandle;
 osThreadId_t CAN2_Send_TaskHandle;
 osThreadId_t CAN3_Send_TaskHandle;
 osThreadId_t uart2ProcessTaskHandle;
+osThreadId_t uart3SendTaskHandle;
 osThreadId_t uart3ProcessTaskHandle;
 osThreadId_t uart4ProcessTaskHandle;
 osThreadId_t uart5ProcessTaskHandle;
@@ -469,6 +470,70 @@ void uart3RxProcessTask(void *argument) {
       }
     }
   }
+}
+
+void uart3SendTask(void *argument) {
+  (void)argument;
+  uint8_t tx_buffer[32] = {0};
+  uint8_t motor_state[2] = {0};
+  constexpr uint8_t kFrameId = 0x02;
+  constexpr uint8_t kPayloadLength = 8;
+  constexpr uint8_t kFrameLength = 2 + 1 + 1 + kPayloadLength + 2 + 2;
+
+  auto clampToInt16 = [](float value, float scale) -> int16_t {
+    const float scaled = value * scale;
+    if (scaled > 32767.0f) {
+      return 32767;
+    }
+    if (scaled < -32768.0f) {
+      return -32768;
+    }
+    return static_cast<int16_t>(scaled);
+  };
+
+  tx_buffer[0] = FRAME_HEAD_0_ESP32;
+  tx_buffer[1] = FRAME_HEAD_1_ESP32;
+  tx_buffer[2] = kFrameId;
+  tx_buffer[3] = kPayloadLength;
+
+  TickType_t currentTime = xTaskGetTickCount();
+
+  for(;;)
+  {
+    motor_state[0] = (chassis_motor1.isOffline()<<7)
+                      |(chassis_motor2.isOffline()<<6)
+                      |(chassis_motor3.isOffline()<<5)
+                      |(chassis_motor4.isOffline()<<4)
+                      |(picker_yaw_motor.isOffline()<<3)
+                      |(picker_extend_motor.isOffline()<<2)
+                      |(weapon_extend_motor.isOffline()<<1)
+                      |(lift_left_motor.isOffline()<<0);
+    motor_state[1] = (lift_right_motor.isOffline()<<7)
+                      |(picker_lift_motor.isOffline()<<6)
+                      |(weapon_lift_motor.isOffline()<<5);
+
+    const int16_t x_mm = clampToInt16(Position_msg.x, 10.0f);
+    const int16_t y_mm = clampToInt16(Position_msg.y, 10.0f);
+    const int16_t yaw_centideg = clampToInt16(Position_msg.yaw, 100.0f);
+
+    tx_buffer[4] = motor_state[0];
+    tx_buffer[5] = motor_state[1];
+    tx_buffer[6] = x_mm & 0xFF;
+    tx_buffer[7] = x_mm >> 8;
+    tx_buffer[8] = y_mm & 0xFF;
+    tx_buffer[9] = y_mm >> 8;
+    tx_buffer[10] = yaw_centideg & 0xFF;
+    tx_buffer[11] = yaw_centideg >> 8;
+    
+    tx_buffer[12] = 0x00; //校验位，暂时固定0x00
+    tx_buffer[13] = 0x00;
+
+    tx_buffer[14] = FRAME_END_0_ESP32;
+    tx_buffer[15] = FRAME_END_1_ESP32;
+    uart3_port.writeDma(tx_buffer, kFrameLength);
+    vTaskDelayUntil(&currentTime, 10);
+  }
+
 }
 
 //暂时先做发送
