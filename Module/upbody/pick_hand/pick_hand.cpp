@@ -29,22 +29,22 @@ void PickHand::init() {
 
   // ---- 云台旋转电机 PID (2006) ----
   PID_Init(&yaw_pid_);
-  yaw_pid_.Kp = 180.0f;
-  yaw_pid_.Ki = 30.0f;
-  yaw_pid_.Kd = 30.0f;
+  yaw_pid_.Kp = 700.0f;
+  yaw_pid_.Ki = 70.0f;
+  yaw_pid_.Kd = 35.0f;
   yaw_pid_.MaxOut = 5000.0f;
-  yaw_pid_.IntegralLimit = 1000.0f;
-  yaw_pid_.DeadBand = 0.1f;
+  yaw_pid_.IntegralLimit = 700.0f;
+  yaw_pid_.DeadBand = 0.05f;
   yaw_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 
   // ---- 伸缩电机 PID (2006) ----
   PID_Init(&extend_pid_);
-  extend_pid_.Kp = 210.0f;
-  extend_pid_.Ki = 30.0f;
+  extend_pid_.Kp = 230.0f;
+  extend_pid_.Ki = 40.0f;
   extend_pid_.Kd = 11.0f;
   extend_pid_.MaxOut = 5000.0f;
   extend_pid_.IntegralLimit = 600.0f;
-  extend_pid_.DeadBand = 0.1f;
+  extend_pid_.DeadBand = 0.2f;
   extend_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 
   // 读取泵初始状态
