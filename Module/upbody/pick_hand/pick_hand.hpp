@@ -68,7 +68,7 @@ public:
 
   // ======== 新增：吸盘控制方法 ========
   void pumpToggle();   // 真空泵通断切换（PG3）
-  void valveToggle();  // 电磁阀通断切换（PG4）
+  void valveToggle();  // 电磁阀通断切换（PG8）
   // ======== mm接口 ========
   void addLiftDelta(float delta_mm);
   void addExtendDelta(float delta_mm);

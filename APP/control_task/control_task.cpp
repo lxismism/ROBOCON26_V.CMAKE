@@ -75,6 +75,8 @@ int8_t MC_y = 0;
 float MC_close_position_x = 0.0f;
 bool MC_headless_xy_mode = false;
 bool MC_headless_omega_mode = false;
+const float MC_position_correction_y = 0.03f;
+
 
 int8_t MF_x = 0;
 int8_t MF_y = 0;
@@ -83,6 +85,7 @@ float MF_close_position_y = 0.0f;
 
 int8_t Arena_x = 0;
 float Arena_close_position_y = 0.0f;
+float Arena_close_position_y_Max = 0.5f;
 
 const FieldSide_t field_side = Left;
 const float robot_center_to_gimbal_x = 0.4f;
@@ -92,6 +95,13 @@ float error_y;
 float state_xy_error;
 float state_xy_angle_deg;
 float xy_pid_output;
+float v_xy_plan_Max;
+float v_xy_plan_Actual;
+float Acc_SpeedUp = 2.1f; //加速度，单位m/s^2
+float Acc_SpeedDown = 1.8f; //加速度，单位m/s^2
+float Acc_dt = 0.0f; //加速计时器，单位s
+uint32_t Acc_DWT_CNT = 0;
+float K_planTopid = 0.0f;
 
 pub_chassis_cmd robot_v_aim_cmd{
     .linear_x_ = 0.0f,
@@ -142,10 +152,6 @@ void controlTask(void *argument) {
     PID_Init(&linear);
     PID_Init(&deg);
 
-    // 模式状态
-    static int control_mode = 0;    // 0=队友模式, 1=调试模式, 2=上层调试模式
-    static bool last_select = false;
-
 
     controlInit();
     for (;;) {
@@ -161,35 +167,15 @@ void controlTask(void *argument) {
         /* 从xbox数据订阅者中获取数据 */
         if (control_xbox_sub.TryGet(&control_xbox_cmd)) {
 
-            // ===== btnSelect 模式切换（目前共3个模式） =====
-            if (control_xbox_cmd.btnSelect && !last_select) {
-                control_mode = (control_mode + 1) % 3;  // 0→1→2→0→...
+            if(control_xbox_cmd.btnSelect == 1 && control_xbox_cmd_Last.btnSelect == 0) {
+                robot_mode = MC;
+            }else if(control_xbox_cmd.btnShare == 1 && control_xbox_cmd_Last.btnShare == 0) {
+                robot_mode = MF;
+            }else if(control_xbox_cmd.btnStart == 1 && control_xbox_cmd_Last.btnStart == 0){
+                robot_mode = Arena;
             }
-            last_select = control_xbox_cmd.btnSelect;
-            // // ===== 比赛半自动模式（调试时注释掉） =====
-            // if(control_xbox_cmd.btnSelect == 1 && control_xbox_cmd_Last.btnSelect == 0) {
-            //     robot_mode = MC;
-            // }else if(control_xbox_cmd.btnShare == 1 && control_xbox_cmd_Last.btnShare == 0) {
-            //     robot_mode = MF;
-            // }else if(control_xbox_cmd.btnStart == 1 && control_xbox_cmd_Last.btnStart == 0){
-            //     robot_mode = Arena;
-            // }
-            // Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
-
-            switch (control_mode) {
-                case 0:
-                    Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
-                    break;
-
-                case 1:
-                    Debug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg);  // 调试模式
-                    break;
-
-                case 2:
-                    UpperDebug_Mode_Process(upbody_cmd_pub, upbody_cmd_msg); // 上层调试模式
-                    break;
-            }
-
+            Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
+    
 
             // 保留本次xbox数据
             control_xbox_cmd_Last = control_xbox_cmd;

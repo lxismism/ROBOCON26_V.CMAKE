@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Canbus.hpp"
+#include "main.h"
 #include <cmath>
 #include <stdint.h>
 
@@ -27,6 +28,8 @@
 #define DEGREE_2_RAD 0.01745329252f    // pi/180  角度转化成弧度
 #define RPM_2_ANGLE_PER_SEC 6.0f       // 360/60,转每分钟 转化 度每秒
 #define RPM_2_RAD_PER_SEC 0.104719755f // ×2pi/60sec,转每分钟 转化 弧度每秒
+
+constexpr uint32_t MOTOR_RX_TIMEOUT_MS = 10; // 电机状态超时阈值，单位毫秒
 
 class C610Motor;
 
@@ -146,6 +149,9 @@ public:
 
     // byte 6: 电机温度 (uint8, 单位: °C)
     temperature_ = static_cast<float>(data[6]);
+
+    // 更新时间戳
+    last_rx_timestamp_ = HAL_GetTick();
   }
 
   // buildTx 返回自己的 int16 命令，不发送整个帧
@@ -159,6 +165,13 @@ public:
 
   float cmdTrans() { return cmd_ * (10000.f / 10000.0f); }
 
+  
+  uint32_t getRxTimestamp() const { return last_rx_timestamp_; }
+
+  bool isOffline() const { 
+    return (HAL_GetTick() - last_rx_timestamp_ > MOTOR_RX_TIMEOUT_MS);
+  }
+
 private:
   // 编码器相关
   bool is_encoder_init{false};
@@ -170,6 +183,10 @@ private:
 
   // 电流转力矩
   float current_to_torque_{0.0f}; // M3508: 0.2 Nm/A
+
+  // 报文时间戳
+  uint32_t last_rx_timestamp_{0};
+  
 };
 
 class C620Motor : public CanDevice, public MotorBase {
@@ -228,6 +245,9 @@ public:
 
     // byte 6: 电机温度 (uint8, 单位: °C)
     temperature_ = static_cast<float>(data[6]);
+
+    // 更新时间戳
+    last_rx_timestamp_ = HAL_GetTick();
   }
 
   float cmdTrans() { return cmd_ * 16384.f / 20000.0f; }
@@ -236,6 +256,12 @@ public:
     // C610 不单独发帧，返回 false
     len = 0;
     return false;
+  }
+
+  uint32_t getRxTimestamp() const { return last_rx_timestamp_; }
+  
+  bool isOffline() const { 
+    return (HAL_GetTick() - last_rx_timestamp_ > MOTOR_RX_TIMEOUT_MS);
   }
 
 private:
@@ -249,6 +275,9 @@ private:
 
   // 电流转力矩
   float current_to_torque_{0.0f}; // M2006: 0.2 Nm/A
+
+  // 报文时间戳
+  uint32_t last_rx_timestamp_{0};
 };
 
 class GM6020Motor : public CanDevice, public MotorBase {

@@ -24,6 +24,7 @@
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
+extern const float MC_position_correction_y;
 
 // 任务句柄
 osThreadId_t ChassisTaskHandle;
@@ -43,24 +44,33 @@ namespace {//omni底盘解算器实例
 //                 chassis_motor4);
 // 每个轮子的PID参数配置
 const std::array<OmniChassis::SpeedPidParam, OmniChassis::kWheelCount>
-  kOmniWheelPidParams = {
-    // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 左上
-    // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 右上
-    // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 左下
-    // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 右下
-    // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 左上
-    // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右上
-    // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 左下
-    // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右下
-    OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左上
-    OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右上
-    OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左下
-    OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右下
-  };
+    kOmniWheelSpeedPidParams = {
+        // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 左上
+        // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 右上
+        // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 左下
+        // OmniChassis::SpeedPidParam(105.0f, 75000.0f, 0.002f, 16000.0f, 0.5f, NONE), // 右下
+        // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 左上
+        // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右上
+        // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 左下
+        // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右下
+        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左上
+        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右上
+        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左下
+        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右下
+    };
+
+const std::array<OmniChassis::SpeedPidParam, OmniChassis::kWheelCount>
+    kOmniWheelAnglePidParams = {
+        OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 左上
+        OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右上
+        OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 左下
+        OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右下
+    };
 }
 
 static inline void chassisInit() {
-    Omnichassis_solver.configureSpeedPid(kOmniWheelPidParams);
+    Omnichassis_solver.configureSpeedPid(kOmniWheelSpeedPidParams);
+    Omnichassis_solver.configureAnglePid(kOmniWheelAnglePidParams);
     if (!chassis_cmd_sub.IsValid()) {
         return;
     }
@@ -139,11 +149,11 @@ const float robot_position_Arena[3][3] = {//用于在九宫格自动控制车辆
 
 const float robot_position_MC[4][3] = {//用于在九宫格自动控制车辆移动
   //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
-    {0.6f*field_side, 2.2187f, 90.0f*field_side},
+    {0.6f*field_side, 2.2187f - MC_position_correction_y, 90.0f*field_side},
 
-    {0.6f*field_side, 2.4187f, 90.0f*field_side},
+    {0.6f*field_side, 2.4187f - MC_position_correction_y, 90.0f*field_side},
 
-    {0.6f*field_side, 2.6187f, 90.0f*field_side},
+    {0.6f*field_side, 2.6187f - MC_position_correction_y, 90.0f*field_side},
 
-    {0.6f*field_side, 2.8187f, 90.0f*field_side}
+    {0.6f*field_side, 2.8187f - MC_position_correction_y, 90.0f*field_side}
 };

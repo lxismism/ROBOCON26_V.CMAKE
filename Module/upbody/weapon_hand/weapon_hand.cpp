@@ -44,7 +44,7 @@ void WeaponHand::update() {
   }
 
   // ===== 1. 抬升电机位置环 =====
-  float cur_lift = -lift_motor_->getCurrentSumPos();
+  float cur_lift = lift_motor_->getCurrentSumPos();
 
   if (!lift_inited_) {
     lift_target_deg_ = cur_lift;  

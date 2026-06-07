@@ -24,6 +24,7 @@
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
+extern const float MC_position_correction_y;
 
 void controlInit();
 
