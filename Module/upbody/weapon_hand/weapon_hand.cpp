@@ -62,7 +62,7 @@ void WeaponHand::update() {
   lift_motor_->setMotorCmd(-lift_out);
 
   // ===== 2. 伸缩电机位置环 =====
-  float cur_extend = -extend_motor_->getCurrentSumPos();
+  float cur_extend = extend_motor_->getCurrentSumPos();
 
   if (!extend_inited_) {
     extend_target_deg_ = cur_extend;
@@ -75,7 +75,7 @@ void WeaponHand::update() {
 
 
   float extend_out = PID_Calculate(&extend_pid_, cur_extend, extend_target_deg_);
-  extend_motor_->setMotorCmd(-extend_out);
+  extend_motor_->setMotorCmd(extend_out);
 }
 
 // ======== 新增：夹爪开合切换 ========

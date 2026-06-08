@@ -19,6 +19,10 @@
 #include "topics.hpp"
 #include <cmath>
 #include <cstdint>
+#include "pick_hand.hpp"
+#include "weapon_hand.hpp"
+#include "lift.hpp"
+
 
 
 // ===== 上身控制常量（每帧步进量，1000Hz 控制频率） =====
@@ -75,6 +79,10 @@ extern float Arena_close_position_y_Max;
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
+
+extern PickHand pick_hand;
+extern WeaponHand weapon_hand;
+extern Lift lift;
 
 // 目标状态
 extern pub_chassis_cmd robot_v_aim_cmd;
@@ -219,6 +227,20 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
         }
         Normal_control_Process();
     }else {
+        // 模式切换时同步 ActionController 内部状态，防止姿态突变
+        static RobotMode_t prev_robot_mode = MC;
+        if (robot_mode != prev_robot_mode) {
+            RobotPose current;
+            current.pick_lift_mm     = pick_hand.lift_target_deg_   * PickHand::kLiftMmPerDeg;
+            current.pick_yaw_deg     = pick_hand.yaw_target_deg_;
+            current.pick_extend_mm   = pick_hand.extend_target_deg_ * PickHand::kExtendMmPerDeg;
+            current.weapon_lift_mm   = weapon_hand.lift_target_deg_   * WeaponHand::kLiftMmPerDeg;
+            current.weapon_extend_mm = weapon_hand.extend_target_deg_ * WeaponHand::kExtendMmPerDeg;
+            current.lift_mm          = lift.target_deg_ * Lift::kMmPerDeg;
+            upbody_ctrl.SyncState(current);
+            prev_robot_mode = robot_mode;
+        }
+
         switch (robot_mode) {
             case MC:{
                 MC_control_Process(upbody_pub, upbody_msg);
