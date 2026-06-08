@@ -30,11 +30,11 @@ inline constexpr float kDegToRad = M_PI / 180.0f;
 // ===== 动作速度配置 =====
 struct ActionSpeeds {
     float pick_lift     = 190.0f;   // 吸取手抬升 mm/s
-    float pick_yaw      = 180.0f;   // 云台旋转 °/s
-    float pick_extend   = 60.0f;    // 吸取手伸缩 mm/s
-    float weapon_lift   = 60.0f;    // 武器手抬升 mm/s
-    float weapon_extend = 60.0f;    // 武器手伸缩 mm/s
-    float lift          = 35.0f;    // 电梯 mm/s
+    float pick_yaw      = 250.0f;   // 云台旋转 °/s
+    float pick_extend   = 100.0f;    // 吸取手伸缩 mm/s
+    float weapon_lift   = 160.0f;    // 武器手抬升 mm/s
+    float weapon_extend = 100.0f;    // 武器手伸缩 mm/s
+    float lift          = 40.0f;    // 电梯 mm/s
 };
 
 // ===== 动作优先级配置 =====
@@ -90,16 +90,20 @@ inline constexpr RobotPose kPose_KFS_High = {352.6f, 392.0f, 0.0f, 347.0f, 0.0f,
 
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};
 
-inline constexpr RobotPose kPose_Place1   = {128.1f, -292.0f, 160.59f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Place2   = {128.1f, 0.0f, 40.0f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Place3   = {392.0f, 100.0f, 0.0f, 347.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_Place1   = {78.1f, -302.0f, 160.59f, 347.0f, 0.0f, 100.0f};
+inline constexpr RobotPose kPose_Place2   = {78.1f, -129.0f, 70.0f, 347.0f, 0.0f, 100.0f};
+//inline constexpr RobotPose kPose_Place2   = {128.1f, 0.0f, 40.0f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Place3   = {280.0f, -190.5f, 0.0f, 347.0f, 0.0f, 0.0f};
 
 
-inline constexpr RobotPose kPose_Grid9_Bot12 = {256.80f, 403.0f, 0.0f, 347.0f, 0.0f, 240.0f};
-inline constexpr RobotPose kPose_Grid9_Bot3  = {256.80f, 778.0f, 0.0f, 347.0f, 0.0f, 240.0f};
+inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Grid9_Bot3  = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 140.0f};
 
-inline constexpr RobotPose kPose_Get1   = {98.1f, -292.0f, 250.0f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Get2   = {98.1f, 0.0f, 70.0f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get1   = {98.1f, -292.0f, 290.0f, 347.0f, 0.0f, 140.0f};
+//inline constexpr RobotPose kPose_Get2   = {98.1f, 0.0f, 70.0f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 120.0f, 347.0f, 0.0f, 140.0f};
+
+
 
 // ===== 一步动作的完整配置 =====
 struct ActionConfig {
@@ -116,6 +120,7 @@ class ActionController {
 public:
     // ---- 动作函数（process 层调用） ----
     void GrabKFS (const RobotPose& pose);
+    void GrabKFS_Arena(const RobotPose& pose);
     void PlaceKFS(const RobotPose& pose);
     void GetKFS  (const RobotPose& pose);
     void GoHome();
@@ -124,11 +129,17 @@ public:
     void AddStep(const ActionConfig& config);
     void RunSteps();
 
+    // ---- 区分步间和全完成 ---- 
+    bool HasPending() const { return step_index_ < step_count_; }
+
+
     // ---- 每帧调用 ----
     void Update(float dt, TypedTopicPublisher<pub_upbody_cmd>& pub);
 
     // ---- 查询 ----
     bool IsActive() const;
+    void SyncState(const RobotPose& current);
+
 
 protected:
     void Start_(const ActionConfig& config);

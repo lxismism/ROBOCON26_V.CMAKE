@@ -99,8 +99,8 @@ DM4310Motor arm4310_motor(&fdcan2_bus, 0x301, 0, 0x01, 0,
 PickHand pick_hand;
 WeaponHand weapon_hand;
 Lift lift;
-// ---------- 腕部舵机（TIM2_CH3, PA2） ----------
-extern TIM_HandleTypeDef htim2;
+// ---------- 腕部舵机（TIM13_CH1, PF8） ----------
+extern TIM_HandleTypeDef htim13;
 PM20sServo wrist_servo(htim13, TIM_CHANNEL_1);
 
 
@@ -662,6 +662,7 @@ void DebugSerialTask(void *argument) {
   extern pub_Position_Data control_position_msg;
   extern pub_Position_Data control_position;
   extern Lift lift;
+  extern pub_chassis_cmd robot_v_aim_cmd;
 
   const PID_t& pid_LU = Omnichassis_solver.pid(OmniChassis::kLeftUp);
   const PID_t& pid_RU = Omnichassis_solver.pid(OmniChassis::kRightUp);
@@ -697,6 +698,13 @@ void DebugSerialTask(void *argument) {
     //                                           static_cast<int>(control_position.x), (static_cast<int>(abs(control_position.x * 1000)))%1000,
     //                                           static_cast<int>(control_position.y), (static_cast<int>(abs(control_position.y * 1000)))%1000,
     //                                           static_cast<int>(control_position.yaw), (static_cast<int>(abs(control_position.yaw * 100)))%100
+
+    // int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d\n",
+    //                                           static_cast<int>(robot_v_aim_cmd.linear_x_), (static_cast<int>(abs(robot_v_aim_cmd.linear_x_ * 100)))%100,
+    //                                           static_cast<int>(robot_v_aim_cmd.linear_y_), (static_cast<int>(abs(robot_v_aim_cmd.linear_y_ * 100)))%100,
+    //                                           static_cast<int>(robot_v_aim_cmd.omega_), (static_cast<int>(abs(robot_v_aim_cmd.omega_ * 100)))%100
+
+
     // );
     // int len = snprintf(debug_buffer, sizeof(debug_buffer), "%splatform: %d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
     //                                           title,
