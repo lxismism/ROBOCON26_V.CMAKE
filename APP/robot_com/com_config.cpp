@@ -489,13 +489,19 @@ void uart10RxProcessTask(void *argument) {
 
   typedef enum {
     wait_for_data_HEAD,
-    wait_for_data1,
-    wait_for_data2,
-    wait_for_data3,
+    wait_for_data,
+    wait_for_uidL,
+    wait_for_uidH,
+    wait_for_data_copy,
     wait_for_data_END
   }ir_data_rx_state_t;
 
   ir_data_rx_state_t ir_data_rx_state = wait_for_data_HEAD;
+  
+  uint16_t rx_uid;
+  uint16_t last_rx_uid = 0;
+
+  uint8_t temp_data_for_copy;
 
   for(;;)
   {
@@ -506,32 +512,35 @@ void uart10RxProcessTask(void *argument) {
     while(uart10_port.Read(packet)) {
       // 处理接收到的IR数据
       for(uint16_t i = 0; i < packet.len; ++i) {
-        if(packet.data[i] == 0xAA)   ir_data_rx_state = wait_for_data1;
+        if(packet.data[i] == 0xAA)   ir_data_rx_state = wait_for_data;
         else
         {
           switch (ir_data_rx_state) {
             case wait_for_data_HEAD:
               break;
-            case wait_for_data1:
+            case wait_for_data:
               ir_data.data1 = packet.data[i];
-              ir_data.data2 = 0;
-              ir_data_rx_state = wait_for_data2;
+              ir_data_rx_state = wait_for_uidL;
               break;
-            case wait_for_data2:
-              ir_data.data2 = packet.data[i];
-              ir_data_rx_state = wait_for_data3;
+            case wait_for_uidL:
+              rx_uid = packet.data[i];
+              ir_data_rx_state = wait_for_uidH;
               break;
-            case wait_for_data3:
-              ir_data.data3 = packet.data[i];
+            case wait_for_uidH:
+              rx_uid |= static_cast<uint16_t>(packet.data[i]) << 8;
+              ir_data_rx_state = wait_for_data_copy;
+              break;
+            case wait_for_data_copy:
+              temp_data_for_copy = packet.data[i];
               ir_data_rx_state = wait_for_data_END;
-              //last_data_received_time = xTaskGetTickCount();
-              //ir_data_pub.Publish(ir_data);
               break;
             case wait_for_data_END:
               if(packet.data[i] == 0xBB) {
                 last_data_received_time = xTaskGetTickCount();
-                if(ir_data.data1 == ir_data.data2 && ir_data.data2 == ir_data.data3)
+                if(rx_uid > last_rx_uid && temp_data_for_copy == ir_data.data1) {
+                  last_rx_uid = rx_uid;
                   ir_data_pub.Publish(ir_data);
+                }
               }
               ir_data_rx_state = wait_for_data_HEAD;
               break;
@@ -552,9 +561,10 @@ void uart10SendTask(void *argument) {
     return;
   }
 
-  uint8_t tx[5];
+  uint8_t tx[6];
+  uint16_t tx_uid = 1;
   tx[0] = 0xAA; // 数据帧头
-  tx[4] = 0xBB; // 数据帧尾
+  tx[5] = 0xBB; // 数据帧尾
 
   TickType_t currentTime = xTaskGetTickCount();
   TickType_t last_transmit_time = 0;
@@ -575,11 +585,19 @@ void uart10SendTask(void *argument) {
       case wait_for_data:
         if (ir_cmd_sub.TryGet(&ir_cmd)) {
           tx[1] = ir_cmd.tx_data[0];
-          tx[2] = ir_cmd.tx_data[1];
-          tx[3] = ir_cmd.tx_data[2];
-          uart10_port.writeDma(tx, sizeof(tx));
-          last_transmit_time = xTaskGetTickCount();
-          ir_data_tx_state = wait_for_transmit;
+          tx[2] = tx_uid & 0xFF; // UID低8位
+          tx[3] = (tx_uid >> 8) & 0xFF; // UID高8位
+          tx[4] = ir_cmd.tx_data[0];
+          if(uart10_port.writeDma(tx, sizeof(tx)) == HAL_OK)
+          {
+            last_transmit_time = xTaskGetTickCount();
+            ir_data_tx_state = wait_for_transmit;
+            tx_uid++;
+            if((tx_uid >> 8) == 0xAA || (tx_uid >> 8) == 0xBB) // 避免UID高8位与帧头帧尾冲突
+              tx_uid += 0x0100;
+            if((tx_uid & 0xFF) == 0xAA || (tx_uid & 0xFF) == 0xBB) // 避免UID低8位与帧头帧尾冲突
+              tx_uid += 1;
+          }
         }
         break;
     }
