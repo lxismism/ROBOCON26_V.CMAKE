@@ -19,33 +19,36 @@
 void PickHand::init() {
   // ---- 抬升电机 PID (3508) ----
   PID_Init(&lift_pid_);
-  lift_pid_.Kp = 40.0f;
-  lift_pid_.Ki = 40.0f;
+  lift_pid_.Kp = 70.0f;
+  lift_pid_.Ki = 60.0f;
   lift_pid_.Kd = 9.0f;
   lift_pid_.MaxOut = 8000.0f;
-  lift_pid_.IntegralLimit = 5000.0f;
+  lift_pid_.IntegralLimit = 1000.0f;
   lift_pid_.DeadBand = 0.5f;
   lift_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 
   // ---- 云台旋转电机 PID (2006) ----
   PID_Init(&yaw_pid_);
-  yaw_pid_.Kp = 40.0f;
-  yaw_pid_.Ki = 40.0f;
-  yaw_pid_.Kd = 6.0f;
+  yaw_pid_.Kp = 700.0f;
+  yaw_pid_.Ki = 70.0f;
+  yaw_pid_.Kd = 35.0f;
   yaw_pid_.MaxOut = 5000.0f;
-  yaw_pid_.IntegralLimit = 3000.0f;
-  yaw_pid_.DeadBand = 0.5f;
+  yaw_pid_.IntegralLimit = 700.0f;
+  yaw_pid_.DeadBand = 0.05f;
   yaw_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 
   // ---- 伸缩电机 PID (2006) ----
   PID_Init(&extend_pid_);
-  extend_pid_.Kp = 60.0f;
-  extend_pid_.Ki = 50.0f;
-  extend_pid_.Kd = 7.0f;
+  extend_pid_.Kp = 230.0f;
+  extend_pid_.Ki = 40.0f;
+  extend_pid_.Kd = 11.0f;
   extend_pid_.MaxOut = 5000.0f;
-  extend_pid_.IntegralLimit = 3000.0f;
-  extend_pid_.DeadBand = 0.5f;
+  extend_pid_.IntegralLimit = 600.0f;
+  extend_pid_.DeadBand = 0.2f;
   extend_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
+
+  // 读取泵初始状态
+  is_pump_on_ = (HAL_GPIO_ReadPin(PUMP_PICK_GPIO_Port, PUMP_PICK_Pin) == GPIO_PIN_SET);
 }
 
 void PickHand::update() {
@@ -69,6 +72,7 @@ void PickHand::update() {
 
 
   float lift_out = PID_Calculate(&lift_pid_, cur_lift, lift_target_deg_);
+  lift_out += is_pump_on_ ? lift_gravity_comp_kfs_ : lift_gravity_comp_;  //重力补偿 泵开1500，泵关900
   lift_motor_->setMotorCmd(-lift_out);
 
   // ===== 2. 云台旋转电机位置环 =====
@@ -118,6 +122,7 @@ void PickHand::pumpToggle() {
   GPIO_PinState cur = HAL_GPIO_ReadPin(PUMP_PICK_GPIO_Port, PUMP_PICK_Pin);
   HAL_GPIO_WritePin(PUMP_PICK_GPIO_Port, PUMP_PICK_Pin,
                     (cur == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET);
+  is_pump_on_ = (cur == GPIO_PIN_RESET); // 原来关→现在开
 }
 
 // ======== 电磁阀通断切换 ========

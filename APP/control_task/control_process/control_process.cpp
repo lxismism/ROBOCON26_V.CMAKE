@@ -25,8 +25,8 @@
 static constexpr float kLiftStep = 0.2f;
 static constexpr float kPickLiftStep = 0.4f;
 static constexpr float kPickYawStep = 1.0f;
-static constexpr float kPickExtendStep = 0.2f;
-static constexpr float kWeaponLiftStep = 0.25f;
+static constexpr float kPickExtendStep = 0.5f;  //0.2
+static constexpr float kWeaponLiftStep = 5.0f;  //0.25
 static constexpr float kWeaponExtendStep = 0.4f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
@@ -701,7 +701,7 @@ void Aim_State_xy_Process() {
 // =====================================================
 void Aim_State_omega_Process() {
     float error_dir = state_aim_cmd.omega_ - control_position.yaw;
-    if (fabs(error_dir) < 0.3f) {
+    if (fabs(error_dir) < 0.1f) {
         error_dir = 0.0f;
     } else if (fabs(error_dir) > 180.0f) {
         if (error_dir > 0) error_dir = error_dir - 360.0f;

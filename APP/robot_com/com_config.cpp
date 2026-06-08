@@ -593,10 +593,14 @@ void DebugSerialTask(void *argument) {
   static char title[12];
 
   extern OmniChassis Omnichassis_solver;
-  extern pub_chassis_cmd state_Aim_cmd;
+  extern pub_chassis_cmd state_aim_cmd;
   extern pub_Position_Data control_position_msg;
   extern pub_Position_Data control_position;
   extern Lift lift;
+  extern WeaponHand weapon_hand;
+
+  extern PID_t linear;
+  extern PID_t deg;
   extern pub_chassis_cmd robot_v_aim_cmd;
 
   const PID_t& pid_LU = Omnichassis_solver.pid(OmniChassis::kLeftUp);
@@ -650,6 +654,14 @@ void DebugSerialTask(void *argument) {
                                               static_cast<int>(lift.right_v_pid_.Ref), (static_cast<int>(abs(lift.right_v_pid_.Ref * 100)))%100,
                                               static_cast<int>(lift.right_v_pid_.Measure), (static_cast<int>(abs(lift.right_v_pid_.Measure * 100)))%100
     );
+    // int len = snprintf(debug_buffer, sizeof(debug_buffer), "platform: %d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
+    //                                           static_cast<int>(lift.platfrom_pos_pid_.Ref), (static_cast<int>(abs(lift.platfrom_pos_pid_.Ref * 100)))%100,
+    //                                           static_cast<int>(lift.platfrom_pos_pid_.Measure), (static_cast<int>(abs(lift.platfrom_pos_pid_.Measure * 100)))%100,
+    //                                           static_cast<int>(lift.left_v_pid_.Ref), (static_cast<int>(abs(lift.left_v_pid_.Ref * 100)))%100,
+    //                                           static_cast<int>(lift.left_v_pid_.Measure), (static_cast<int>(abs(lift.left_v_pid_.Measure * 100)))%100,
+    //                                           static_cast<int>(lift.right_v_pid_.Ref), (static_cast<int>(abs(lift.right_v_pid_.Ref * 100)))%100,
+    //                                           static_cast<int>(lift.right_v_pid_.Measure), (static_cast<int>(abs(lift.right_v_pid_.Measure * 100)))%100
+    // );
     // HAL_UART_Transmit_DMA(&huart5, (const uint8_t *)debug_buffer, sizeof(debug_buffer));
     uart5_port.writeDma(reinterpret_cast<const uint8_t*>(debug_buffer), len);
     vTaskDelayUntil(&currentTime, 10);//10ms发送一次
