@@ -642,7 +642,7 @@ void DebugSerialTask(void *argument) {
     //                                           static_cast<int>(robot_v_aim_cmd.omega_), (static_cast<int>(abs(robot_v_aim_cmd.omega_ * 100)))%100
 
 
-    // );
+    // // );
     int len = snprintf(debug_buffer, sizeof(debug_buffer), "%splatform: %d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
                                               title,
                                               static_cast<int>(lift.platfrom_pos_pid_.Ref), (static_cast<int>(abs(lift.platfrom_pos_pid_.Ref * 100)))%100,
