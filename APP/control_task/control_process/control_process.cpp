@@ -16,6 +16,7 @@
 #include "control_action.hpp"
 #include "pid_controller.h"
 #include "chassis_task.h"
+#include "topic_pool.h"
 #include "topics.hpp"
 #include <cmath>
 #include <cstdint>
@@ -47,9 +48,10 @@ extern pub_Position_Data control_position_msg;
 extern pub_Position_Data control_position;
 
 // 定位修正
+extern float position_center_distance;
 extern float position_correction_x;
 extern float position_correction_y;
-extern const float position_center_distance = 0.28f;
+
 
 // 控制模式状态
 extern RobotMode_t robot_mode;
@@ -68,12 +70,14 @@ extern uint8_t MF_x;
 extern uint8_t MF_y;
 extern float MF_close_position_x;
 extern float MF_close_position_y;
+extern float MF_omega_correction;
 extern bool MF_plan_record_Flag;
 extern bool MF_plan_run_Flag;
 extern bool MF_action_Flag;
 extern bool MF_pick_Flag;
 extern bool MF_xy_complete_Flag;
 extern bool MF_omega_complete_Flag;
+extern int8_t MF_omega_control_Flag;
 extern uint8_t MF_plan_record_i;
 extern uint8_t MF_plan_run_i;
 extern MF_plan_t MF_plan_zero;
@@ -554,9 +558,11 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
         bool MF_plan_run_Flag_Last = MF_plan_run_Flag;
         bool MF_plan_record_Flag_Last = MF_plan_record_Flag;
-        
+
         if(control_xbox_cmd.btnX == true && control_xbox_cmd_Last.btnX == false){
-            MF_plan_record_Flag = !MF_plan_record_Flag;
+            if(MF_plan_run_Flag == false){
+                MF_plan_record_Flag = !MF_plan_record_Flag;
+            }
         }
 
         if(MF_plan_record_Flag == true){
@@ -580,19 +586,19 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 if (control_xbox_cmd.btnDirLeft == 1) {
                     if (control_xbox_cmd_Last.btnDirLeft == 0) {
                         if (MF_x < 5) {
-                            MF_x = MF_x + 1;
+                            MF_x = MF_x - field_side;
                         }
                     }
                 } else if (control_xbox_cmd.btnDirRight == 1) {
                     if (control_xbox_cmd_Last.btnDirRight == 0) {
                         if (MF_x > 0) {
-                            MF_x = MF_x - 1;
+                            MF_x = MF_x + field_side;
                         }
                     }
                 }
             }
 
-            if(MF_plan_record_i < 10){
+            if(MF_plan_record_i < 14){
                 if(MF_x != MF_x_Last || MF_y != MF_y_Last){
                     if((MF_x == 0 || MF_x == 5) && (MF_y == 0 || MF_y == 4)){
                         MF_plan[MF_plan_record_i].MF_x = MF_x;
@@ -600,6 +606,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                         MF_plan[MF_plan_record_i].is_picking = false;
                         MF_plan[MF_plan_record_i].is_valid = true;
                         MF_plan_record_i++;
+                        MF_pick_Flag = false;
                     }else {
                         MF_pick_Flag = true;
                     }
@@ -616,61 +623,103 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 }
             }
         }else if(MF_plan_record_Flag_Last == true){
+            if(MF_plan_record_i > 0){
+                if(MF_x != MF_plan[MF_plan_record_i-1].MF_x || MF_y != MF_plan[MF_plan_record_i-1].MF_y){
+                    MF_plan[MF_plan_record_i].MF_x = MF_x;
+                    MF_plan[MF_plan_record_i].MF_y = MF_y;
+                    MF_plan[MF_plan_record_i].is_picking = false;
+                    MF_plan[MF_plan_record_i].is_valid = true;
+                    MF_plan_record_i++;
+                }
+            }
+            
             MF_plan_run_Flag = true;
         }
 
         if(MF_plan_run_Flag == true){
             if(MF_action_Flag == false){//MF_action_Flag == false表示没有还在执行且未完成的动作，则进入下一个底盘移动，当开始执行动作的时候给MF_action_Flag置true,结束时置false
-                if((MF_plan_run_i <= MF_plan_record_i) && (MF_plan[MF_plan_run_i].is_valid == true)){
+                if((MF_plan_run_i < MF_plan_record_i) && (MF_plan[MF_plan_run_i].is_valid == true)){
+
                     state_aim_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0];
                     state_aim_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1];
+                    if((int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] != (int16_t)state_aim_cmd.omega_){
+                        if(MF_omega_control_Flag == 0){
+                            if(control_position.y < 1.3f-MF_omega_correction){
+                                if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_aim_cmd.omega_,-180.0f,180.0f)) > 100){
+                                    state_aim_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
+                                }else {
+                                    state_aim_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                                }
+                                MF_omega_control_Flag = -1;
+                            }else if(control_position.y > 3.7f+MF_omega_correction){
+                                if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_aim_cmd.omega_,-180.0f,180.0f)) > 100){
+                                    state_aim_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
+                                }else {
+                                    state_aim_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                                }
+                                MF_omega_control_Flag = 1;
+                            }
+                        }else if(MF_omega_control_Flag == -1){
+                            if(control_position.y > 3.7f+MF_omega_correction){
+                                if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_aim_cmd.omega_,-180.0f,180.0f)) > 100){
+                                    state_aim_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
+                                }else {
+                                    state_aim_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                                }
+                            }
+                        }else if(MF_omega_control_Flag == 1){
+                            if(control_position.y < 1.3f-MF_omega_correction){
+                                if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_aim_cmd.omega_,-180.0f,180.0f)) > 100){
+                                    state_aim_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
+                                }else {
+                                    state_aim_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                                }
+                            }
+                        }
+                    }
+
                     if(((state_aim_cmd.linear_x_ - control_position.x)*(state_aim_cmd.linear_x_ - control_position.x) + (state_aim_cmd.linear_y_ - control_position.y)*(state_aim_cmd.linear_y_ - control_position.y)) < 0.03*0.03){
                         static uint8_t count_xy = 0;
-                        static uint8_t count_omega = 0;
-                        
                         if(MF_xy_complete_Flag == false){
                             if(count_xy >= 10){
-                                if(MF_plan[MF_plan_run_i].is_picking == true){
-                                    /*
-                                    MF_action_Flag = true
-                                    动作函数启动
-                                    */
-                                }
-                                if(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] != state_aim_cmd.omega_){
-                                    MF_omega_complete_Flag = false;
-                                    state_aim_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                }else {
-                                    MF_omega_complete_Flag = true;
-                                    state_aim_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                }
-                                
                                 MF_xy_complete_Flag = true;
                                 count_xy = 0 ;
                             }else {
                                 count_xy ++;
                             }
-                        }else if(MF_xy_complete_Flag == true){
-                            if(Warp_ToRange(state_aim_cmd.omega_ - control_position.yaw,-180.0f,180.0f) < 0.5){
-                                if(count_omega >= 10){
-                                    MF_omega_complete_Flag = true;
-                                    count_omega = 0;
-                                }else {
-                                    count_omega ++;
-                                }
-                            }
-                            if(MF_omega_complete_Flag == true){
-                                MF_plan_run_i ++;
-                                MF_xy_complete_Flag = false;
-                                MF_omega_complete_Flag = false;
+                        }
+                    }
+                    if(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - control_position.yaw,-180.0f,180.0f) < 0.5){
+                        static uint8_t count_omega = 0;
+                        if(MF_omega_complete_Flag == false){
+                            if(count_omega >= 10){
+                                MF_omega_complete_Flag = true;
+                                count_omega = 0;
+                            }else {
+                                count_omega ++;
                             }
                         }
                     }
+
+                    if(MF_omega_complete_Flag == true && MF_xy_complete_Flag == true){
+                        if(MF_plan[MF_plan_run_i].is_picking == true){
+                            /*
+                            MF_action_Flag = true
+                            动作函数启动
+                            */
+                        }
+                        MF_plan_run_i ++;
+                        MF_xy_complete_Flag = false;
+                        MF_omega_complete_Flag = false;
+                        MF_omega_control_Flag = 0;    
+                    }
+
                 }else {
                     MF_plan_record_i = 0;
                     MF_plan_run_i = 0;
                     MF_plan_run_Flag = false;
                     MF_pick_Flag = false;
-                    for(uint8_t i;i<10;i++){
+                    for(uint8_t i;i<15;i++){
                         MF_plan[i] = MF_plan_zero;
                     }
                 }
@@ -780,18 +829,19 @@ void Aim_State_xy_Process() {
     v_xy_plan_Actual = v_xy_plan_Actual + Acc_SpeedUp*Acc_dt;  //速度规划实际值更新
     if(v_xy_plan_Actual > v_xy_plan_Max) v_xy_plan_Actual = v_xy_plan_Max;
 
-    if(state_xy_error > 1.0f){
-        K_planTopid = 1.0f;
-    }else if(state_xy_error > 0.5f){
-        K_planTopid = (state_xy_error - 0.5f) / 0.5f;
-    }else{
-        K_planTopid = 0.0f;
-    }
+    // if(state_xy_error > 1.0f){
+    //     K_planTopid = 1.0f;
+    // }else if(state_xy_error > 0.5f){
+    //     K_planTopid = (state_xy_error - 0.5f) / 0.5f;
+    // }else{
+    //     K_planTopid = 0.0f;
+    // }
+    K_planTopid = 0.0f;
 
     robot_v_aim_cmd.linear_x_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid) * cos((state_xy_angle_deg - control_position.yaw) * kDegToRad);
     robot_v_aim_cmd.linear_y_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid) * sin((state_xy_angle_deg - control_position.yaw) * kDegToRad);
     
-
+    // robot_v_aim_cmd.linear_xy_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid);
     //速度规划
 }
 

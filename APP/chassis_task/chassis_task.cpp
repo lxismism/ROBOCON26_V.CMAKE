@@ -19,11 +19,13 @@
 #include "topic_pool.h"
 #include "topics.hpp"
 
+
 #include <array>
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
 extern const float MC_position_correction_y;
+
 
 // 任务句柄
 osThreadId_t ChassisTaskHandle;
@@ -81,12 +83,12 @@ void chassisTask(void *argument) {
     chassisInit();
 
     for (;;) {
-      if (chassis_cmd_sub.TryGet(&chassis_chassis_cmd)) {
-      // 仅更新命令
-      }
-      // 无论有没有新命令，都持续执行解算
-      Omnichassis_solver.run(chassis_chassis_cmd);
-      vTaskDelayUntil(&currentTime, 1);
+
+        if (chassis_cmd_sub.TryGet(&chassis_chassis_cmd)) {
+        }
+        // 无论有没有新命令，都持续执行解算
+        Omnichassis_solver.run(chassis_chassis_cmd);
+        vTaskDelayUntil(&currentTime, 1);
     }
 }
 
@@ -157,7 +159,12 @@ const float robot_position_MC[4][3] = {//用于在九宫格自动控制车辆移
     {0.6f*field_side, 2.8187f - MC_position_correction_y, 90.0f*field_side}
 };
 
-MF_plan_t MF_plan[10] = {
+MF_plan_t MF_plan[15] = {
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
     {0,0,0,0},
     {0,0,0,0},
     {0,0,0,0},
