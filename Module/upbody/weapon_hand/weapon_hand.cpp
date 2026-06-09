@@ -59,7 +59,7 @@ void WeaponHand::update() {
 
   float lift_out = PID_Calculate(&lift_pid_, cur_lift, lift_target_deg_);
   lift_out += lift_gravity_comp_;  //加上重力补偿
-  lift_motor_->setMotorCmd(-lift_out);
+  lift_motor_->setMotorCmd(lift_out);
 
   // ===== 2. 伸缩电机位置环 =====
   float cur_extend = extend_motor_->getCurrentSumPos();
@@ -76,6 +76,13 @@ void WeaponHand::update() {
 
   float extend_out = PID_Calculate(&extend_pid_, cur_extend, extend_target_deg_);
   extend_motor_->setMotorCmd(extend_out);
+
+    // ===== 3. 腕部达妙电机维护 =====
+  if (wrist_motor_ != nullptr) {
+    float target = wrist_flipped_ ? kWristDownAngle_rad : kWristUpAngle_rad;
+    wrist_motor_->posWithSpeedControl(target, kWristFlipSpeed_radps);
+  }
+
 }
 
 // ======== 新增：夹爪开合切换 ========
@@ -87,17 +94,12 @@ void WeaponHand::clawToggle() {
                     (cur == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET);
 }
 
-// ======== 新增：腕部舵机翻转切换 ========
+// ======== 新增：腕部达妙翻转切换 ========
 void WeaponHand::wristFlip() {
-  if (wrist_servo_ == nullptr) return;
-
+  if (wrist_motor_ == nullptr) return;
   wrist_flipped_ = !wrist_flipped_;
-  if (wrist_flipped_) {
-    wrist_servo_->setServoAngle(kWristDownAngle);  // 下翻90°
-  } else {
-    wrist_servo_->setServoAngle(kWristUpAngle);    // 回正
-  }
 }
+
 
 float WeaponHand::clampTarget(float target, float current,
                               float min_val, float max_val) {

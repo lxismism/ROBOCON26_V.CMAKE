@@ -91,17 +91,13 @@ C620Motor lift_right_motor(&fdcan2_bus, 0x202, 0, 0x200, 0);     // lift 右侧
 C620Motor picker_lift_motor(&fdcan2_bus, 0x203, 0, 0x200, 0);    // pick_hand 抬升
 C620Motor weapon_lift_motor(&fdcan2_bus, 0x204, 0, 0x200, 0);    // weapon_hand 抬升
 
-DM4310Motor arm4310_motor(&fdcan2_bus, 0x301, 0, 0x01, 0,
+DM4310Motor arm4310_motor(&fdcan1_bus, 0x301, 0, 0x01, 0,
                          DM4310Motor::PosWithSpeed);
 
 // ---------- 上层机构模块对象 ----------
 PickHand pick_hand;
 WeaponHand weapon_hand;
 Lift lift;
-// ---------- 腕部舵机（TIM13_CH1, PF8） ----------
-extern TIM_HandleTypeDef htim13;
-PM20sServo wrist_servo(htim13, TIM_CHANNEL_1);
-
 
 
 // 串口外设（回调+信号量唤醒处理线程进行解包）
@@ -238,6 +234,9 @@ uint8_t comServiceInit() {
   fdcan1_bus.registerDevice(&picker_yaw_motor);
   fdcan1_bus.registerDevice(&picker_extend_motor);
   fdcan1_bus.registerDevice(&weapon_extend_motor);
+  fdcan1_bus.registerDevice(&arm4310_motor);   // ← 移到这里
+
+
 
   // ---- 将上身4个3508注册到 CAN2 总线 ----
   fdcan2_bus.registerDevice(&lift_left_motor);
@@ -245,7 +244,6 @@ uint8_t comServiceInit() {
   fdcan2_bus.registerDevice(&picker_lift_motor);
   fdcan2_bus.registerDevice(&weapon_lift_motor);
 
-  fdcan2_bus.registerDevice(&arm4310_motor);
 
   // ---- 绑定机构模块的电机指针 ----
   pick_hand.lift_motor_ = &picker_lift_motor;
@@ -262,9 +260,9 @@ uint8_t comServiceInit() {
   pick_hand.init();
   weapon_hand.init();
   lift.init();
-  // ---- 舵机初始化 & 绑定 ----
-  wrist_servo.init();
-  weapon_hand.wrist_servo_ = &wrist_servo;
+  // ---- 腕部达妙电机绑定 ----
+  weapon_hand.wrist_motor_ = &arm4310_motor;
+
   
   
   // 串口外设
