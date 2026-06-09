@@ -15,25 +15,26 @@
 #include "main.h"
 #include "weapon_hand.hpp"
 
+
 void WeaponHand::init() {
   // ---- 抬升电机 PID (3508) ----
   PID_Init(&lift_pid_);
-  lift_pid_.Kp = 40.0f;
-  lift_pid_.Ki = 40.0f;
-  lift_pid_.Kd = 9.0f;
-  lift_pid_.MaxOut = 8000.0f;
-  lift_pid_.IntegralLimit = 5000.0f;
-  lift_pid_.DeadBand = 0.5f;
+  lift_pid_.Kp = 40.0f;  //原来是40
+  lift_pid_.Ki = 20.0f;  //原来40  //还没试这个
+  lift_pid_.Kd = 19.0f;  //9
+  lift_pid_.MaxOut = 8000.0f;  //8000
+  lift_pid_.IntegralLimit = 5000.0f;  //5000
+  lift_pid_.DeadBand = 0.5f;  //0.5
   lift_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 
   // ---- 伸缩电机 PID (2006) ----
   PID_Init(&extend_pid_);
-  extend_pid_.Kp = 40.0f;
-  extend_pid_.Ki = 40.0f;
-  extend_pid_.Kd = 6.0f;
-  extend_pid_.MaxOut = 5000.0f;
-  extend_pid_.IntegralLimit = 3000.0f;
-  extend_pid_.DeadBand = 0.5f;
+  extend_pid_.Kp = 90.0f;  //原来40
+  extend_pid_.Ki = 20.0f;  //40
+  extend_pid_.Kd = 10.0f;   //6
+  extend_pid_.MaxOut = 5000.0f;  //5000
+  extend_pid_.IntegralLimit = 800.0f;  //3000
+  extend_pid_.DeadBand = 0.1f;
   extend_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 }
 
@@ -43,10 +44,11 @@ void WeaponHand::update() {
   }
 
   // ===== 1. 抬升电机位置环 =====
-  float cur_lift = -lift_motor_->getCurrentSumPos();
+  float cur_lift = lift_motor_->getCurrentSumPos();
 
   if (!lift_inited_) {
-    lift_target_deg_ = cur_lift;
+    lift_target_deg_ = cur_lift;  
+
     lift_inited_ = true;
   }
 
@@ -56,10 +58,11 @@ void WeaponHand::update() {
 
 
   float lift_out = PID_Calculate(&lift_pid_, cur_lift, lift_target_deg_);
-  lift_motor_->setMotorCmd(-lift_out);
+  lift_out += lift_gravity_comp_;  //加上重力补偿
+  lift_motor_->setMotorCmd(lift_out);
 
   // ===== 2. 伸缩电机位置环 =====
-  float cur_extend = -extend_motor_->getCurrentSumPos();
+  float cur_extend = extend_motor_->getCurrentSumPos();
 
   if (!extend_inited_) {
     extend_target_deg_ = cur_extend;
@@ -72,7 +75,14 @@ void WeaponHand::update() {
 
 
   float extend_out = PID_Calculate(&extend_pid_, cur_extend, extend_target_deg_);
-  extend_motor_->setMotorCmd(-extend_out);
+  extend_motor_->setMotorCmd(extend_out);
+
+    // ===== 3. 腕部达妙电机维护 =====
+  if (wrist_motor_ != nullptr) {
+    float target = wrist_flipped_ ? kWristDownAngle_rad : kWristUpAngle_rad;
+    wrist_motor_->posWithSpeedControl(target, kWristFlipSpeed_radps);
+  }
+
 }
 
 // ======== 新增：夹爪开合切换 ========
@@ -84,17 +94,12 @@ void WeaponHand::clawToggle() {
                     (cur == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET);
 }
 
-// ======== 新增：腕部舵机翻转切换 ========
+// ======== 新增：腕部达妙翻转切换 ========
 void WeaponHand::wristFlip() {
-  if (wrist_servo_ == nullptr) return;
-
+  if (wrist_motor_ == nullptr) return;
   wrist_flipped_ = !wrist_flipped_;
-  if (wrist_flipped_) {
-    wrist_servo_->setServoAngle(kWristDownAngle);  // 下翻90°
-  } else {
-    wrist_servo_->setServoAngle(kWristUpAngle);    // 回正
-  }
 }
+
 
 float WeaponHand::clampTarget(float target, float current,
                               float min_val, float max_val) {

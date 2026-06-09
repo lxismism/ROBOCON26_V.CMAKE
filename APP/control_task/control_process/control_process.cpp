@@ -20,14 +20,18 @@
 #include "topics.hpp"
 #include <cmath>
 #include <cstdint>
+#include "pick_hand.hpp"
+#include "weapon_hand.hpp"
+#include "lift.hpp"
+
 
 
 // ===== 上身控制常量（每帧步进量，1000Hz 控制频率） =====
 static constexpr float kLiftStep = 0.2f;
 static constexpr float kPickLiftStep = 0.4f;
 static constexpr float kPickYawStep = 1.0f;
-static constexpr float kPickExtendStep = 0.2f;
-static constexpr float kWeaponLiftStep = 0.25f;
+static constexpr float kPickExtendStep = 0.5f;  //0.2
+static constexpr float kWeaponLiftStep = 0.5f;  //0.25
 static constexpr float kWeaponExtendStep = 0.4f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
@@ -88,6 +92,10 @@ extern float Arena_close_position_y_Max;
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
+
+extern PickHand pick_hand;
+extern WeaponHand weapon_hand;
+extern Lift lift;
 
 // 目标状态
 extern pub_chassis_cmd robot_v_aim_cmd;
@@ -232,6 +240,20 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
         }
         Normal_control_Process();
     }else {
+        // 模式切换时同步 ActionController 内部状态，防止姿态突变
+        static RobotMode_t prev_robot_mode = MC;
+        if (robot_mode != prev_robot_mode) {
+            RobotPose current;
+            current.pick_lift_mm     = pick_hand.lift_target_deg_   * PickHand::kLiftMmPerDeg;
+            current.pick_yaw_deg     = pick_hand.yaw_target_deg_;
+            current.pick_extend_mm   = pick_hand.extend_target_deg_ * PickHand::kExtendMmPerDeg;
+            current.weapon_lift_mm   = weapon_hand.lift_target_deg_   * WeaponHand::kLiftMmPerDeg;
+            current.weapon_extend_mm = weapon_hand.extend_target_deg_ * WeaponHand::kExtendMmPerDeg;
+            current.lift_mm          = lift.target_deg_ * Lift::kMmPerDeg;
+            upbody_ctrl.SyncState(current);
+            prev_robot_mode = robot_mode;
+        }
+
         switch (robot_mode) {
             case MC:{
                 MC_control_Process(upbody_pub, upbody_msg);
@@ -515,12 +537,13 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         }
 
 
-        // 每帧推进渐变
-        upbody_ctrl.Update(0.005f, upbody_pub);
-        if (!upbody_ctrl.IsActive() && mf_placing) {
-            HAL_GPIO_WritePin(PUMP_LIFT_GPIO_Port, PUMP_LIFT_Pin, GPIO_PIN_RESET);
-            mf_placing = false;
-        }
+    // 每帧推进渐变
+    upbody_ctrl.Update(0.005f, upbody_pub);
+    if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && mf_placing) {
+        mf_placing = false;
+    }
+
+
 
 
 
@@ -762,13 +785,13 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     Aim_State_omega_Process();
 
     /*上层机构执行*/
-    if (!upbody_ctrl.IsActive() && last_arena_x != Arena_x) {
+    if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && last_arena_x != Arena_x) {
         switch ((int16_t)state_aim_cmd.omega_) {
             case 0:
-                upbody_ctrl.GrabKFS(kPose_Grid9_Bot12);
+                upbody_ctrl.GrabKFS_Arena(kPose_Grid9_Bot12);
                 break;
             case -90:
-                upbody_ctrl.GrabKFS(kPose_Grid9_Bot3);
+                upbody_ctrl.GrabKFS_Arena(kPose_Grid9_Bot3);
                 break;
         }
         last_arena_x = Arena_x;
@@ -800,8 +823,6 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             last_arena_x = -1;
         }
     }
-
-
     last_btnA_arena = control_xbox_cmd.btnA;
    
     
@@ -851,7 +872,7 @@ void Aim_State_xy_Process() {
 // =====================================================
 void Aim_State_omega_Process() {
     float error_dir = state_aim_cmd.omega_ - control_position.yaw;
-    if (fabs(error_dir) < 0.3f) {
+    if (fabs(error_dir) < 0.1f) {
         error_dir = 0.0f;
     } else if (fabs(error_dir) > 180.0f) {
         if (error_dir > 0) error_dir = error_dir - 360.0f;

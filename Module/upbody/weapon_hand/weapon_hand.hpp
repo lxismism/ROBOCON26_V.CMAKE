@@ -16,16 +16,15 @@
 
 #include "Motor.hpp"
 #include "pid_controller.h"
-#include "pm20s.hpp"
-
 class WeaponHand {
 public:
   // ---------- 电机引用（由外部 com_config.cpp 传入） ----------
   C620Motor *lift_motor_{nullptr};   // 3508 抬升电机
   C610Motor *extend_motor_{nullptr}; // 2006 伸缩电机
 
-  // ======== 新增：舵机指针（由外部 com_config.cpp 传入） ========
-  PM20sServo *wrist_servo_{nullptr}; // 腕部双轴舵机
+  // ======== 达妙指针（由外部 com_config.cpp 传入） ========
+  DM4310Motor *wrist_motor_{nullptr}; // 腕部达妙4310电机（位置速度模式）
+
 
   // ---------- 各电机 PID ----------
   PID_t lift_pid_;
@@ -34,6 +33,10 @@ public:
   // ---------- 目标角度 ----------
   float lift_target_deg_{0.0f};
   float extend_target_deg_{0.0f};
+
+  // ---------- 重力补偿 ----------
+   //float lift_gravity_comp_{68.6f};  //武器手抬升重力补偿值
+   float lift_gravity_comp_{0.0f};
 
   // ---------- 换算系数 ----------
   static constexpr float kLiftMmPerDeg = 90.0f / 360.0f;
@@ -50,10 +53,12 @@ public:
   bool lift_inited_{false};
   bool extend_inited_{false};
 
-  // ======== 新增：腕部舵机状态 ========
+  // ======== 腕部翻转状态（达妙4310电机，位置速度模式） ========
   bool wrist_flipped_{false};   // false=朝上(初始位), true=朝前(下翻90°)
-  static constexpr float kWristUpAngle = 0.0f;     // 朝上的舵机角度（需实测校准）
-  static constexpr float kWristDownAngle = 65.0f;   // 朝前的舵机角度（需实测校准）
+  static constexpr float kWristUpAngle_rad = 0.0f;        // 朝上（零位），单位 rad
+  static constexpr float kWristDownAngle_rad = 1.5708f;   // 朝前（下翻90° = π/2 rad）
+  static constexpr float kWristFlipSpeed_radps = 3.0f;    // 翻转速度 rad/s
+
 
   // ---------- 方法 ----------
   void init();
