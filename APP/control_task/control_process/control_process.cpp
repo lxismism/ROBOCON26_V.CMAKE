@@ -463,7 +463,39 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     uint8_t MF_x_Last = MF_x;
     uint8_t MF_y_Last = MF_y;
 
-    if(false){
+    if(true){
+        if (MF_x == 0 || MF_x == 5) {
+            if (control_xbox_cmd.btnDirUp == 1) {
+                if (control_xbox_cmd_Last.btnDirUp == 0) {
+                    if (MF_y < 4) {
+                        MF_y = MF_y + 1;
+                    }
+                }
+            } else if (control_xbox_cmd.btnDirDown == 1) {
+                if (control_xbox_cmd_Last.btnDirDown == 0) {
+                    if (MF_y > 0) {
+                        MF_y = MF_y - 1;
+                    }
+                }
+            }
+        }
+
+        if (MF_y == 0 || MF_y == 4) {
+            if (control_xbox_cmd.btnDirLeft == 1) {
+                if (control_xbox_cmd_Last.btnDirLeft == 0) {
+                    if (MF_x < 5) {
+                        MF_x = MF_x - field_side;
+                    }
+                }
+            } else if (control_xbox_cmd.btnDirRight == 1) {
+                if (control_xbox_cmd_Last.btnDirRight == 0) {
+                    if (MF_x > 0) {
+                        MF_x = MF_x + field_side;
+                    }
+                }
+            }
+        }
+        
         /*上层机构执行*/
         switch ((int8_t)robot_position_MF[MF_x][MF_y][3]) {
             case 1:

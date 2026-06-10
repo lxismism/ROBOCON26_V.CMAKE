@@ -79,9 +79,20 @@ void WeaponHand::update() {
 
     // ===== 3. 腕部达妙电机维护 =====
   if (wrist_motor_ != nullptr) {
-    float target = wrist_flipped_ ? kWristDownAngle_rad : kWristUpAngle_rad;
-    wrist_motor_->posWithSpeedControl(target, kWristFlipSpeed_radps);
+    if (wrist_motor_->isOffline()) {
+      // 电机离线（未上电或掉线），每200ms重试一次使能
+      static uint32_t last_retry_tick = 0;
+      if (HAL_GetTick() - last_retry_tick > 200) {
+        wrist_motor_->dmMotorEnable();
+        last_retry_tick = HAL_GetTick();
+      }
+    } else {
+      // 电机在线，正常发位置速度指令
+      float target = wrist_flipped_ ? kWristDownAngle_rad : kWristUpAngle_rad;
+      wrist_motor_->posWithSpeedControl(target, kWristFlipSpeed_radps);
+    }
   }
+
 
 }
 
