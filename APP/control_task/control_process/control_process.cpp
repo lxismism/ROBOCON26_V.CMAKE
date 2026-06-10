@@ -780,8 +780,26 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             Arena_close_position_y = 0.0f;
         }   
     }
+    // ===== 九宫格子模式切换 =====
+    static bool arena_r2_mode  = false;  // false=KFS放置模式, true=R2合体模式
+    static bool arena_r2_floor = false;  // false=R2一楼, true=R2二楼
 
-    if(false){
+    // btnY 上升沿切换子模式
+    static bool last_btnY_arena = false;
+    if (control_xbox_cmd.btnY && !last_btnY_arena) {
+        arena_r2_mode = !arena_r2_mode;
+        if (arena_r2_mode) {
+            arena_r2_floor = false;   // 进入合体模式默认一楼
+        }
+        last_arena_x = -1;            // 强制刷新上身姿态
+    }
+
+    last_btnY_arena = control_xbox_cmd.btnY;
+
+    // btnA 上升沿检测（if/else 共用）
+    static bool last_btnA_arena = false;
+    
+    if (!arena_r2_mode) {
         state_aim_cmd.linear_x_ = robot_position_Arena[Arena_x][0];
         state_aim_cmd.linear_y_ = robot_position_Arena[Arena_x][1] + Arena_close_position_y;
         Aim_State_xy_Process();
@@ -819,7 +837,6 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         last_btnX_arena = control_xbox_cmd.btnX;
 
         // 获取KFS（渐变空闲时响应，先近后远）
-        static bool last_btnA_arena = false;
         static bool get_toggle = false;  // false=Get2(近), true=Get1(远)
         if (!upbody_ctrl.IsActive()) {
             if (control_xbox_cmd.btnA && !last_btnA_arena) {
@@ -828,15 +845,34 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
                 last_arena_x = -1;
             }
         }
-        last_btnA_arena = control_xbox_cmd.btnA;
-    }else {
+        
+    } else {
         state_aim_cmd.linear_x_ = robot_position_Arena_withR2[Arena_x][0];
         state_aim_cmd.linear_y_ = robot_position_Arena_withR2[Arena_x][1] + Arena_close_position_y;
         Aim_State_xy_Process();
 
         state_aim_cmd.omega_    = robot_position_Arena_withR2[Arena_x][2];
         Aim_State_omega_Process();
+
+        /*上层机构执行*/
+        // 进入合体模式或切换格子时，默认设为当前楼层姿态
+        if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && last_arena_x != Arena_x) {
+            upbody_ctrl.R2MergePose(arena_r2_floor ? kPose_R2_Second_Floor : kPose_R2_First_Floor);
+            last_arena_x = Arena_x;
+        }
+
+        // btnA 上升沿切换一楼/二楼
+        if (!upbody_ctrl.IsActive()) {
+            if (control_xbox_cmd.btnA && !last_btnA_arena) {
+                arena_r2_floor = !arena_r2_floor;
+                upbody_ctrl.R2MergePose(arena_r2_floor ? kPose_R2_Second_Floor : kPose_R2_First_Floor);
+            }
+        }
+
+        // 每帧推进渐变
+        upbody_ctrl.Update(0.005f, upbody_pub);
     }
+    last_btnA_arena = control_xbox_cmd.btnA;  // ← 移到此处，每帧更新一次
 
     
     

@@ -19,11 +19,11 @@
 void WeaponHand::init() {
   // ---- 抬升电机 PID (3508) ----
   PID_Init(&lift_pid_);
-  lift_pid_.Kp = 40.0f;  //原来是40
-  lift_pid_.Ki = 20.0f;  //原来40  //还没试这个
-  lift_pid_.Kd = 19.0f;  //9
+  lift_pid_.Kp = 90.0f;  //原来是40
+  lift_pid_.Ki = 30.0f;  //原来40  //还没试这个
+  lift_pid_.Kd = 10.0f;  //9
   lift_pid_.MaxOut = 8000.0f;  //8000
-  lift_pid_.IntegralLimit = 5000.0f;  //5000
+  lift_pid_.IntegralLimit = 1000.0f;  //5000
   lift_pid_.DeadBand = 0.5f;  //0.5
   lift_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 

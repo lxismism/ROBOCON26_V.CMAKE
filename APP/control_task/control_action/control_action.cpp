@@ -373,3 +373,17 @@ void ActionController::GoHome() {
     config.speeds.lift          = 40.0f;
     Start_(config);
 }
+
+
+void ActionController::R2MergePose(const RobotPose& pose) {
+    ActionConfig config;
+    // 其他轴保持当前位置不变，只改电梯
+    config.target.pick_lift_mm     = ramp_.cur_pick_lift_mm;
+    config.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
+    config.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
+    config.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
+    config.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
+    config.target.lift_mm          = pose.lift_mm;
+    config.step_done_mask = 0x20;  // 仅关注电梯到位
+    Start_(config);
+}

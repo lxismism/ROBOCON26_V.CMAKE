@@ -92,7 +92,6 @@ inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f,
 
 inline constexpr RobotPose kPose_Place1   = {78.1f, -302.0f, 160.59f, 347.0f, 0.0f, 100.0f};
 inline constexpr RobotPose kPose_Place2   = {78.1f, -129.0f, 70.0f, 347.0f, 0.0f, 100.0f};
-//inline constexpr RobotPose kPose_Place2   = {128.1f, 0.0f, 40.0f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Place3   = {280.0f, -190.5f, 0.0f, 347.0f, 0.0f, 0.0f};
 
 
@@ -100,10 +99,10 @@ inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0
 inline constexpr RobotPose kPose_Grid9_Bot3  = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 140.0f};
 
 inline constexpr RobotPose kPose_Get1   = {98.1f, -292.0f, 290.0f, 347.0f, 0.0f, 140.0f};
-//inline constexpr RobotPose kPose_Get2   = {98.1f, 0.0f, 70.0f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 120.0f, 347.0f, 0.0f, 140.0f};
 
-
+inline constexpr RobotPose kPose_R2_First_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_R2_Second_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 257.3f};
 
 // ===== 一步动作的完整配置 =====
 struct ActionConfig {
@@ -123,6 +122,10 @@ public:
     void GrabKFS_Arena(const RobotPose& pose);
     void PlaceKFS(const RobotPose& pose);
     void GetKFS  (const RobotPose& pose);
+    void R2MergePose(const RobotPose& pose);
+
+
+
     void GoHome();
 
     // ---- 步队列 ----
