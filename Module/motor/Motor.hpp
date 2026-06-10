@@ -340,7 +340,7 @@ public:
     bool mode_Change = !modeChange(PosWithSpeed, mode_change_state_);
 #ifdef DM_MOTOR_SINGLE
     if (!cs_changed || manager_ == nullptr || mode_Change) {
-#elif 
+#else
     if (manager_ == nullptr || mode_Change) {
 #endif
       return;
@@ -363,7 +363,7 @@ public:
     bool mode_Change = !modeChange(Speed, mode_change_state_);
 #ifdef DM_MOTOR_SINGLE
     if (!cs_changed || manager_ == nullptr || mode_Change) {
-#elif 
+#else
     if (manager_ == nullptr || mode_Change) {
 #endif
       return;
@@ -390,7 +390,7 @@ public:
     bool mode_Change = !modeChange(Mit, mode_change_state_);
 #ifdef DM_MOTOR_SINGLE
     if (!cs_changed || manager_ == nullptr || mode_Change) {
-#elif 
+#else
     if (manager_ == nullptr || mode_Change) {
 #endif
       return;
@@ -415,7 +415,7 @@ public:
     bool mode_Change = !modeChange(Psi, mode_change_state_);
 #ifdef DM_MOTOR_SINGLE
     if (!cs_changed || manager_ == nullptr || mode_Change) {
-#elif 
+#else
     if (manager_ == nullptr || mode_Change) {
 #endif
       return;
