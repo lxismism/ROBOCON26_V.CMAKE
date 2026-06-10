@@ -149,7 +149,16 @@ const float robot_position_Arena[3][3] = {//用于在九宫格自动控制车辆
     {-1.227f*field_side + field_side*robot_center_to_gimbal_x, 4.399f - 0.5f, -90.0f*(-field_side + 1)/2}
 };
 
-const float robot_position_MC[4][3] = {//用于在九宫格自动控制车辆移动
+const float robot_position_Arena_withR2[3][3] = {//用于在九宫格自动控制车辆移动
+  //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
+    {-0.227f*field_side , 4.399f - 0.5f, 0.0f},
+
+    {-0.727f*field_side , 4.399f - 0.5f, 0.0f},
+
+    {-1.227f*field_side , 4.399f - 0.5f, 0.0f}
+};
+
+const float robot_position_MC[4][3] = {//用于在武馆自动控制车辆移动
   //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
     {0.6f*field_side, 2.2187f - MC_position_correction_y, 90.0f*field_side},
 
@@ -159,6 +168,8 @@ const float robot_position_MC[4][3] = {//用于在九宫格自动控制车辆移
 
     {0.6f*field_side, 2.8187f - MC_position_correction_y, 90.0f*field_side}
 };
+
+
 
 MF_plan_t MF_plan[15] = {
     {0,0,0,0},

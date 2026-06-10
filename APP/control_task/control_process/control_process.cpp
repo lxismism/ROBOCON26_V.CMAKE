@@ -772,59 +772,73 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     }
 
     if(control_xbox_cmd.btnRB == 1){
-        if(Arena_close_position_y < Arena_close_position_y_Max)Arena_close_position_y = Arena_close_position_y + 0.0015f;
+        if(Arena_close_position_y < Arena_close_position_y_Max)Arena_close_position_y = Arena_close_position_y + 0.0005f;
     }else{
-        Arena_close_position_y = 0.0f;
+        if(Arena_close_position_y > 0.0f){
+            Arena_close_position_y =  Arena_close_position_y - 0.0005;
+        }else {
+            Arena_close_position_y = 0.0f;
+        }   
     }
 
-    state_aim_cmd.linear_x_ = robot_position_Arena[Arena_x][0];
-    state_aim_cmd.linear_y_ = robot_position_Arena[Arena_x][1] + Arena_close_position_y;
-    Aim_State_xy_Process();
+    if(false){
+        state_aim_cmd.linear_x_ = robot_position_Arena[Arena_x][0];
+        state_aim_cmd.linear_y_ = robot_position_Arena[Arena_x][1] + Arena_close_position_y;
+        Aim_State_xy_Process();
 
-    state_aim_cmd.omega_    = robot_position_Arena[Arena_x][2];
-    Aim_State_omega_Process();
+        state_aim_cmd.omega_    = robot_position_Arena[Arena_x][2];
+        Aim_State_omega_Process();
 
-    /*上层机构执行*/
-    if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && last_arena_x != Arena_x) {
-        switch ((int16_t)state_aim_cmd.omega_) {
-            case 0:
-                upbody_ctrl.GrabKFS_Arena(kPose_Grid9_Bot12);
-                break;
-            case -90:
-                upbody_ctrl.GrabKFS_Arena(kPose_Grid9_Bot3);
-                break;
+        /*上层机构执行*/
+        if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && last_arena_x != Arena_x) {
+            switch ((int16_t)state_aim_cmd.omega_) {
+                case 0:
+                    upbody_ctrl.GrabKFS_Arena(kPose_Grid9_Bot12);
+                    break;
+                case -90:
+                    upbody_ctrl.GrabKFS_Arena(kPose_Grid9_Bot3);
+                    break;
+            }
+            last_arena_x = Arena_x;
         }
-        last_arena_x = Arena_x;
-    }
 
 
-    // 每帧推进渐变
-    upbody_ctrl.Update(0.005f, upbody_pub);
+        // 每帧推进渐变
+        upbody_ctrl.Update(0.005f, upbody_pub);
 
 
-        // 真空泵/阀（始终可用）
-    static bool last_btnX_arena = false;
-    if (control_xbox_cmd.btnX && !last_btnX_arena) {
-        pub_upbody_cmd toggle_msg = {};
-        toggle_msg.active = true;
-        toggle_msg.pump_toggle  = true;
-        toggle_msg.valve_toggle = true;
-        upbody_pub.Publish(toggle_msg);
-    }
-    last_btnX_arena = control_xbox_cmd.btnX;
-
-    // 获取KFS（渐变空闲时响应，先近后远）
-    static bool last_btnA_arena = false;
-    static bool get_toggle = false;  // false=Get2(近), true=Get1(远)
-    if (!upbody_ctrl.IsActive()) {
-        if (control_xbox_cmd.btnA && !last_btnA_arena) {
-            upbody_ctrl.GetKFS(get_toggle ? kPose_Get1 : kPose_Get2);
-            get_toggle = !get_toggle;
-            last_arena_x = -1;
+            // 真空泵/阀（始终可用）
+        static bool last_btnX_arena = false;
+        if (control_xbox_cmd.btnX && !last_btnX_arena) {
+            pub_upbody_cmd toggle_msg = {};
+            toggle_msg.active = true;
+            toggle_msg.pump_toggle  = true;
+            toggle_msg.valve_toggle = true;
+            upbody_pub.Publish(toggle_msg);
         }
+        last_btnX_arena = control_xbox_cmd.btnX;
+
+        // 获取KFS（渐变空闲时响应，先近后远）
+        static bool last_btnA_arena = false;
+        static bool get_toggle = false;  // false=Get2(近), true=Get1(远)
+        if (!upbody_ctrl.IsActive()) {
+            if (control_xbox_cmd.btnA && !last_btnA_arena) {
+                upbody_ctrl.GetKFS(get_toggle ? kPose_Get1 : kPose_Get2);
+                get_toggle = !get_toggle;
+                last_arena_x = -1;
+            }
+        }
+        last_btnA_arena = control_xbox_cmd.btnA;
+    }else {
+        state_aim_cmd.linear_x_ = robot_position_Arena_withR2[Arena_x][0];
+        state_aim_cmd.linear_y_ = robot_position_Arena_withR2[Arena_x][1] + Arena_close_position_y;
+        Aim_State_xy_Process();
+
+        state_aim_cmd.omega_    = robot_position_Arena_withR2[Arena_x][2];
+        Aim_State_omega_Process();
     }
-    last_btnA_arena = control_xbox_cmd.btnA;
-   
+
+    
     
 }
 

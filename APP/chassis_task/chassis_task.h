@@ -32,5 +32,6 @@ typedef struct {
 extern const float robot_position_MC[4][3];
 extern const float robot_position_MF[6][5][4];
 extern const float robot_position_Arena[3][3];
+extern const float robot_position_Arena_withR2[3][3];
 extern MF_plan_t MF_plan[15] ;
 
