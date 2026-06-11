@@ -60,6 +60,10 @@ extern float position_correction_y;
 // 控制模式状态
 extern RobotMode_t robot_mode;
 
+extern float xbox_angle_deg;
+extern float v_aim;
+
+
 extern bool headless_xy_mode;
 extern bool headless_omega_mode;
 
@@ -106,8 +110,6 @@ extern PID_t linear;
 extern PID_t deg;
 
 // 队友模式中间变量
-extern float xbox_angle_deg;
-extern float v_aim;
 extern float error_x;
 extern float error_y;
 extern float state_xy_error;
@@ -115,11 +117,25 @@ extern float state_xy_angle_deg;
 extern float xy_pid_output;
 extern float v_xy_plan_Max;
 extern float v_xy_plan_Actual;
-extern float Acc_SpeedUp;
-extern float Acc_SpeedDown;
-extern float Acc_dt;
-extern uint32_t Acc_DWT_CNT;
-extern float K_planTopid;
+extern float Acc_xy_SpeedUp; //加速度，单位m/s^2
+extern float Acc_xy_SpeedDown; //加速度，单位m/s^2
+extern float K_xy_planTopid;
+
+extern float error_dir;
+extern float omega_pid_output;
+extern float v_omega_plan_Max;
+extern float v_omega_plan_Actual;
+extern float Acc_omega_SpeedUp; //加速度，单位m/s^2
+extern float Acc_omega_SpeedDown; //加速度，单位m/s^2
+extern float K_omega_planTopid;
+
+extern float Acc_xy_dt; //加速计时器，单位s
+extern uint32_t Acc_xy_DWT_CNT;
+extern float Acc_omega_dt; //加速计时器，单位s
+extern uint32_t Acc_omega_DWT_CNT;
+
+extern float predict_yaw;
+extern float yaw_delay_time;
 
 
 static bool mf_placing = false;   // 放置进行中，禁止梯度打断
@@ -858,23 +874,29 @@ void Aim_State_xy_Process() {
     state_xy_angle_deg = atan2(error_y, error_x) / kDegToRad;
     xy_pid_output      = PID_Calculate(&linear, 0.0f, state_xy_error);
 
-    v_xy_plan_Max = sqrt(2.0f*Acc_SpeedDown*state_xy_error);  //规划最大速度
+    v_xy_plan_Max = sqrt(2.0f*Acc_xy_SpeedDown*state_xy_error);  //规划最大速度
 
-    Acc_dt = DWT_GetDeltaT(&Acc_DWT_CNT);  //获取加速计时器增量，单位s
-    v_xy_plan_Actual = v_xy_plan_Actual + Acc_SpeedUp*Acc_dt;  //速度规划实际值更新
-    if(v_xy_plan_Actual > v_xy_plan_Max) v_xy_plan_Actual = v_xy_plan_Max;
+    Acc_xy_dt = DWT_GetDeltaT(&Acc_xy_DWT_CNT);  //获取加速计时器增量，单位s
+    
+    if(v_xy_plan_Actual > v_xy_plan_Max){
+        v_xy_plan_Actual = v_xy_plan_Max;
+    }else {
+        v_xy_plan_Actual = v_xy_plan_Actual + Acc_xy_SpeedUp*Acc_xy_dt;  //速度规划实际值更新
+    }
 
-    // if(state_xy_error > 1.0f){
-    //     K_planTopid = 1.0f;
-    // }else if(state_xy_error > 0.5f){
-    //     K_planTopid = (state_xy_error - 0.5f) / 0.5f;
-    // }else{
-    //     K_planTopid = 0.0f;
-    // }
-    K_planTopid = 0.0f;
+    if(state_xy_error > 1.0f){
+        K_xy_planTopid = 1.0f;
+    }else if(state_xy_error > 0.5f){
+        K_xy_planTopid = (state_xy_error - 0.5f) / 0.5f;
+    }else{
+        K_xy_planTopid = 0.0f;
+    }
+    // K_xy_planTopid = 0.0f;
 
-    robot_v_aim_cmd.linear_x_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid) * cos((state_xy_angle_deg - control_position.yaw) * kDegToRad);
-    robot_v_aim_cmd.linear_y_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid) * sin((state_xy_angle_deg - control_position.yaw) * kDegToRad);
+    predict_yaw = control_position.yaw + (control_position.yaw_speed/kDegToRad)*yaw_delay_time;
+
+    robot_v_aim_cmd.linear_x_ = (xy_pid_output*(1.0f - K_xy_planTopid) + v_xy_plan_Actual*K_xy_planTopid) * cos((state_xy_angle_deg - predict_yaw) * kDegToRad);
+    robot_v_aim_cmd.linear_y_ = (xy_pid_output*(1.0f - K_xy_planTopid) + v_xy_plan_Actual*K_xy_planTopid) * sin((state_xy_angle_deg - predict_yaw) * kDegToRad);
     
     // robot_v_aim_cmd.linear_xy_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid);
     //速度规划
@@ -885,15 +907,31 @@ void Aim_State_xy_Process() {
 //  角度 PID
 // =====================================================
 void Aim_State_omega_Process() {
-    float error_dir = state_aim_cmd.omega_ - control_position.yaw;
-    if (fabs(error_dir) < 0.1f) {
-        error_dir = 0.0f;
-    } else if (fabs(error_dir) > 180.0f) {
-        if (error_dir > 0) error_dir = error_dir - 360.0f;
-        else error_dir = error_dir + 360.0f;
+    error_dir = Warp_ToRange(state_aim_cmd.omega_ - control_position.yaw,-180.0f,180.0f);
+    float state_omega_error = fabs(error_dir);
+
+    omega_pid_output = kDegToRad * PID_Calculate(&deg, control_position.yaw, control_position.yaw + error_dir);
+    
+    v_omega_plan_Max = sqrt(2.0f*Acc_omega_SpeedDown*state_omega_error*kDegToRad);  //规划最大速度
+
+    Acc_omega_dt = DWT_GetDeltaT(&Acc_omega_DWT_CNT);  //获取加速计时器增量，单位s
+
+    if(v_omega_plan_Actual > v_omega_plan_Max){
+        v_omega_plan_Actual = v_omega_plan_Max;
+    }else {
+        v_omega_plan_Actual = v_omega_plan_Actual + Acc_omega_SpeedUp*Acc_omega_dt;  //速度规划实际值更新
     }
 
-    robot_v_aim_cmd.omega_ = kDegToRad * PID_Calculate(&deg, control_position.yaw, control_position.yaw + error_dir);
+    
+    if(state_omega_error > 15.0f){
+        K_omega_planTopid = 1.0f;
+    }else if(state_omega_error > 7.5f){
+        K_omega_planTopid = (state_omega_error - 7.5f) / 7.5f;
+    }else{
+        K_omega_planTopid = 0.0f;
+    }
+
+    robot_v_aim_cmd.omega_ = (omega_pid_output*(1.0f - K_omega_planTopid) + sign(error_dir)*v_omega_plan_Actual*K_omega_planTopid);
 }
 
 // =====================================================

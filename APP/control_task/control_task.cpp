@@ -50,7 +50,7 @@ pub_Position_Data control_position_msg{};
 pub_Position_Data control_position{};
 
 // 定位修正参数
-float position_center_distance = 0.26f;
+float position_center_distance = 0.25f;
 float position_correction_x = 0.0f;
 float position_correction_y = -position_center_distance;
 
@@ -109,11 +109,25 @@ float state_xy_angle_deg;
 float xy_pid_output;
 float v_xy_plan_Max;
 float v_xy_plan_Actual;
-float Acc_SpeedUp = 2.1f; //加速度，单位m/s^2
-float Acc_SpeedDown = 1.8f; //加速度，单位m/s^2
-float Acc_dt = 0.0f; //加速计时器，单位s
-uint32_t Acc_DWT_CNT = 0;
-float K_planTopid = 0.0f;
+float Acc_xy_SpeedUp = 2.1f; //加速度，单位m/s^2
+float Acc_xy_SpeedDown = 1.8f; //加速度，单位m/s^2
+float K_xy_planTopid = 0.0f;
+
+float error_dir;
+float omega_pid_output;
+float v_omega_plan_Max;
+float v_omega_plan_Actual;
+float Acc_omega_SpeedUp = M_PI*0.75f; //加速度，单位m/s^2
+float Acc_omega_SpeedDown = M_PI*0.5f; //加速度，单位m/s^2
+float K_omega_planTopid = 0.0f;
+
+float Acc_xy_dt = 0.0f; //加速计时器，单位s
+uint32_t Acc_xy_DWT_CNT = 0;
+float Acc_omega_dt = 0.0f; //加速计时器，单位s
+uint32_t Acc_omega_DWT_CNT = 0;
+
+float predict_yaw = 0.0f;
+float yaw_delay_time = 0.014f;
 
 pub_chassis_cmd robot_v_aim_cmd{
     .linear_x_ = 0.0f,
@@ -127,8 +141,8 @@ pub_chassis_cmd state_aim_cmd{
 };
 
 // 车体目标角度环 PID
-PID_t linear{.Kp = 4.68f,.Ki = 0.01f,.Kd = 0.55f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-PID_t deg{.Kp = 2.20f,.Ki = 0.25f,.Kd = 0.1f,.MaxOut = MAX_VELOCITY_ANGULAR*0.55*180.0/M_PI,.DeadBand = 0.3f,.Improve = NONE};
+PID_t linear{.Kp = 4.68f,.Ki = 0.01f,.Kd = 0.95f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+PID_t deg{.Kp = 2.10f,.Ki = 0.22f,.Kd = 0.08f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
 
 
 void controlInit() {
