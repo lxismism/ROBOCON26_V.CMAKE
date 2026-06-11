@@ -16,6 +16,7 @@
 #include "topic_pool.h"
 #include "topics.hpp"
 #include <cmath>
+#include <cstddef>
 
 // ===== 摇杆 + 坐标常量 =====
 inline constexpr uint16_t kJoyCenter = 32767;
@@ -26,6 +27,12 @@ inline constexpr float kDegToRad = M_PI / 180.0f;
 #ifndef ABS
 #define ABS(x) ((x) < 0 ? -(x) : (x))
 #endif
+
+enum Height : size_t{
+    Low = 0 ,
+    Mid = 1 ,
+    High = 2 ,
+};
 
 // ===== 动作速度配置 =====
 struct ActionSpeeds {
@@ -72,7 +79,14 @@ struct RampState {
     // 电梯
     float cur_lift_mm = 0.0f;
     float end_lift_mm = 0.0f;
+
+    // ===== 新增：泵/阀切换暂存 =====
+    bool pending_pump_toggle  = false;   // 下一步首帧发送泵切换
+    bool pending_valve_toggle = false;   // 下一步首帧发送阀切换
+    bool pump_toggle_at_done  = false;   // 当前步完成时发送泵切换
+    bool valve_toggle_at_done = false;   // 当前步完成时发送阀切换
 };
+
 
 // ===== 机器人全身姿态 =====
 struct RobotPose {
@@ -87,23 +101,29 @@ struct RobotPose {
 inline constexpr RobotPose kPose_KFS_Low  = {0.0f,   392.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 inline constexpr RobotPose kPose_KFS_Mid  = {159.2f, 392.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 inline constexpr RobotPose kPose_KFS_High = {352.6f, 392.0f, 0.0f, 347.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_Moving_In_MF = {352.6f, 0.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};
 
-inline constexpr RobotPose kPose_Place1   = {78.1f, -302.0f, 160.59f, 347.0f, 0.0f, 100.0f};
-inline constexpr RobotPose kPose_Place2   = {78.1f, -129.0f, 70.0f, 347.0f, 0.0f, 100.0f};
-//inline constexpr RobotPose kPose_Place2   = {128.1f, 0.0f, 40.0f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Place3   = {280.0f, -190.5f, 0.0f, 347.0f, 0.0f, 0.0f};
-
+inline constexpr RobotPose kPose_Place[3]   = {
+    {78.1f, -302.0f, 160.59f, 347.0f, 0.0f, 100.0f},
+    {78.1f, -129.0f, 70.0f, 347.0f, 0.0f, 100.0f},
+    {280.0f, -190.5f, 0.0f, 347.0f, 0.0f, 0.0f}
+};
+inline constexpr RobotPose kPose_Pick[3] = {
+    {0.0f,   392.0f, 181.6f, 347.0f, 0.0f, 0.0f},
+    {159.2f, 392.0f, 181.6f, 347.0f, 0.0f, 0.0f},
+    {352.6f, 392.0f, 181.6f, 347.0f, 0.0f, 0.0f}
+};
 
 inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Grid9_Bot3  = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 140.0f};
 
 inline constexpr RobotPose kPose_Get1   = {98.1f, -292.0f, 290.0f, 347.0f, 0.0f, 140.0f};
-//inline constexpr RobotPose kPose_Get2   = {98.1f, 0.0f, 70.0f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 120.0f, 347.0f, 0.0f, 140.0f};
 
-
+inline constexpr RobotPose kPose_R2_First_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_R2_Second_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 257.3f};
 
 // ===== 一步动作的完整配置 =====
 struct ActionConfig {
@@ -112,18 +132,35 @@ struct ActionConfig {
     ActionPriorities priorities;
     uint8_t step_done_mask = 0x3F;  // 位0=pick_lift, 1=pick_yaw, 2=pick_extend
                                       // 位3=weapon_lift, 4=weapon_extend, 5=lift
-    bool skip_safety = false;        // true=跳过安全修正，用显式设的优先级
+    bool skip_safety = false;
+
+    // ===== 新增：泵/阀自动控制 =====
+    bool pump_toggle       = false;   // 本步第一帧发送泵切换
+    bool valve_toggle      = false;   // 本步第一帧发送阀切换
+    bool pump_toggle_done  = false;   // 本步完成时发送泵切换
+    bool valve_toggle_done = false;   // 本步完成时发送阀切换
 };
+
 
 // ===== 动作控制器 =====
 class ActionController {
 public:
     // ---- 动作函数（process 层调用） ----
-    void GrabKFS (const RobotPose& pose);
-    void GrabKFS_Arena(const RobotPose& pose);
-    void PlaceKFS(const RobotPose& pose);
-    void GetKFS  (const RobotPose& pose);
     void GoHome();
+
+    //MF
+    void GrabKFS (const RobotPose& pose);
+    void PlaceKFS(const RobotPose& pose);
+    void PickKFS(const RobotPose& pose_Grab, const RobotPose& pose_Place);
+    void Moving(const RobotPose& pose);
+
+    //Arena
+    void GetKFS  (const RobotPose& pose);
+    void GrabKFS_Arena(const RobotPose& pose);
+    void R2MergePose(const RobotPose& pose);
+
+//-------------------------------------
+
 
     // ---- 步队列 ----
     void AddStep(const ActionConfig& config);

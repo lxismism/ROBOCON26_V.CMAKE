@@ -36,7 +36,7 @@ public:
 
   // ---------- 重力补偿 ----------
    //float lift_gravity_comp_{68.6f};  //武器手抬升重力补偿值
-   float lift_gravity_comp_{0.0f};
+   float lift_gravity_comp_{700.0f};
 
   // ---------- 换算系数 ----------
   static constexpr float kLiftMmPerDeg = 90.0f / 360.0f;

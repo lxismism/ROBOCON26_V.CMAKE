@@ -35,6 +35,11 @@ static constexpr float kWeaponLiftStep = 0.5f;  //0.25
 static constexpr float kWeaponExtendStep = 0.4f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
+// ===== MF 自动逼近参数（可配） =====
+static constexpr float kMF_ApproachDist  = 0.60f;   // 底盘前移距离 (m)，例如 0.07 = 7cm
+static constexpr float kMF_ApproachSpeed = 0.40f;   // 前移/后退速度 (m/s)，实测后改
+
+
 // ===== 外部变量（定义在 control_task.cpp，此处声明引用） =====
 
 // 发布者
@@ -462,8 +467,45 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
     uint8_t MF_x_Last = MF_x;
     uint8_t MF_y_Last = MF_y;
+    static int mf_place_cycle = 0;   // 0=Place1, 1=Place2, 2=Place3
+    static uint8_t last_moving_pose_i = 255;
+
+    static float   mf_approach_offset = 0.0f;   // 底盘逼近偏移量 (mm)，渐变值
+    static int16_t mf_approach_facing = 0;      // 逼近时锁定 KFS 朝向
 
     if(false){
+        if (MF_x == 0 || MF_x == 5) {
+            if (control_xbox_cmd.btnDirUp == 1) {
+                if (control_xbox_cmd_Last.btnDirUp == 0) {
+                    if (MF_y < 4) {
+                        MF_y = MF_y + 1;
+                    }
+                }
+            } else if (control_xbox_cmd.btnDirDown == 1) {
+                if (control_xbox_cmd_Last.btnDirDown == 0) {
+                    if (MF_y > 0) {
+                        MF_y = MF_y - 1;
+                    }
+                }
+            }
+        }
+
+        if (MF_y == 0 || MF_y == 4) {
+            if (control_xbox_cmd.btnDirLeft == 1) {
+                if (control_xbox_cmd_Last.btnDirLeft == 0) {
+                    if (MF_x < 5) {
+                        MF_x = MF_x - field_side;
+                    }
+                }
+            } else if (control_xbox_cmd.btnDirRight == 1) {
+                if (control_xbox_cmd_Last.btnDirRight == 0) {
+                    if (MF_x > 0) {
+                        MF_x = MF_x + field_side;
+                    }
+                }
+            }
+        }
+        
         /*上层机构执行*/
         switch ((int8_t)robot_position_MF[MF_x][MF_y][3]) {
             case 1:
@@ -560,16 +602,10 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
         // 放置（渐变空闲时响应）
         static bool last_btnA_mf  = false;
-        static int mf_place_cycle = 0;   // 0=Place1, 1=Place2, 2=Place3
         if (!upbody_ctrl.IsActive()) {
             if (control_xbox_cmd.btnA && !last_btnA_mf) {
                 mf_placing = true;
-                if (mf_place_cycle == 0)
-                    upbody_ctrl.PlaceKFS(kPose_Place1);
-                else if (mf_place_cycle == 1)
-                    upbody_ctrl.PlaceKFS(kPose_Place2);
-                else
-                    upbody_ctrl.PlaceKFS(kPose_Place3);
+                upbody_ctrl.PlaceKFS(kPose_Place[mf_place_cycle]);
                 mf_place_cycle = (mf_place_cycle + 1) % 3;
                 HAL_GPIO_WritePin(PUMP_LIFT_GPIO_Port, PUMP_LIFT_Pin, GPIO_PIN_SET);
 
@@ -660,11 +696,56 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         }
 
         if(MF_plan_run_Flag == true){
-            if(MF_action_Flag == false){//MF_action_Flag == false表示没有还在执行且未完成的动作，则进入下一个底盘移动，当开始执行动作的时候给MF_action_Flag置true,结束时置false
+
+            // === 上身动作每帧推进（无论 MF_action_Flag 状态，有动作就必须跑） ===
+            upbody_ctrl.Update(0.005f, upbody_pub);
+
+            // === 动作完成检测：全部步执行完毕 → 收尾 ===
+            if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && mf_placing) {
+                mf_placing = false;
+                MF_action_Flag = false;
+                MF_plan[MF_plan_run_i].is_picking = false;  // 标记拾取完成
+                MF_plan_run_i++;                             // 推进到下一条路径点
+                MF_xy_complete_Flag = false;
+                MF_omega_complete_Flag = false;
+                MF_omega_control_Flag = 0;
+                        }
+
+            // === 底盘逼近偏移渐变（每帧运行，不受 MF_action_Flag 限制） ===
+            {
+                float target = mf_placing ? kMF_ApproachDist : 0.0f;
+                float step   = kMF_ApproachSpeed * 0.005f;  // dt = 5ms
+                if (mf_approach_offset < target) {
+                    mf_approach_offset += step;
+                    if (mf_approach_offset > target) mf_approach_offset = target;
+                } else if (mf_approach_offset > target) {
+                    mf_approach_offset -= step;
+                    if (mf_approach_offset < target) mf_approach_offset = target;
+                }
+
+                switch (mf_approach_facing) {
+                    case 0:   MF_close_position_x = 0.0f;                     MF_close_position_y =  mf_approach_offset; break;
+                    case 90:  MF_close_position_x = -mf_approach_offset;      MF_close_position_y = 0.0f;                   break;
+                    case -90: MF_close_position_x =  mf_approach_offset;      MF_close_position_y = 0.0f;                   break;
+                    case 180: MF_close_position_x = 0.0f;                     MF_close_position_y = -mf_approach_offset; break;
+                    default:  MF_close_position_x = 0.0f;                     MF_close_position_y = 0.0f;                   break;
+                }
+
+
+                // 偏移叠加到底盘目标（动作执行期间 state_aim_cmd 也需要跟着变）
+                if (MF_plan_run_i < MF_plan_record_i && MF_plan[MF_plan_run_i].is_valid) {
+                    state_aim_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0] + MF_close_position_x;
+                    state_aim_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1] + MF_close_position_y;
+                }
+            }
+
+            if(MF_action_Flag == false){
+
                 if((MF_plan_run_i < MF_plan_record_i) && (MF_plan[MF_plan_run_i].is_valid == true)){
 
-                    state_aim_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0];
-                    state_aim_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1];
+                    state_aim_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0] + MF_close_position_x;
+                    state_aim_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1] + MF_close_position_y;
+
                     if((int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] != (int16_t)state_aim_cmd.omega_){
                         if(MF_omega_control_Flag == 0){
                             if(control_position.y < 1.3f-MF_omega_correction){
@@ -701,6 +782,15 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                         }
                     }
 
+                    // 上身保持行进姿态（每个新路径点仅触发一次）
+                    if (last_moving_pose_i != MF_plan_run_i
+                        && !upbody_ctrl.IsActive()
+                        && !upbody_ctrl.HasPending()
+                        && !mf_placing) {
+                        upbody_ctrl.Moving(kPose_Moving_In_MF);
+                        last_moving_pose_i = MF_plan_run_i;
+                    }
+
                     if(((state_aim_cmd.linear_x_ - control_position.x)*(state_aim_cmd.linear_x_ - control_position.x) + (state_aim_cmd.linear_y_ - control_position.y)*(state_aim_cmd.linear_y_ - control_position.y)) < 0.03*0.03){
                         static uint8_t count_xy = 0;
                         if(MF_xy_complete_Flag == false){
@@ -723,29 +813,72 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                             }
                         }
                     }
-
+                    
                     if(MF_omega_complete_Flag == true && MF_xy_complete_Flag == true){
                         if(MF_plan[MF_plan_run_i].is_picking == true){
-                            /*
-                            MF_action_Flag = true
-                            动作函数启动
-                            */
+                            /*上层机构执行*/
+                            switch ((int8_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][3]) {
+                                case 1:
+                                    if (last_mf_action != 1 && !mf_placing) {
+                                        upbody_ctrl.PickKFS(kPose_Pick[Low],kPose_Place[mf_place_cycle]);
+                                        last_mf_action = 1;
+                                        MF_action_Flag = true;   // 底盘停
+                                        mf_placing = true;       // 放置进行中
+                                        mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                                        mf_place_cycle = (mf_place_cycle + 1) % 3;
+                                    }
+                                    break;
+                                case 2:
+                                    if (last_mf_action != 2 && !mf_placing) {
+                                        upbody_ctrl.PickKFS(kPose_Pick[Mid], kPose_Place[mf_place_cycle]);
+                                        last_mf_action = 2;
+                                        MF_action_Flag = true;
+                                        mf_placing = true;
+                                        mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                                        mf_place_cycle = (mf_place_cycle + 1) % 3;
+                                    }
+                                    break;
+                                case 3:
+                                    if (last_mf_action != 3 && !mf_placing) {
+                                        upbody_ctrl.PickKFS(kPose_Pick[High], kPose_Place[mf_place_cycle]);
+                                        last_mf_action = 3;
+                                        MF_action_Flag = true;
+                                        mf_placing = true;
+                                        mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                                        mf_place_cycle = (mf_place_cycle + 1) % 3;
+                                    }
+                                    break;
+                                default:
+                                    last_mf_action = -1;
+                                    break;
+                            }
+                        } else {
+                            // 非拾取点（纯路径点）：无需上身动作，直接推进
+                            MF_plan_run_i++;
+                            MF_xy_complete_Flag = false;
+                            MF_omega_complete_Flag = false;
+                            MF_omega_control_Flag = 0;
                         }
-                        MF_plan_run_i ++;
-                        MF_xy_complete_Flag = false;
-                        MF_omega_complete_Flag = false;
-                        MF_omega_control_Flag = 0;    
-                    }
+
+                        }
+
 
                 }else {
                     MF_plan_record_i = 0;
                     MF_plan_run_i = 0;
                     MF_plan_run_Flag = false;
                     MF_pick_Flag = false;
+                    MF_action_Flag = false;
+                    last_mf_action = -1;
+                    mf_approach_offset = 0.0f;
+                    MF_close_position_x = 0.0f;
+                    MF_close_position_y = 0.0f;
                     for(uint8_t i;i<15;i++){
                         MF_plan[i] = MF_plan_zero;
                     }
                 }
+
+
             }
         }else if(MF_plan_run_Flag_Last == true){
         }
@@ -780,8 +913,26 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             Arena_close_position_y = 0.0f;
         }   
     }
+    // ===== 九宫格子模式切换 =====
+    static bool arena_r2_mode  = false;  // false=KFS放置模式, true=R2合体模式
+    static bool arena_r2_floor = false;  // false=R2一楼, true=R2二楼
 
-    if(false){
+    // btnY 上升沿切换子模式
+    static bool last_btnY_arena = false;
+    if (control_xbox_cmd.btnY && !last_btnY_arena) {
+        arena_r2_mode = !arena_r2_mode;
+        if (arena_r2_mode) {
+            arena_r2_floor = false;   // 进入合体模式默认一楼
+        }
+        last_arena_x = -1;            // 强制刷新上身姿态
+    }
+
+    last_btnY_arena = control_xbox_cmd.btnY;
+
+    // btnA 上升沿检测（if/else 共用）
+    static bool last_btnA_arena = false;
+    
+    if (!arena_r2_mode) {
         state_aim_cmd.linear_x_ = robot_position_Arena[Arena_x][0];
         state_aim_cmd.linear_y_ = robot_position_Arena[Arena_x][1] + Arena_close_position_y;
         Aim_State_xy_Process();
@@ -819,7 +970,6 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         last_btnX_arena = control_xbox_cmd.btnX;
 
         // 获取KFS（渐变空闲时响应，先近后远）
-        static bool last_btnA_arena = false;
         static bool get_toggle = false;  // false=Get2(近), true=Get1(远)
         if (!upbody_ctrl.IsActive()) {
             if (control_xbox_cmd.btnA && !last_btnA_arena) {
@@ -828,15 +978,34 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
                 last_arena_x = -1;
             }
         }
-        last_btnA_arena = control_xbox_cmd.btnA;
-    }else {
+        
+    } else {
         state_aim_cmd.linear_x_ = robot_position_Arena_withR2[Arena_x][0];
         state_aim_cmd.linear_y_ = robot_position_Arena_withR2[Arena_x][1] + Arena_close_position_y;
         Aim_State_xy_Process();
 
         state_aim_cmd.omega_    = robot_position_Arena_withR2[Arena_x][2];
         Aim_State_omega_Process();
+
+        /*上层机构执行*/
+        // 进入合体模式或切换格子时，默认设为当前楼层姿态
+        if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && last_arena_x != Arena_x) {
+            upbody_ctrl.R2MergePose(arena_r2_floor ? kPose_R2_Second_Floor : kPose_R2_First_Floor);
+            last_arena_x = Arena_x;
+        }
+
+        // btnA 上升沿切换一楼/二楼
+        if (!upbody_ctrl.IsActive()) {
+            if (control_xbox_cmd.btnA && !last_btnA_arena) {
+                arena_r2_floor = !arena_r2_floor;
+                upbody_ctrl.R2MergePose(arena_r2_floor ? kPose_R2_Second_Floor : kPose_R2_First_Floor);
+            }
+        }
+
+        // 每帧推进渐变
+        upbody_ctrl.Update(0.005f, upbody_pub);
     }
+    last_btnA_arena = control_xbox_cmd.btnA;  // ← 移到此处，每帧更新一次
 
     
     
@@ -946,12 +1115,7 @@ void UpperDebug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbod
         if (control_xbox_cmd.btnY        && !last_btnY)        debug_ctrl.GoHome();
 
         if (control_xbox_cmd.btnA && !last_btnA) {
-            if (place_cycle == 0)
-                debug_ctrl.PlaceKFS(kPose_Place1);
-            else if (place_cycle == 1)
-                debug_ctrl.PlaceKFS(kPose_Place2);
-            else
-                debug_ctrl.PlaceKFS(kPose_Place3);
+            debug_ctrl.PlaceKFS(kPose_Place[place_cycle]);
             place_cycle = (place_cycle + 1) % 3;
         }
     }
