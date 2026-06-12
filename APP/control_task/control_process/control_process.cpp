@@ -36,8 +36,8 @@ static constexpr float kWeaponExtendStep = 0.4f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
 // ===== MF 自动逼近参数（可配） =====
-static constexpr float kMF_ApproachDist  = 0.60f;   // 底盘前移距离 (m)，例如 0.07 = 7cm
-static constexpr float kMF_ApproachSpeed = 0.40f;   // 前移/后退速度 (m/s)，实测后改
+float kMF_ApproachDist  = 0.50f;   // 底盘前移距离 (m)，例如 0.07 = 7cm
+float kMF_ApproachSpeed = 0.30f;   // 前移/后退速度 (m/s)，实测后改
 
 
 // ===== 外部变量（定义在 control_task.cpp，此处声明引用） =====
@@ -704,16 +704,18 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
             if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && mf_placing) {
                 mf_placing = false;
                 MF_action_Flag = false;
-                MF_plan[MF_plan_run_i].is_picking = false;  // 标记拾取完成
-                MF_plan_run_i++;                             // 推进到下一条路径点
+                MF_plan[MF_plan_run_i].is_picking = false;
+                MF_plan_run_i++;
                 MF_xy_complete_Flag = false;
                 MF_omega_complete_Flag = false;
                 MF_omega_control_Flag = 0;
-                        }
+                last_mf_action = -1;  // 重置，下个拾取点不受限制
+            }
+
 
             // === 底盘逼近偏移渐变（每帧运行，不受 MF_action_Flag 限制） ===
             {
-                float target = mf_placing ? kMF_ApproachDist : 0.0f;
+                float target = (mf_placing && upbody_ctrl.IsApproachPhase()) ? kMF_ApproachDist : 0.0f;
                 float step   = kMF_ApproachSpeed * 0.005f;  // dt = 5ms
                 if (mf_approach_offset < target) {
                     mf_approach_offset += step;
@@ -820,17 +822,19 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                             switch ((int8_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][3]) {
                                 case 1:
                                     if (last_mf_action != 1 && !mf_placing) {
-                                        upbody_ctrl.PickKFS(kPose_Pick[Low],kPose_Place[mf_place_cycle]);
+                                        bool close_pump = (mf_place_cycle != 2);  // 第3个KFS不关泵
+                                        upbody_ctrl.PickKFS(kPose_Pick[Low], kPose_Place[mf_place_cycle], close_pump);
                                         last_mf_action = 1;
-                                        MF_action_Flag = true;   // 底盘停
-                                        mf_placing = true;       // 放置进行中
+                                        MF_action_Flag = true;
+                                        mf_placing = true;
                                         mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
                                         mf_place_cycle = (mf_place_cycle + 1) % 3;
                                     }
                                     break;
                                 case 2:
                                     if (last_mf_action != 2 && !mf_placing) {
-                                        upbody_ctrl.PickKFS(kPose_Pick[Mid], kPose_Place[mf_place_cycle]);
+                                        bool close_pump = (mf_place_cycle != 2);
+                                        upbody_ctrl.PickKFS(kPose_Pick[Mid], kPose_Place[mf_place_cycle], close_pump);
                                         last_mf_action = 2;
                                         MF_action_Flag = true;
                                         mf_placing = true;
@@ -840,7 +844,8 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                                     break;
                                 case 3:
                                     if (last_mf_action != 3 && !mf_placing) {
-                                        upbody_ctrl.PickKFS(kPose_Pick[High], kPose_Place[mf_place_cycle]);
+                                        bool close_pump = (mf_place_cycle != 2);
+                                        upbody_ctrl.PickKFS(kPose_Pick[High], kPose_Place[mf_place_cycle], close_pump);
                                         last_mf_action = 3;
                                         MF_action_Flag = true;
                                         mf_placing = true;
@@ -848,6 +853,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                                         mf_place_cycle = (mf_place_cycle + 1) % 3;
                                     }
                                     break;
+
                                 default:
                                     last_mf_action = -1;
                                     break;
