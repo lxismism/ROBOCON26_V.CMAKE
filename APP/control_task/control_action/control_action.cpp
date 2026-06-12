@@ -112,7 +112,10 @@ void ActionController::Start_(const ActionConfig& config) {
     ramp_.pending_valve_toggle = config.valve_toggle;
     ramp_.pump_toggle_at_done  = config.pump_toggle_done;
     ramp_.valve_toggle_at_done = config.valve_toggle_done;
+
+    ramp_.chassis_approach_active = config.enable_chassis_approach;
 }
+
 
 
 // ---- private: 每帧推进渐变 ----
@@ -315,40 +318,84 @@ void ActionController::PlaceKFS(const RobotPose& pose) {
     RunSteps();
 }
 
-void ActionController::PickKFS(const RobotPose& pose_Grab,const RobotPose& pose_Place){
-    // Step 1: 伸到抓取位姿 → 到位后开泵/阀吸取KFS
+void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose_Place, bool close_pump_at_end){
+    // Step 1: 云台转到位 + 抬升降到抓取高度 → 步首开泵/阀
     ActionConfig step1;
     step1.target = pose_Grab;
-    step1.priorities.pick_extend = 1;
-    step1.pump_toggle_done  = true;   // 到位后切换泵
-    step1.valve_toggle_done = true;   // 到位后切换阀
+    step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
+    step1.priorities.pick_yaw     = 0;
+    step1.priorities.pick_lift    = 1;
+    step1.step_done_mask = 0x03;
+    step1.pump_toggle       = true;
+    step1.valve_toggle      = true;
     AddStep(step1);
 
-    // Step 2: 抬升吸取手到安全高度372.6mm
+    // Step 2: 伸缩伸出够到KFS → 底盘同步前移逼近
     ActionConfig step2;
-    step2.target = pose_Place;
-    step2.target.pick_lift_mm     = 372.6f;
-    step2.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
-    step2.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
-    step2.priorities.pick_lift    = 0;
-    step2.step_done_mask = 0x01;
+    step2.target = pose_Grab;
+    step2.priorities.pick_extend = 0;
+    step2.step_done_mask = 0x04;
+    step2.enable_chassis_approach = true;
     AddStep(step2);
 
-    // Step 3: 转到放置位姿 → 到位后关泵/阀放下KFS
+    // Step 3: 电梯升到安全高度
     ActionConfig step3;
     step3.target = pose_Place;
-    step3.priorities.pick_yaw    = 0;
-    step3.priorities.pick_extend = 1;
-    step3.priorities.pick_lift   = 2;
-    step3.priorities.lift        = -1;
-    step3.skip_safety = true;
-    step3.step_done_mask = 0x07;
-    step3.pump_toggle_done  = true;   // 到位后切换泵
-    step3.valve_toggle_done = true;   // 到位后切换阀
+    step3.target.pick_lift_mm     = 372.6f;
+    step3.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
+    step3.target.pick_extend_mm   = pose_Grab.pick_extend_mm;
+    step3.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
+    step3.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
+    step3.priorities.pick_lift    = 1;   // 再抬吸取手
+    step3.step_done_mask = 0x01;         // 只等吸取手抬升到位，电梯并发不阻塞
     AddStep(step3);
+
+    // Step 4: 吸取手伸缩缩到最小（避免干涉）
+    ActionConfig step4;
+    step4.target = pose_Place;
+    step4.target.pick_extend_mm   = 0.0f;
+    step4.target.pick_lift_mm     = 372.6f;
+    step4.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
+    step4.priorities.pick_extend  = 0;
+    step4.step_done_mask = 0x04;
+    step4.skip_safety = true;
+    AddStep(step4);
+
+    // Step 5: 吸取手云台转到放置角度
+    ActionConfig step5;
+    step5.target = pose_Place;
+    step5.target.pick_extend_mm   = 0.0f;
+    step5.target.pick_lift_mm     = 372.6f;
+    step5.priorities.pick_yaw     = 0;
+    step5.step_done_mask = 0x02;
+    step5.skip_safety = true;
+    AddStep(step5);
+
+    // Step 6: 吸取手伸缩伸到放置位置
+    ActionConfig step6;
+    step6.target = pose_Place;
+    step6.target.pick_lift_mm     = 372.6f;
+    step6.priorities.pick_extend  = 0;
+    step6.step_done_mask = 0x04;
+    step6.skip_safety = true;
+    AddStep(step6);
+
+    // Step 7: 吸取手抬升降到放置高度 → 到位后关泵/阀
+    ActionConfig step7;
+    step7.target = pose_Place;
+    step7.priorities.pick_lift    = 0;
+    step7.step_done_mask = 0x01;
+    step7.skip_safety = true;
+    if (close_pump_at_end) {
+        step7.pump_toggle_done  = true;
+        step7.valve_toggle_done = true;
+    }
+    AddStep(step7);
     
     RunSteps();
 }
+
+
 
 void ActionController::Moving(const RobotPose& pose) {
     ActionConfig config;

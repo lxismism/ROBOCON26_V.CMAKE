@@ -36,11 +36,11 @@ enum Height : size_t{
 
 // ===== 动作速度配置 =====
 struct ActionSpeeds {
-    float pick_lift     = 190.0f;   // 吸取手抬升 mm/s
-    float pick_yaw      = 250.0f;   // 云台旋转 °/s
-    float pick_extend   = 100.0f;    // 吸取手伸缩 mm/s
+    float pick_lift     = 280.0f;   // 吸取手抬升 mm/s
+    float pick_yaw      = 350.0f;   // 云台旋转 °/s
+    float pick_extend   = 200.0f;    // 吸取手伸缩 mm/s
     float weapon_lift   = 160.0f;    // 武器手抬升 mm/s
-    float weapon_extend = 100.0f;    // 武器手伸缩 mm/s
+    float weapon_extend = 180.0f;    // 武器手伸缩 mm/s
     float lift          = 40.0f;    // 电梯 mm/s
 };
 
@@ -85,7 +85,13 @@ struct RampState {
     bool pending_valve_toggle = false;   // 下一步首帧发送阀切换
     bool pump_toggle_at_done  = false;   // 当前步完成时发送泵切换
     bool valve_toggle_at_done = false;   // 当前步完成时发送阀切换
+
+    // 底盘逼近
+    bool chassis_approach_active = false;  // 当前步是否触发底盘前移逼近
 };
+
+
+
 
 
 // ===== 机器人全身姿态 =====
@@ -119,7 +125,7 @@ inline constexpr RobotPose kPose_Pick[3] = {
 inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Grid9_Bot3  = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 140.0f};
 
-inline constexpr RobotPose kPose_Get1   = {98.1f, -292.0f, 290.0f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get1   = {98.1f, -312.0f, 290.0f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 120.0f, 347.0f, 0.0f, 140.0f};
 
 inline constexpr RobotPose kPose_R2_First_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
@@ -139,6 +145,8 @@ struct ActionConfig {
     bool valve_toggle      = false;   // 本步第一帧发送阀切换
     bool pump_toggle_done  = false;   // 本步完成时发送泵切换
     bool valve_toggle_done = false;   // 本步完成时发送阀切换
+    bool enable_chassis_approach = false;  // 本步期间触发底盘逼近
+
 };
 
 
@@ -151,7 +159,7 @@ public:
     //MF
     void GrabKFS (const RobotPose& pose);
     void PlaceKFS(const RobotPose& pose);
-    void PickKFS(const RobotPose& pose_Grab, const RobotPose& pose_Place);
+    void PickKFS(const RobotPose& pose_Grab, const RobotPose& pose_Place, bool close_pump_at_end = true);
     void Moving(const RobotPose& pose);
 
     //Arena
@@ -175,7 +183,9 @@ public:
 
     // ---- 查询 ----
     bool IsActive() const;
+    bool IsApproachPhase() const { return ramp_.active && ramp_.chassis_approach_active; }
     void SyncState(const RobotPose& current);
+
 
 
 protected:
@@ -184,7 +194,7 @@ protected:
 private:
     // ---- 内部状态 ----
     RampState ramp_;
-    static constexpr int kMaxSteps = 4;
+    static constexpr int kMaxSteps = 10;
     ActionConfig step_queue_[kMaxSteps];
     int step_count_ = 0;
     int step_index_ = 0;
