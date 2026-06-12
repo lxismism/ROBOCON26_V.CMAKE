@@ -945,39 +945,6 @@ void Aim_State_xy_Process() {
     state_target_last_cmd.linear_x_ = state_target_cmd.linear_x_;
     state_target_last_cmd.linear_y_ = state_target_cmd.linear_y_;
 
-    // // 计算目标位置与当前实际位置的误差，进入 PID
-    // error_x            = state_target_cmd.linear_x_ - state_now_cmd.linear_x_;
-    // error_y            = state_target_cmd.linear_y_ - state_now_cmd.linear_y_;
-    // state_xy_error     = sqrt(error_x * error_x + error_y * error_y);
-    // state_xy_angle_deg = atan2(error_y, error_x) / kDegToRad;
-    // xy_pid_output      = PID_Calculate(&linear, 0.0f, state_xy_error);
-
-    // v_xy_plan_Max = sqrt(2.0f*Acc_xy_SpeedDown*state_xy_error);  //规划最大速度
-
-    // Acc_xy_dt = DWT_GetDeltaT(&Acc_xy_DWT_CNT);  //获取加速计时器增量，单位s
-    
-    // if(v_xy_plan_Actual > v_xy_plan_Max){
-    //     v_xy_plan_Actual = v_xy_plan_Max;
-    // }else {
-    //     v_xy_plan_Actual = v_xy_plan_Actual + Acc_xy_SpeedUp*Acc_xy_dt;  //速度规划实际值更新
-    // }
-
-    // if(state_xy_error > 1.0f){
-    //     K_xy_planTopid = 1.0f;
-    // }else if(state_xy_error > 0.5f){
-    //     K_xy_planTopid = (state_xy_error - 0.5f) / 0.5f;
-    // }else{
-    //     K_xy_planTopid = 0.0f;
-    // }
-    // // K_xy_planTopid = 0.0f;
-
-    // predict_yaw = state_now_cmd.omega_ + (control_position.yaw_speed/kDegToRad)*yaw_delay_time;
-
-    // robot_v_aim_cmd.linear_x_ = (xy_pid_output*(1.0f - K_xy_planTopid) + v_xy_plan_Actual*K_xy_planTopid) * cos((state_xy_angle_deg - predict_yaw) * kDegToRad);
-    // robot_v_aim_cmd.linear_y_ = (xy_pid_output*(1.0f - K_xy_planTopid) + v_xy_plan_Actual*K_xy_planTopid) * sin((state_xy_angle_deg - predict_yaw) * kDegToRad);
-    
-    // // robot_v_aim_cmd.linear_xy_ = (xy_pid_output*(1.0f - K_planTopid) + v_xy_plan_Actual*K_planTopid);
-    // //速度规划
 }
 
 
