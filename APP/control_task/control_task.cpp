@@ -129,16 +129,10 @@ uint32_t Acc_omega_DWT_CNT = 0;
 float predict_yaw = 0.0f;
 float yaw_delay_time = 0.014f;
 
-pub_chassis_cmd robot_v_aim_cmd{
-    .linear_x_ = 0.0f,
-    .linear_y_ = 0.0f,
-    .omega_ = 0.0f
-};
-pub_chassis_cmd state_aim_cmd{
-    .linear_x_ = 0.0f,
-    .linear_y_ = 0.0f,
-    .omega_ = 0.0f
-};
+pub_chassis_cmd robot_v_aim_cmd{};
+pub_chassis_cmd state_now_cmd{};
+pub_chassis_cmd state_start_cmd{};
+pub_chassis_cmd state_target_cmd{};
 
 // 车体目标角度环 PID
 PID_t linear{.Kp = 4.68f,.Ki = 0.01f,.Kd = 0.95f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
@@ -178,7 +172,6 @@ void controlTask(void *argument) {
     PID_Init(&linear);
     PID_Init(&deg);
 
-
     controlInit();
     for (;;) {
         /* 从Position订阅者中获取数据 */
@@ -188,6 +181,10 @@ void controlTask(void *argument) {
             control_position.yaw_speed = control_position_msg.yaw_speed;
             control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw*kDegToRad) - position_correction_x ;
             control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw*kDegToRad) - position_correction_y ;
+
+            state_now_cmd.linear_x_ = control_position.x;
+            state_now_cmd.linear_y_ = control_position.y;
+            state_now_cmd.omega_ = control_position.yaw;
         }
 
         /* 从xbox数据订阅者中获取数据 */
