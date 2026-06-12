@@ -16,6 +16,7 @@
 #include "topic_pool.h"
 #include "topics.hpp"
 #include <cmath>
+#include <cstdint>
 #include <cstddef>
 
 // ===== 摇杆 + 坐标常量 =====
@@ -210,3 +211,5 @@ float JoyToVelocity(uint16_t raw, uint16_t deadzone, float max_vel);
 
 // ===== 坐标变换 =====
 void ApplyFieldCentricRotation(float& vx, float& vy, float yaw_deg);
+
+int8_t sign (double value);
