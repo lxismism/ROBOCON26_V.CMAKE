@@ -340,7 +340,7 @@ public:
     bool mode_Change = !modeChange(PosWithSpeed, mode_change_state_);
 #ifdef DM_MOTOR_SINGLE
     if (!cs_changed || manager_ == nullptr || mode_Change) {
-#elif 
+#else
     if (manager_ == nullptr || mode_Change) {
 #endif
       return;
@@ -363,7 +363,7 @@ public:
     bool mode_Change = !modeChange(Speed, mode_change_state_);
 #ifdef DM_MOTOR_SINGLE
     if (!cs_changed || manager_ == nullptr || mode_Change) {
-#elif 
+#else
     if (manager_ == nullptr || mode_Change) {
 #endif
       return;
@@ -390,7 +390,7 @@ public:
     bool mode_Change = !modeChange(Mit, mode_change_state_);
 #ifdef DM_MOTOR_SINGLE
     if (!cs_changed || manager_ == nullptr || mode_Change) {
-#elif 
+#else
     if (manager_ == nullptr || mode_Change) {
 #endif
       return;
@@ -415,7 +415,7 @@ public:
     bool mode_Change = !modeChange(Psi, mode_change_state_);
 #ifdef DM_MOTOR_SINGLE
     if (!cs_changed || manager_ == nullptr || mode_Change) {
-#elif 
+#else
     if (manager_ == nullptr || mode_Change) {
 #endif
       return;
@@ -564,6 +564,13 @@ public:
     speed_ = raw_speed_ / reduction_ratio_;
     torque_ = raw_torque_ * reduction_ratio_;
     temperature_ = 0.0f;
+    last_rx_timestamp_ = HAL_GetTick();
+  }
+
+  uint32_t getRxTimestamp() const { return last_rx_timestamp_; }
+
+  bool isOffline() const {
+    return (HAL_GetTick() - last_rx_timestamp_ > MOTOR_RX_TIMEOUT_MS);
   }
 
   bool buildTx(uint8_t data[8], uint8_t &len) override {
@@ -756,4 +763,5 @@ private:
   ModeChangeStatus mode_change_state_{DisableStep};
   MotorModeCmd motor_mode_cmd_{ModeNone};
   uint32_t tx_base_id_{0};
+  uint32_t last_rx_timestamp_{0};
 };

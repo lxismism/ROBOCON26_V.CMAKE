@@ -29,6 +29,12 @@ public:
   PID_t yaw_pid_;
   PID_t extend_pid_;
 
+    // ---------- 重力补偿 ----------
+  float lift_gravity_comp_{900.0f};      // 没吸取kfs实抬升重力补偿
+  float lift_gravity_comp_kfs_{1500.0f};  // 吸取KFS后抬升重力补偿
+  bool is_pump_on_{false};              // 真空泵状态
+
+
   // ---------- 目标角度 ----------
   float lift_target_deg_{0.0f};
   float yaw_target_deg_{0.0f};

@@ -105,9 +105,15 @@ void ActionController::Start_(const ActionConfig& config) {
         ramp_.priorities = config.priorities;
     }
 
-
     ramp_.active = true;
+
+    // 泵/阀切换暂存（本步首帧发出）
+    ramp_.pending_pump_toggle  = config.pump_toggle;
+    ramp_.pending_valve_toggle = config.valve_toggle;
+    ramp_.pump_toggle_at_done  = config.pump_toggle_done;
+    ramp_.valve_toggle_at_done = config.valve_toggle_done;
 }
+
 
 // ---- private: 每帧推进渐变 ----
 
@@ -203,6 +209,15 @@ bool ActionController::IsActive() const {
     return ramp_.active;
 }
 
+void ActionController::SyncState(const RobotPose& current) {
+    ramp_.cur_pick_lift_mm     = current.pick_lift_mm;
+    ramp_.cur_pick_yaw_deg     = current.pick_yaw_deg;
+    ramp_.cur_pick_extend_mm   = current.pick_extend_mm;
+    ramp_.cur_weapon_lift_mm   = current.weapon_lift_mm;
+    ramp_.cur_weapon_extend_mm = current.weapon_extend_mm;
+    ramp_.cur_lift_mm          = current.lift_mm;
+}
+
 // ---- 步队列 ----
 
 void ActionController::AddStep(const ActionConfig& config) {
@@ -229,52 +244,53 @@ void ActionController::Update(float dt, TypedTopicPublisher<pub_upbody_cmd>& pub
     }
     Step_(dt);
 
-    // 动作全部执行完毕 → 立即清零队列计数，保证下次 AddStep 从 0 开始
-    if (!ramp_.active && step_index_ >= step_count_) {
-        step_count_ = 0;
+    // 步完成时：将 done 标志转入 pending，下一帧发出
+    if (!ramp_.active) {
+        ramp_.pending_pump_toggle  |= ramp_.pump_toggle_at_done;
+        ramp_.pending_valve_toggle |= ramp_.valve_toggle_at_done;
+        ramp_.pump_toggle_at_done   = false;
+        ramp_.valve_toggle_at_done  = false;
+
+        if (step_index_ >= step_count_) {
+            step_count_ = 0;  // 全完成，清零队列
+        }
     }
 
     pub_upbody_cmd msg = {};
     msg.active = true;
     ToMsg_(msg);
+
+    // 泵/阀切换（仅首帧发出，发出后清零）
+    msg.pump_toggle  = ramp_.pending_pump_toggle;
+    msg.valve_toggle = ramp_.pending_valve_toggle;
+    ramp_.pending_pump_toggle  = false;
+    ramp_.pending_valve_toggle = false;
+
     pub.Publish(msg);
 }
 
 
+
 // ---- 动作函数 ----
 
+void ActionController::GoHome() {
+    ActionConfig config;
+    config.target = kPose_Home;
+    config.speeds.pick_lift     = 150.0f;
+    config.speeds.pick_yaw      = 150.0f;
+    config.speeds.pick_extend   = 100.0f;
+    config.speeds.weapon_lift   = 40.0f;
+    config.speeds.weapon_extend = 40.0f;
+    config.speeds.lift          = 40.0f;
+    Start_(config);
+}
+
+//MF动作
 void ActionController::GrabKFS(const RobotPose& pose) {
     ActionConfig config;
     config.target = pose;
     Start_(config);
 }
-
-
-void ActionController::GrabKFS_Arena(const RobotPose& pose) {
-    if (ramp_.cur_pick_lift_mm < 300.0f) {
-        ActionConfig step1;
-        step1.target = pose;
-        step1.target.pick_lift_mm     = 392.6f;
-        step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
-        step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
-        step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
-        step1.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
-        
-        step1.speeds.pick_yaw         = 300.0f;
-
-        step1.priorities.pick_lift    = 0;
-        step1.step_done_mask = 0x01;
-        AddStep(step1);
-    }
-    ActionConfig config;
-    config.target = pose;
-    config.priorities.pick_yaw  = 0;   // 先转云台
-    config.priorities.pick_lift = 1;   // 再降高度
-    AddStep(config);
-    RunSteps();
-}
-
-
 
 void ActionController::PlaceKFS(const RobotPose& pose) {
     ActionConfig step1;
@@ -299,6 +315,71 @@ void ActionController::PlaceKFS(const RobotPose& pose) {
     RunSteps();
 }
 
+void ActionController::PickKFS(const RobotPose& pose_Grab,const RobotPose& pose_Place){
+    // Step 1: 伸到抓取位姿 → 到位后开泵/阀吸取KFS
+    ActionConfig step1;
+    step1.target = pose_Grab;
+    step1.priorities.pick_extend = 1;
+    step1.pump_toggle_done  = true;   // 到位后切换泵
+    step1.valve_toggle_done = true;   // 到位后切换阀
+    AddStep(step1);
+
+    // Step 2: 抬升吸取手到安全高度372.6mm
+    ActionConfig step2;
+    step2.target = pose_Place;
+    step2.target.pick_lift_mm     = 372.6f;
+    step2.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
+    step2.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
+    step2.priorities.pick_lift    = 0;
+    step2.step_done_mask = 0x01;
+    AddStep(step2);
+
+    // Step 3: 转到放置位姿 → 到位后关泵/阀放下KFS
+    ActionConfig step3;
+    step3.target = pose_Place;
+    step3.priorities.pick_yaw    = 0;
+    step3.priorities.pick_extend = 1;
+    step3.priorities.pick_lift   = 2;
+    step3.priorities.lift        = -1;
+    step3.skip_safety = true;
+    step3.step_done_mask = 0x07;
+    step3.pump_toggle_done  = true;   // 到位后切换泵
+    step3.valve_toggle_done = true;   // 到位后切换阀
+    AddStep(step3);
+    
+    RunSteps();
+}
+
+void ActionController::Moving(const RobotPose& pose) {
+    ActionConfig config;
+    config.target = pose;
+    Start_(config);
+}
+
+//Arena动作
+void ActionController::GrabKFS_Arena(const RobotPose& pose) {
+    if (ramp_.cur_pick_lift_mm < 300.0f) {
+        ActionConfig step1;
+        step1.target = pose;
+        step1.target.pick_lift_mm     = 392.6f;
+        step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
+        step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
+        step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
+        step1.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
+        
+        step1.speeds.pick_yaw         = 300.0f;
+
+        step1.priorities.pick_lift    = 0;
+        step1.step_done_mask = 0x01;
+        AddStep(step1);
+    }
+    ActionConfig config;
+    config.target = pose;
+    config.priorities.pick_yaw  = 0;   // 先转云台
+    config.priorities.pick_lift = 1;   // 再降高度
+    AddStep(config);
+    RunSteps();
+}
 
 void ActionController::GetKFS(const RobotPose& pose) {
     if (ramp_.cur_pick_extend_mm > 1.0f && pose.pick_extend_mm < 1.0f
@@ -353,14 +434,16 @@ void ActionController::GetKFS(const RobotPose& pose) {
     RunSteps();
 }
 
-void ActionController::GoHome() {
+//withR2动作
+void ActionController::R2MergePose(const RobotPose& pose) {
     ActionConfig config;
-    config.target = kPose_Home;
-    config.speeds.pick_lift     = 150.0f;
-    config.speeds.pick_yaw      = 150.0f;
-    config.speeds.pick_extend   = 100.0f;
-    config.speeds.weapon_lift   = 40.0f;
-    config.speeds.weapon_extend = 40.0f;
-    config.speeds.lift          = 40.0f;
+    // 其他轴保持当前位置不变，只改电梯
+    config.target.pick_lift_mm     = ramp_.cur_pick_lift_mm;
+    config.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
+    config.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
+    config.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
+    config.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
+    config.target.lift_mm          = pose.lift_mm;
+    config.step_done_mask = 0x20;  // 仅关注电梯到位
     Start_(config);
 }

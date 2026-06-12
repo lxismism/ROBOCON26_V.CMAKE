@@ -16,14 +16,17 @@
 #include "Motor.hpp"
 #include "chassis_solution.hpp"
 #include "com_config.h"
+#include "pid_controller.h"
 #include "topic_pool.h"
 #include "topics.hpp"
+
 
 #include <array>
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
 extern const float MC_position_correction_y;
+
 
 // 任务句柄
 osThreadId_t ChassisTaskHandle;
@@ -52,10 +55,10 @@ const std::array<OmniChassis::SpeedPidParam, OmniChassis::kWheelCount>
         // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右上
         // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 左下
         // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右下
-        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左上
-        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右上
-        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左下
-        OmniChassis::SpeedPidParam(1300.0f, 1800.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右下
+        OmniChassis::SpeedPidParam(1000.0f, 1800.0f, 0.003f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左上
+        OmniChassis::SpeedPidParam(900.0f, 1700.0f, 0.001f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右上
+        OmniChassis::SpeedPidParam(1350.0f, 2050.0f, 0.0025f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左下
+        OmniChassis::SpeedPidParam(930.0f, 1800.0f, 0.001f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右下
     };
 
 const std::array<OmniChassis::SpeedPidParam, OmniChassis::kWheelCount>
@@ -81,12 +84,12 @@ void chassisTask(void *argument) {
     chassisInit();
 
     for (;;) {
-      if (chassis_cmd_sub.TryGet(&chassis_chassis_cmd)) {
-      // 仅更新命令
-      }
-      // 无论有没有新命令，都持续执行解算
-      Omnichassis_solver.run(chassis_chassis_cmd);
-      vTaskDelayUntil(&currentTime, 1);
+
+        if (chassis_cmd_sub.TryGet(&chassis_chassis_cmd)) {
+        }
+        // 无论有没有新命令，都持续执行解算
+        Omnichassis_solver.run(chassis_chassis_cmd);
+        vTaskDelayUntil(&currentTime, 1);
     }
 }
 
@@ -146,7 +149,16 @@ const float robot_position_Arena[3][3] = {//用于在九宫格自动控制车辆
     {-1.227f*field_side + field_side*robot_center_to_gimbal_x, 4.399f - 0.5f, -90.0f*(-field_side + 1)/2}
 };
 
-const float robot_position_MC[4][3] = {//用于在九宫格自动控制车辆移动
+const float robot_position_Arena_withR2[3][3] = {//用于在九宫格自动控制车辆移动
+  //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
+    {-0.227f*field_side , 4.399f - 0.5f, 0.0f},
+
+    {-0.727f*field_side , 4.399f - 0.5f, 0.0f},
+
+    {-1.227f*field_side , 4.399f - 0.5f, 0.0f}
+};
+
+const float robot_position_MC[4][3] = {//用于在武馆自动控制车辆移动
   //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
     {0.6f*field_side, 2.2187f - MC_position_correction_y, 90.0f*field_side},
 
@@ -155,4 +167,24 @@ const float robot_position_MC[4][3] = {//用于在九宫格自动控制车辆移
     {0.6f*field_side, 2.6187f - MC_position_correction_y, 90.0f*field_side},
 
     {0.6f*field_side, 2.8187f - MC_position_correction_y, 90.0f*field_side}
+};
+
+
+
+MF_plan_t MF_plan[15] = {
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0},
+    {0,0,0,0}
 };

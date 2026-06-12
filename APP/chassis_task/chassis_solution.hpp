@@ -149,7 +149,7 @@ public:
                 &speed_pid_[i],
                 motors_[i]->getCurrentSpeed(), // 输出轴角速度(rad/s)
                 target_rad_s_[i]);
-            motors_[i]->setMotorCmd(pid_output_[i]);
+            motors_[i]->setMotorCmd(pid_output_[i]*1.10f);
         }
     }
 

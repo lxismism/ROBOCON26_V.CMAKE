@@ -22,6 +22,16 @@
 
 void chassisTask(void *argument);
 
+typedef struct {
+    uint8_t MF_x;
+    uint8_t MF_y;
+    bool is_picking;
+    bool is_valid;
+} MF_plan_t;
+
 extern const float robot_position_MC[4][3];
 extern const float robot_position_MF[6][5][4];
 extern const float robot_position_Arena[3][3];
+extern const float robot_position_Arena_withR2[3][3];
+extern MF_plan_t MF_plan[15] ;
+
