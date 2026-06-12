@@ -36,11 +36,11 @@ enum Height : size_t{
 
 // ===== 动作速度配置 =====
 struct ActionSpeeds {
-    float pick_lift     = 240.0f;   // 吸取手抬升 mm/s
-    float pick_yaw      = 250.0f;   // 云台旋转 °/s
-    float pick_extend   = 100.0f;    // 吸取手伸缩 mm/s
+    float pick_lift     = 280.0f;   // 吸取手抬升 mm/s
+    float pick_yaw      = 350.0f;   // 云台旋转 °/s
+    float pick_extend   = 200.0f;    // 吸取手伸缩 mm/s
     float weapon_lift   = 160.0f;    // 武器手抬升 mm/s
-    float weapon_extend = 100.0f;    // 武器手伸缩 mm/s
+    float weapon_extend = 180.0f;    // 武器手伸缩 mm/s
     float lift          = 40.0f;    // 电梯 mm/s
 };
 
@@ -194,7 +194,7 @@ protected:
 private:
     // ---- 内部状态 ----
     RampState ramp_;
-    static constexpr int kMaxSteps = 4;
+    static constexpr int kMaxSteps = 10;
     ActionConfig step_queue_[kMaxSteps];
     int step_count_ = 0;
     int step_index_ = 0;

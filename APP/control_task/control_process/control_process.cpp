@@ -36,7 +36,7 @@ static constexpr float kWeaponExtendStep = 0.4f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
 // ===== MF 自动逼近参数（可配） =====
-float kMF_ApproachDist  = 0.50f;   // 底盘前移距离 (m)，例如 0.07 = 7cm
+float kMF_ApproachDist  = 0.18f;   // 底盘前移距离 (m)，例如 0.07 = 7cm
 float kMF_ApproachSpeed = 0.30f;   // 前移/后退速度 (m/s)，实测后改
 
 
@@ -436,14 +436,18 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     if (control_xbox_cmd.btnRB)
         upbody_msg.weapon_extend_delta = kWeaponExtendStep;
 
-    // 持续型：右摇杆前推抬升 / 后拉下降
+    // 持续型：右摇杆前推抬升 / 后拉下降（霍尔值线性映射速度）
     {
         int32_t rvert_diff = (int32_t)control_xbox_cmd.joyRVert - (int32_t)kJoyCenter;
-        if (rvert_diff > (int32_t)kJoyDeadZoneRight)
-            upbody_msg.weapon_lift_delta = -kWeaponLiftStep;
-        else if (rvert_diff < -(int32_t)kJoyDeadZoneRight)
-            upbody_msg.weapon_lift_delta = kWeaponLiftStep;
+        if (ABS(rvert_diff) > (int32_t)kJoyDeadZoneRight) {
+            float ratio = (float)(ABS(rvert_diff) - (int32_t)kJoyDeadZoneRight)
+                          / (float)(kJoyCenter - kJoyDeadZoneRight)
+                          * (rvert_diff > 0 ? -1.0f : 1.0f);
+            upbody_msg.weapon_lift_delta = ratio * kWeaponLiftStep;
+        }
     }
+
+
 
     // 切换型：btnX 夹爪开合 / btnA 腕部翻转
     static bool last_btnX_mc = false;
