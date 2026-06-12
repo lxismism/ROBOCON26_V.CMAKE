@@ -19,11 +19,11 @@
 void WeaponHand::init() {
   // ---- 抬升电机 PID (3508) ----
   PID_Init(&lift_pid_);
-  lift_pid_.Kp = 40.0f;  //原来是40
-  lift_pid_.Ki = 20.0f;  //原来40  //还没试这个
-  lift_pid_.Kd = 19.0f;  //9
+  lift_pid_.Kp = 90.0f;  //原来是40
+  lift_pid_.Ki = 30.0f;  //原来40  //还没试这个
+  lift_pid_.Kd = 10.0f;  //9
   lift_pid_.MaxOut = 8000.0f;  //8000
-  lift_pid_.IntegralLimit = 5000.0f;  //5000
+  lift_pid_.IntegralLimit = 1000.0f;  //5000
   lift_pid_.DeadBand = 0.5f;  //0.5
   lift_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
 
@@ -79,9 +79,20 @@ void WeaponHand::update() {
 
     // ===== 3. 腕部达妙电机维护 =====
   if (wrist_motor_ != nullptr) {
-    float target = wrist_flipped_ ? kWristDownAngle_rad : kWristUpAngle_rad;
-    wrist_motor_->posWithSpeedControl(target, kWristFlipSpeed_radps);
+    if (wrist_motor_->isOffline()) {
+      // 电机离线（未上电或掉线），每200ms重试一次使能
+      static uint32_t last_retry_tick = 0;
+      if (HAL_GetTick() - last_retry_tick > 200) {
+        wrist_motor_->dmMotorEnable();
+        last_retry_tick = HAL_GetTick();
+      }
+    } else {
+      // 电机在线，正常发位置速度指令
+      float target = wrist_flipped_ ? kWristDownAngle_rad : kWristUpAngle_rad;
+      wrist_motor_->posWithSpeedControl(target, kWristFlipSpeed_radps);
+    }
   }
+
 
 }
 
