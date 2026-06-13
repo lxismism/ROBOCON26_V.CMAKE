@@ -108,10 +108,10 @@ void ActionController::Start_(const ActionConfig& config) {
     ramp_.active = true;
 
     // 泵/阀切换暂存（本步首帧发出）
-    ramp_.pending_pump_toggle  = config.pump_toggle;
-    ramp_.pending_valve_toggle = config.valve_toggle;
-    ramp_.pump_toggle_at_done  = config.pump_toggle_done;
-    ramp_.valve_toggle_at_done = config.valve_toggle_done;
+    ramp_.pending_pump_cmd  = config.pump_cmd;
+    ramp_.pending_valve_cmd = config.valve_cmd;
+    ramp_.pump_cmd_at_done  = config.pump_cmd_done;
+    ramp_.valve_cmd_at_done = config.valve_cmd_done;
 
     ramp_.chassis_approach_active = config.enable_chassis_approach;
 }
@@ -249,13 +249,13 @@ void ActionController::Update(float dt, TypedTopicPublisher<pub_upbody_cmd>& pub
 
     // 步完成时：将 done 标志转入 pending，下一帧发出
     if (!ramp_.active) {
-        ramp_.pending_pump_toggle  |= ramp_.pump_toggle_at_done;
-        ramp_.pending_valve_toggle |= ramp_.valve_toggle_at_done;
-        ramp_.pump_toggle_at_done   = false;
-        ramp_.valve_toggle_at_done  = false;
+        if (ramp_.pump_cmd_at_done != 0) ramp_.pending_pump_cmd = ramp_.pump_cmd_at_done;
+        if (ramp_.valve_cmd_at_done != 0) ramp_.pending_valve_cmd = ramp_.valve_cmd_at_done;
+        ramp_.pump_cmd_at_done  = 0;
+        ramp_.valve_cmd_at_done = 0;
 
         if (step_index_ >= step_count_) {
-            step_count_ = 0;  // 全完成，清零队列
+            step_count_ = 0;
         }
     }
 
@@ -264,10 +264,10 @@ void ActionController::Update(float dt, TypedTopicPublisher<pub_upbody_cmd>& pub
     ToMsg_(msg);
 
     // 泵/阀切换（仅首帧发出，发出后清零）
-    msg.pump_toggle  = ramp_.pending_pump_toggle;
-    msg.valve_toggle = ramp_.pending_valve_toggle;
-    ramp_.pending_pump_toggle  = false;
-    ramp_.pending_valve_toggle = false;
+    msg.pump_cmd  = ramp_.pending_pump_cmd;
+    msg.valve_cmd = ramp_.pending_valve_cmd;
+    ramp_.pending_pump_cmd  = 0;
+    ramp_.pending_valve_cmd = 0;
 
     pub.Publish(msg);
 }
@@ -326,8 +326,8 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
     step1.priorities.pick_yaw     = 0;
     step1.priorities.pick_lift    = 1;
     step1.step_done_mask = 0x03;
-    step1.pump_toggle       = true;
-    step1.valve_toggle      = true;
+    step1.pump_cmd  = 1;   // 开泵
+    step1.valve_cmd = 1;   // 开阀
     AddStep(step1);
 
     // Step 2: 伸缩伸出够到KFS → 底盘同步前移逼近
@@ -387,8 +387,8 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
     step7.step_done_mask = 0x01;
     step7.skip_safety = true;
     if (close_pump_at_end) {
-        step7.pump_toggle_done  = true;
-        step7.valve_toggle_done = true;
+        step7.pump_cmd_done  = -1;  // 关泵
+        step7.valve_cmd_done = -1;  // 关阀
     }
     AddStep(step7);
     
