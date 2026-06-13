@@ -420,6 +420,10 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         }
     }
 
+    if(control_xbox_cmd.btnY == 1 && control_xbox_cmd_Last.btnA == 0){
+        //在这里面配置红外发送
+    }
+
     if (MC_headless_xy_mode) {
         // xy 手控模式：摇杆 → 速度，直接进入速度环 PID
         xbox_angle_deg = atan2(xbox_cmd.linear_y_, xbox_cmd.linear_x_) / kDegToRad;
