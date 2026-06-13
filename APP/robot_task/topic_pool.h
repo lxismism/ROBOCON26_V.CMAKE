@@ -109,6 +109,8 @@ typedef struct {
   // 切换型命令（仅上升沿有效，pos_ctrl_task 执行后清零）
   bool pump_toggle;
   bool valve_toggle;
+  int8_t pump_cmd = 0;     // 0=无操作, 1=开, -1=关
+  int8_t valve_cmd = 0;
   bool claw_toggle;
   bool wrist_toggle;
 

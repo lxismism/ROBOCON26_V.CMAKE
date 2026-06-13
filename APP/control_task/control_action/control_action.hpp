@@ -81,11 +81,11 @@ struct RampState {
     float cur_lift_mm = 0.0f;
     float end_lift_mm = 0.0f;
 
-    // ===== 新增：泵/阀切换暂存 =====
-    bool pending_pump_toggle  = false;   // 下一步首帧发送泵切换
-    bool pending_valve_toggle = false;   // 下一步首帧发送阀切换
-    bool pump_toggle_at_done  = false;   // 当前步完成时发送泵切换
-    bool valve_toggle_at_done = false;   // 当前步完成时发送阀切换
+    int8_t pending_pump_cmd = 0;
+    int8_t pending_valve_cmd = 0;
+    int8_t pump_cmd_at_done  = 0;
+    int8_t valve_cmd_at_done = 0;
+
 
     // 底盘逼近
     bool chassis_approach_active = false;  // 当前步是否触发底盘前移逼近
@@ -142,10 +142,11 @@ struct ActionConfig {
     bool skip_safety = false;
 
     // ===== 新增：泵/阀自动控制 =====
-    bool pump_toggle       = false;   // 本步第一帧发送泵切换
-    bool valve_toggle      = false;   // 本步第一帧发送阀切换
-    bool pump_toggle_done  = false;   // 本步完成时发送泵切换
-    bool valve_toggle_done = false;   // 本步完成时发送阀切换
+    int8_t pump_cmd       = 0;
+    int8_t valve_cmd      = 0;
+    int8_t pump_cmd_done  = 0;
+    int8_t valve_cmd_done = 0;
+
     bool enable_chassis_approach = false;  // 本步期间触发底盘逼近
 
 };
