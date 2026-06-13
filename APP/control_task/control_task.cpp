@@ -83,7 +83,7 @@ uint8_t MF_x = 0;
 uint8_t MF_y = 0;
 float MF_close_position_x = 0.0f;
 float MF_close_position_y = 0.0f;
-float MF_omega_correction = 0.35f;
+float MF_omega_correction = 0.6f;
 bool MF_plan_record_Flag = false;
 bool MF_plan_run_Flag = false;
 bool MF_action_Flag = false;
@@ -102,24 +102,13 @@ float Arena_close_position_y_Max = 0.64f;
 const FieldSide_t field_side = Left;
 const float robot_center_to_gimbal_x = 0.4f;
 
-float error_x;
-float error_y;
-float state_xy_error;
-float state_xy_angle_deg;
-float xy_pid_output;
-float v_xy_plan_Max;
-float v_xy_plan_Actual;
-float Acc_xy_SpeedUp = 2.1f; //加速度，单位m/s^2
-float Acc_xy_SpeedDown = 1.8f; //加速度，单位m/s^2
-float K_xy_planTopid = 0.0f;
+float Acc_path_SpeedUp = 2.1f; //加速度，单位m/s^2
+float Acc_path_SpeedDown = 1.8f; //加速度，单位m/s^2
+float path_plan_Max_Max = 2.1f; //规划最大速度
 
-float error_dir;
-float omega_pid_output;
-float v_omega_plan_Max;
-float v_omega_plan_Actual;
 float Acc_omega_SpeedUp = M_PI*0.75f; //加速度，单位m/s^2
 float Acc_omega_SpeedDown = M_PI*0.5f; //加速度，单位m/s^2
-float K_omega_planTopid = 0.0f;
+float v_omega_plan_Max_Max = M_PI*0.55f;
 
 float Acc_xy_dt = 0.0f; //加速计时器，单位s
 uint32_t Acc_xy_DWT_CNT = 0;
@@ -136,8 +125,8 @@ pub_chassis_cmd state_target_cmd{};
 pub_chassis_cmd state_target_last_cmd{};
 
 // 车体目标角度环 PID
-PID_t lateral{.Kp = 4.68f,.Ki = 0.01f,.Kd = 0.95f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-PID_t path{.Kp = 4.68f,.Ki = 0.01f,.Kd = 0.95f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+PID_t lateral{.Kp = 4.3f,.Ki = 0.01f,.Kd = 0.3f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+PID_t path{.Kp = 4.68f,.Ki = 0.03f,.Kd = 0.85f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
 PID_t omega{.Kp = 2.10f,.Ki = 0.22f,.Kd = 0.08f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
 
 
