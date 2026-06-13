@@ -132,6 +132,18 @@ void PickHand::valveToggle() {
                     (cur == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET);
 }
 
+void PickHand::setPump(bool on) {
+    HAL_GPIO_WritePin(PUMP_PICK_GPIO_Port, PUMP_PICK_Pin,
+                      on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    is_pump_on_ = on;
+}
+
+void PickHand::setValve(bool on) {
+    HAL_GPIO_WritePin(VALVE_PICK_GPIO_Port, VALVE_PICK_Pin,
+                      on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    is_valve_on_ = on;
+}
+
 void PickHand::addLiftDelta(float delta_mm) {
   lift_target_deg_ += delta_mm / kLiftMmPerDeg;
 }

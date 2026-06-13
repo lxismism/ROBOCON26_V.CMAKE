@@ -32,8 +32,8 @@ public:
     // ---------- 重力补偿 ----------
   float lift_gravity_comp_{900.0f};      // 没吸取kfs实抬升重力补偿
   float lift_gravity_comp_kfs_{1500.0f};  // 吸取KFS后抬升重力补偿
-  bool is_pump_on_{false};              // 真空泵状态
-
+  bool is_pump_on_{false};
+  bool is_valve_on_{false};
 
   // ---------- 目标角度 ----------
   float lift_target_deg_{0.0f};
@@ -67,8 +67,10 @@ public:
   void update();  // 每控制周期调用一次：读取当前位置 → PID计算 → 写入电机指令
 
   // ======== 新增：吸盘控制方法 ========
-  void pumpToggle();   // 真空泵通断切换（PG3）
-  void valveToggle();  // 电磁阀通断切换（PG8）
+  void pumpToggle();
+  void valveToggle();
+  void setPump(bool on);
+  void setValve(bool on);
   // ======== mm接口 ========
   void addLiftDelta(float delta_mm);
   void addExtendDelta(float delta_mm);
