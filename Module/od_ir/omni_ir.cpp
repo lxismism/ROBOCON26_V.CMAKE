@@ -1,4 +1,7 @@
 #include "omni_ir.hpp"
+#include "FreeRTOS.h"
+#include "cmsis_os2.h"
+#include "task.h"
 #include <cstdint>
 
 IR_SINGLE::IR_SINGLE(UartPort *uart_port, void (*on_frame_func)(IR_FRAME_t *))
@@ -22,20 +25,20 @@ bool IR_SINGLE::processData(const uint8_t *data, size_t len) {
                 if(data[i] == 0xAA)   ir_data_rx_state = data_rx_state_t::wait_for_data;
                 break;
             case data_rx_state_t::wait_for_data:
-                ir_frame.data = data[i];
+                ir_frame_.data = data[i];
                 ir_data_rx_state = data_rx_state_t::wait_for_uidL;
                 break;
             case data_rx_state_t::wait_for_uidL:
-                ir_frame.uid = 0;
-                ir_frame.uid |= data[i];
+                ir_frame_.uid = 0;
+                ir_frame_.uid |= data[i];
                 ir_data_rx_state = data_rx_state_t::wait_for_uidH;
                 break;
             case data_rx_state_t::wait_for_uidH:
-                ir_frame.uid |= static_cast<uint16_t>(data[i]) << 8;
+                ir_frame_.uid |= static_cast<uint16_t>(data[i]) << 8;
                 ir_data_rx_state = data_rx_state_t::wait_for_data_copy;
                 break;
             case data_rx_state_t::wait_for_data_copy:
-                if(data[i] != ir_frame.data) {
+                if(data[i] != ir_frame_.data) {
                     ir_data_rx_state = data_rx_state_t::wait_for_HEAD;
                 }
                 else {
@@ -44,11 +47,11 @@ bool IR_SINGLE::processData(const uint8_t *data, size_t len) {
                 break;
             case data_rx_state_t::wait_for_END:
                 if(data[i] == 0xBB) {
-                    if(ir_frame.uid > biggest_rx_uid_) {
-                        biggest_rx_uid_ = ir_frame.uid;
+                    if(ir_frame_.uid > biggest_rx_uid_) {
+                        biggest_rx_uid_ = ir_frame_.uid;
                     }
                     if(on_frame_func_ != nullptr) {
-                        on_frame_func_(&ir_frame);
+                        on_frame_func_(&ir_frame_);
                     }
                     frame_complete = true;
                 }                
@@ -68,7 +71,7 @@ HAL_StatusTypeDef IR_SINGLE::trySend(uint16_t uid, uint8_t data) {
     }
 
     uint32_t current_time = HAL_GetTick();
-    if(current_time - last_tx_time_ < 175) {
+    if(current_time - last_tx_time_ < kSendCd) {
         return HAL_BUSY;
     }
 
@@ -80,9 +83,53 @@ HAL_StatusTypeDef IR_SINGLE::trySend(uint16_t uid, uint8_t data) {
     tx[4] = data;
     tx[5] = 0xBB; // 数据帧尾
 
-    HAL_StatusTypeDef ret = uart_port_->writeDma(tx, sizeof(tx));
+    HAL_StatusTypeDef ret = uart_port_->write(tx, sizeof(tx), HAL_MAX_DELAY);
     if (ret == HAL_OK) {
         last_tx_time_ = HAL_GetTick();
     }
     return ret;
+}
+
+OMNI_IR::OMNI_IR(IR_SINGLE *ir_single[], int ir_single_num, void (*on_update_func)(IR_FRAME_t *))
+    : on_update_func_(on_update_func)
+{
+    ir_single_num_ = (ir_single_num > kMaxMap) ? kMaxMap : ir_single_num;
+    for(int i=0;i<ir_single_num && i<kMaxMap;i++) {
+        map_[i] = ir_single[i];
+    }
+}
+
+bool OMNI_IR::tryUpdate(IR_FRAME_t *frame) {
+    if(frame == nullptr) {
+        return false;
+    }
+    //防止重复的数据触发更新，防止自己发出的数据触发更新
+    if(frame->uid <= biggest_used_uid_) {
+        return false;
+    }
+
+    if(frame->uid > biggest_used_uid_) {
+        biggest_used_uid_ = frame->uid;
+        if(on_update_func_ != nullptr) {
+            on_update_func_(frame);
+        }
+    }
+
+    return true;
+}
+//依次发到每一个模块
+bool OMNI_IR::sendData(uint16_t uid, uint8_t data) {
+    
+    biggest_used_uid_ = uid;
+    for(int i=0;i<ir_single_num_;i++) {
+        uint32_t first_try_time;
+        if(map_[i] != nullptr) {
+            first_try_time = HAL_GetTick();
+            while(map_[i]->trySend(uid, data) != HAL_OK && HAL_GetTick() - first_try_time < kTrySendTimeout) {
+                osDelay(20);
+            }
+            osDelay(200);
+        }
+    }
+    return true;
 }

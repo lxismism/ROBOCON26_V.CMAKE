@@ -35,7 +35,13 @@ extern osThreadId_t uart2ProcessTaskHandle;
 extern osThreadId_t uart3ProcessTaskHandle;
 extern osThreadId_t uart4ProcessTaskHandle;
 extern osThreadId_t uart5ProcessTaskHandle;
-extern osThreadId_t uart10ProcessTaskHandle;  
+extern osThreadId_t uart1ProcessTaskHandle;
+extern osThreadId_t uart6ProcessTaskHandle;
+extern osThreadId_t uart9ProcessTaskHandle;
+extern osThreadId_t uart10ProcessTaskHandle; 
+extern osThreadId_t uart1SendTaskHandle;
+extern osThreadId_t uart6SendTaskHandle;
+extern osThreadId_t uart9SendTaskHandle;
 extern osThreadId_t uart10SendTaskHandle;  
 extern osThreadId_t Debug_TaskHandle;
 extern osThreadId_t ChassisTaskHandle;
@@ -44,7 +50,7 @@ extern osThreadId_t usbcdcProcessTaskHandle;
 extern osThreadId_t usbcdcSendTaskHandle;
 extern osThreadId_t PosCtrlTaskHandle;
 extern osThreadId_t DebugSerialTaskHandle;
-
+extern osThreadId_t omniIrSendTaskHandle;
 
 
 void osTaskInit(void) {
@@ -143,11 +149,35 @@ void osTaskInit(void) {
       //uart10用于IR模块
   const osThreadAttr_t Uart10ProcessTaskHandle_attributes = {
       .name = "Uart10Process_TaskHandle",
-      .stack_size = 256 * 4,
+      .stack_size = 128 * 4,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   uart10ProcessTaskHandle =
       osThreadNew(uart10RxProcessTask, NULL, &Uart10ProcessTaskHandle_attributes);
+
+  const osThreadAttr_t Uart9ProcessTaskHandle_attributes = {
+      .name = "Uart9Process_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart9ProcessTaskHandle =
+      osThreadNew(uart9RxProcessTask, NULL, &Uart9ProcessTaskHandle_attributes);
+
+  const osThreadAttr_t Uart6ProcessTaskHandle_attributes = {
+      .name = "Uart6Process_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart6ProcessTaskHandle =
+      osThreadNew(uart6RxProcessTask, NULL, &Uart6ProcessTaskHandle_attributes);
+
+  const osThreadAttr_t Uart1ProcessTaskHandle_attributes = {
+      .name = "Uart1Process_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart1ProcessTaskHandle =
+      osThreadNew(uart1RxProcessTask, NULL, &Uart1ProcessTaskHandle_attributes);
 
   const osThreadAttr_t Uart10SendTaskHandle_attributes = {
       .name = "Uart10Send_TaskHandle",
@@ -156,6 +186,30 @@ void osTaskInit(void) {
   };
   uart10SendTaskHandle =
         osThreadNew(uart10SendTask, NULL, &Uart10SendTaskHandle_attributes);
+
+  const osThreadAttr_t Uart1SendTaskHandle_attributes = {
+      .name = "Uart1Send_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart1SendTaskHandle =
+        osThreadNew(uart1SendTask, NULL, &Uart1SendTaskHandle_attributes);
+
+  const osThreadAttr_t Uart6SendTaskHandle_attributes = {
+      .name = "Uart6Send_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart6SendTaskHandle =
+        osThreadNew(uart6SendTask, NULL, &Uart6SendTaskHandle_attributes);
+
+  const osThreadAttr_t Uart9SendTaskHandle_attributes = {
+      .name = "Uart9Send_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart9SendTaskHandle =
+        osThreadNew(uart9SendTask, NULL, &Uart9SendTaskHandle_attributes);
 
   const osThreadAttr_t UsbcdcProcessTaskHandle_attributes = {
       .name = "UsbcdcProcess_TaskHandle",
@@ -180,4 +234,12 @@ void osTaskInit(void) {
   };
   DebugSerialTaskHandle =
       osThreadNew(DebugSerialTask, NULL, &DebugSerialTaskHandle_attributes);
+
+  const osThreadAttr_t OmniIrSendTaskHandle_attributes = {
+      .name = "OmniIRSend_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  omniIrSendTaskHandle =
+      osThreadNew(omniIrSendTask, NULL, &OmniIrSendTaskHandle_attributes);
 }

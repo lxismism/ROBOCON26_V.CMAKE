@@ -20,6 +20,11 @@
 #include <cstddef>
 #include <cstdint>
 
+enum class DMA_USE_t {
+  DMA_off,
+  DMA_on
+};
+
 class UartPort {
 public:
   static constexpr size_t kPacketPayloadSize = 64;
@@ -44,7 +49,7 @@ public:
    * @param cb
    * @param cb_user
    */
-  UartPort(UART_HandleTypeDef *huart, uint8_t *rx_dma_buf,
+  UartPort(UART_HandleTypeDef *huart, DMA_USE_t dma_use, uint8_t *rx_dma_buf,
            size_t rx_dma_buf_size, uint8_t *tx_dma_buf = nullptr,
            size_t tx_dma_buf_size = 0, RxCallback cb = nullptr,
            void *cb_user = nullptr);
@@ -54,7 +59,7 @@ public:
    *
    * @return HAL_StatusTypeDef
    */
-  HAL_StatusTypeDef startRxDmaIdle();
+  HAL_StatusTypeDef startRx();
 
   /**
    * @brief
@@ -99,6 +104,8 @@ public:
 
 private:
   static constexpr size_t kMaxMap = 10;
+
+  DMA_USE_t dma_use_{DMA_USE_t::DMA_off};
 
   // 保存一个uart实例
   UART_HandleTypeDef *huart_{nullptr};

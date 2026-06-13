@@ -52,12 +52,19 @@ osThreadId_t CAN3_Send_TaskHandle;
 osThreadId_t uart2ProcessTaskHandle;
 osThreadId_t uart3ProcessTaskHandle;
 osThreadId_t uart4ProcessTaskHandle;
+osThreadId_t uart1ProcessTaskHandle;
+osThreadId_t uart6ProcessTaskHandle;
+osThreadId_t uart9ProcessTaskHandle;
 osThreadId_t uart5ProcessTaskHandle;
 osThreadId_t uart10ProcessTaskHandle;
 osThreadId_t uart10SendTaskHandle;
+osThreadId_t uart1SendTaskHandle;
+osThreadId_t uart6SendTaskHandle;
+osThreadId_t uart9SendTaskHandle;
 osThreadId_t usbcdcProcessTaskHandle;
 osThreadId_t DebugSerialTaskHandle;
 osThreadId_t usbcdcSendTaskHandle;
+osThreadId_t omniIrSendTaskHandle;
 
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
@@ -114,7 +121,7 @@ extern UART_HandleTypeDef huart10;
 
 DMA_BUFFER_ATTR static uint8_t uart3_rx_dma[64];
 DMA_BUFFER_ATTR static uint8_t uart3_tx_dma[64];
-UartPort uart3_port(&huart3, uart3_rx_dma, sizeof(uart3_rx_dma), uart3_tx_dma,
+UartPort uart3_port(&huart3, DMA_USE_t::DMA_on, uart3_rx_dma, sizeof(uart3_rx_dma), uart3_tx_dma,
                     sizeof(uart3_tx_dma), onUart3RxCb, nullptr);
 osSemaphoreId_t uart3_rx_semphore = NULL;
 
@@ -123,7 +130,7 @@ void onUart2RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart2_rx_dma[128];
 DMA_BUFFER_ATTR static uint8_t uart2_tx_dma[64];
-UartPort uart2_port(&huart2, uart2_rx_dma, sizeof(uart2_rx_dma), uart2_tx_dma,
+UartPort uart2_port(&huart2, DMA_USE_t::DMA_on, uart2_rx_dma, sizeof(uart2_rx_dma), uart2_tx_dma,
                     sizeof(uart2_tx_dma), onUart2RxCb, nullptr);
 osSemaphoreId_t uart2_rx_semphore = NULL;
 
@@ -132,7 +139,7 @@ void onUart4RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart4_rx_dma[128];
 DMA_BUFFER_ATTR static uint8_t uart4_tx_dma[64];
-UartPort uart4_port(&huart4, uart4_rx_dma, sizeof(uart4_rx_dma), uart4_tx_dma,
+UartPort uart4_port(&huart4, DMA_USE_t::DMA_on, uart4_rx_dma, sizeof(uart4_rx_dma), uart4_tx_dma,
                     sizeof(uart4_tx_dma), onUart4RxCb, nullptr);
 osSemaphoreId_t uart4_rx_semphore = NULL;
 
@@ -141,19 +148,55 @@ void onUart5RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例
 
 DMA_BUFFER_ATTR static uint8_t uart5_rx_dma[64];
 DMA_BUFFER_ATTR static uint8_t uart5_tx_dma[512];
-UartPort uart5_port(&huart5, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
+UartPort uart5_port(&huart5, DMA_USE_t::DMA_on, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
                     sizeof(uart5_tx_dma), onUart5RxCb, nullptr);
 osSemaphoreId_t uart5_rx_semphore = NULL;
 
 void onUart10RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例化不报错
 
-DMA_BUFFER_ATTR static uint8_t uart10_rx_dma[64];
-DMA_BUFFER_ATTR static uint8_t uart10_tx_dma[64];
-UartPort uart10_port(&huart10, uart10_rx_dma, sizeof(uart10_rx_dma), uart10_tx_dma,
+DMA_BUFFER_ATTR static uint8_t uart10_rx_dma[16];
+DMA_BUFFER_ATTR static uint8_t uart10_tx_dma[16];
+UartPort uart10_port(&huart10, DMA_USE_t::DMA_off, uart10_rx_dma, sizeof(uart10_rx_dma), uart10_tx_dma,
                      sizeof(uart10_tx_dma), onUart10RxCb, nullptr);
 osSemaphoreId_t uart10_rx_semphore = NULL;
 
-IR_SINGLE ir_test(&uart10_port, nullptr);
+void onUart1RxCb(const uint8_t *data, size_t len, void *user);
+
+DMA_BUFFER_ATTR static uint8_t uart1_rx_dma[16];
+DMA_BUFFER_ATTR static uint8_t uart1_tx_dma[16];
+UartPort uart1_port(&huart1, DMA_USE_t::DMA_off, uart1_rx_dma, sizeof(uart1_rx_dma), uart1_tx_dma,
+                    sizeof(uart1_tx_dma), onUart1RxCb, nullptr);
+osSemaphoreId_t uart1_rx_semphore = NULL;
+
+void onUart6RxCb(const uint8_t *data, size_t len, void *user);
+
+DMA_BUFFER_ATTR static uint8_t uart6_rx_dma[16];
+DMA_BUFFER_ATTR static uint8_t uart6_tx_dma[16];
+UartPort uart6_port(&huart6, DMA_USE_t::DMA_off, uart6_rx_dma, sizeof(uart6_rx_dma), uart6_tx_dma,
+                    sizeof(uart6_tx_dma), onUart6RxCb, nullptr);
+osSemaphoreId_t uart6_rx_semphore = NULL;
+
+void onUart9RxCb(const uint8_t *data, size_t len, void *user);
+
+DMA_BUFFER_ATTR static uint8_t uart9_rx_dma[16];
+DMA_BUFFER_ATTR static uint8_t uart9_tx_dma[16];
+UartPort uart9_port(&huart9, DMA_USE_t::DMA_off, uart9_rx_dma, sizeof(uart9_rx_dma), uart9_tx_dma,
+                     sizeof(uart9_tx_dma), onUart9RxCb, nullptr);
+osSemaphoreId_t uart9_rx_semphore = NULL;
+
+void irSingleOnFrame(IR_FRAME_t *frame);
+
+//IR_SINGLE ir_test(&uart10_port, nullptr);
+IR_SINGLE ir_w(&uart10_port, irSingleOnFrame);
+IR_SINGLE ir_e(&uart9_port, irSingleOnFrame);
+IR_SINGLE ir_s(&uart6_port, irSingleOnFrame);
+IR_SINGLE ir_n(&uart1_port, irSingleOnFrame);
+
+IR_SINGLE *ir_single_map[4] = {&ir_n, &ir_e, &ir_s, &ir_w};
+
+void omniIrOnUpdate(IR_FRAME_t *frame);
+
+OMNI_IR omni_ir(ir_single_map, 4, omniIrOnUpdate);
 
 // IMU姿态传感器解析器 及 Topic发布者
 WitMotionImu wit_imu;
@@ -271,27 +314,27 @@ uint8_t comServiceInit() {
   // 串口外设
 
   uart10_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  if (uart10_rx_semphore == NULL || uart10_port.startRxDmaIdle() != HAL_OK) {
+  if (uart10_rx_semphore == NULL || uart10_port.startRx() != HAL_OK) {
     return 1;
   }
 
   uart5_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  if (uart5_rx_semphore == NULL || uart5_port.startRxDmaIdle() != HAL_OK) {
+  if (uart5_rx_semphore == NULL || uart5_port.startRx() != HAL_OK) {
     return 1;
   }
 
   uart3_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  if (uart3_rx_semphore == NULL || uart3_port.startRxDmaIdle() != HAL_OK) {
+  if (uart3_rx_semphore == NULL || uart3_port.startRx() != HAL_OK) {
     return 1;
   }
 
   uart4_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  if (uart4_rx_semphore == NULL || uart4_port.startRxDmaIdle() != HAL_OK) {
+  if (uart4_rx_semphore == NULL || uart4_port.startRx() != HAL_OK) {
     return 1;
   }
 
   uart2_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  if (uart2_rx_semphore == NULL || uart2_port.startRxDmaIdle() != HAL_OK) {
+  if (uart2_rx_semphore == NULL || uart2_port.startRx() != HAL_OK) {
     return 1;
   }
   // Xbox控制器初始化
@@ -314,6 +357,27 @@ void onUart10RxCb(const uint8_t *data, size_t len, void *user) {
   (void)user;
   if (data != nullptr && len > 0 && uart10_rx_semphore != NULL) {
     (void)osSemaphoreRelease(uart10_rx_semphore);
+  }
+}
+
+void onUart1RxCb(const uint8_t *data, size_t len, void *user) {
+  (void)user;
+  if (data != nullptr && len > 0 && uart1_rx_semphore != NULL) {
+    (void)osSemaphoreRelease(uart1_rx_semphore);
+  }
+}
+
+void onUart6RxCb(const uint8_t *data, size_t len, void *user) {
+  (void)user;
+  if (data != nullptr && len > 0 && uart6_rx_semphore != NULL) {
+    (void)osSemaphoreRelease(uart6_rx_semphore);
+  }
+}
+
+void onUart9RxCb(const uint8_t *data, size_t len, void *user) {
+  (void)user;
+  if (data != nullptr && len > 0 && uart9_rx_semphore != NULL) {
+    (void)osSemaphoreRelease(uart9_rx_semphore);
   }
 }
 
@@ -484,26 +548,6 @@ void uart5RxProcessTask(void *argument) {
 //IR
 void uart10RxProcessTask(void *argument) {
   (void)argument;
-  if(!ir_data_pub.IsValid()) {
-    return;
-  }
-
-  typedef enum {
-    wait_for_data_HEAD,
-    wait_for_data,
-    wait_for_uidL,
-    wait_for_uidH,
-    wait_for_data_copy,
-    wait_for_data_END
-  }ir_data_rx_state_t;
-
-  ir_data_rx_state_t ir_data_rx_state = wait_for_data_HEAD;
-  
-  uint16_t rx_uid;
-  uint16_t last_rx_uid = 0;
-
-  uint8_t temp_data_for_copy;
-
   for(;;)
   {
     (void)osSemaphoreAcquire(uart10_rx_semphore, osWaitForever);
@@ -512,7 +556,7 @@ void uart10RxProcessTask(void *argument) {
 
     while(uart10_port.Read(packet)) {
       // 处理接收到的IR数据
-      ir_test.processData(packet.data, packet.len);
+      //ir_test.processData(packet.data, packet.len);
     }
   }
 }
@@ -533,6 +577,54 @@ void uart10SendTask(void *argument) {
   {
     //ir_test.trySend(1, 0x2b);
     vTaskDelayUntil(&currentTime, 500);
+  }
+}
+
+void uart1RxProcessTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
+  }
+}
+
+void uart1SendTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
+  }
+}
+
+void uart6SendTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
+  }
+}
+
+void uart9SendTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
+  }
+}
+
+void uart6RxProcessTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
+  }
+}
+
+void uart9RxProcessTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
   }
 }
 
@@ -727,4 +819,22 @@ void uart4RxProcessTask(void *argument) {
       }
     }
   }
+}
+
+void irSingleOnFrame(IR_FRAME_t *frame) {
+  omni_ir.tryUpdate(frame);
+}
+
+void omniIrSendTask(void *argument) {
+  (void)argument;
+
+  for(;;)
+  {
+    omni_ir.sendData(1, 0x2b);
+    osDelay(2000);
+  }
+}
+
+void omniIrOnUpdate(IR_FRAME_t *frame) {
+//暂时没有接受数据的需求  
 }
