@@ -130,13 +130,11 @@ typedef struct {
 
 // IR模块数据结构体
 typedef struct {
-  uint8_t data1;
-  uint8_t data2;
-  uint8_t data3;
+  uint8_t data;
 } pub_ir_data;
 
 typedef struct {
-  uint8_t tx_data[3];
+  uint8_t tx_data;
 } pub_ir_cmd;
 
 typedef struct {

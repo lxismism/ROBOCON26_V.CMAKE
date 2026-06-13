@@ -17,6 +17,7 @@
 #include "pid_controller.h"
 #include "portmacro.h"
 #include "stm32h7xx_hal.h"
+#include "stm32h7xx_hal_def.h"
 #include "stm32h7xx_hal_uart.h"
 #include "task.h"
 
@@ -57,10 +58,6 @@ osThreadId_t uart6ProcessTaskHandle;
 osThreadId_t uart9ProcessTaskHandle;
 osThreadId_t uart5ProcessTaskHandle;
 osThreadId_t uart10ProcessTaskHandle;
-osThreadId_t uart10SendTaskHandle;
-osThreadId_t uart1SendTaskHandle;
-osThreadId_t uart6SendTaskHandle;
-osThreadId_t uart9SendTaskHandle;
 osThreadId_t usbcdcProcessTaskHandle;
 osThreadId_t DebugSerialTaskHandle;
 osThreadId_t usbcdcSendTaskHandle;
@@ -186,17 +183,17 @@ osSemaphoreId_t uart9_rx_semphore = NULL;
 
 void irSingleOnFrame(IR_FRAME_t *frame);
 
-//IR_SINGLE ir_test(&uart10_port, nullptr);
-IR_SINGLE ir_w(&uart10_port, irSingleOnFrame);
-IR_SINGLE ir_e(&uart9_port, irSingleOnFrame);
-IR_SINGLE ir_s(&uart6_port, irSingleOnFrame);
-IR_SINGLE ir_n(&uart1_port, irSingleOnFrame);
+//IrSingle ir_test(&uart10_port, nullptr);
+IrSingle ir_w(&uart10_port, irSingleOnFrame);
+IrSingle ir_e(&uart9_port, irSingleOnFrame);
+IrSingle ir_s(&uart6_port, irSingleOnFrame);
+IrSingle ir_n(&uart1_port, irSingleOnFrame);
 
-IR_SINGLE *ir_single_map[4] = {&ir_n, &ir_e, &ir_s, &ir_w};
+IrSingle *IrSingle_map[4] = {&ir_n, &ir_e, &ir_s, &ir_w};
 
 void omniIrOnUpdate(IR_FRAME_t *frame);
 
-OMNI_IR omni_ir(ir_single_map, 4, omniIrOnUpdate);
+OmniIr omni_ir(IrSingle_map, 4, omniIrOnUpdate);
 
 // IMU姿态传感器解析器 及 Topic发布者
 WitMotionImu wit_imu;
@@ -561,50 +558,7 @@ void uart10RxProcessTask(void *argument) {
   }
 }
 
-void uart10SendTask(void *argument) {
-  (void)argument;
-
-  if(!ir_cmd_sub.IsValid()) {
-    return;
-  }
-  if(!ir_data_pub.IsValid()) {
-    return;
-  }
-
-  TickType_t currentTime = xTaskGetTickCount();
-
-  for(;;)
-  {
-    //ir_test.trySend(1, 0x2b);
-    vTaskDelayUntil(&currentTime, 500);
-  }
-}
-
 void uart1RxProcessTask(void *argument) {
-  (void)argument;
-  for(;;)
-  {
-    osDelay(osWaitForever);
-  }
-}
-
-void uart1SendTask(void *argument) {
-  (void)argument;
-  for(;;)
-  {
-    osDelay(osWaitForever);
-  }
-}
-
-void uart6SendTask(void *argument) {
-  (void)argument;
-  for(;;)
-  {
-    osDelay(osWaitForever);
-  }
-}
-
-void uart9SendTask(void *argument) {
   (void)argument;
   for(;;)
   {
@@ -828,10 +782,38 @@ void irSingleOnFrame(IR_FRAME_t *frame) {
 void omniIrSendTask(void *argument) {
   (void)argument;
 
+  if(!ir_cmd_sub.IsValid()) {
+    return;
+  }
+
+  uint16_t uid = 1;
+
+  TickType_t currentTime = xTaskGetTickCount();
+
+  auto getNewUid = [](uint16_t current_uid) -> uint16_t {
+    current_uid++;
+
+    uint8_t low_byte = current_uid & 0xFF;
+    if (low_byte == 0xAA || low_byte == 0xBB) {
+      current_uid++;
+    }
+
+    uint8_t high_byte = (current_uid >> 8) & 0xFF;
+    if (high_byte == 0xAA || high_byte == 0xBB) {
+      current_uid += 0x0100;
+    }
+
+    return current_uid;
+  };
+
   for(;;)
   {
-    omni_ir.sendData(1, 0x2b);
-    osDelay(2000);
+    if(ir_cmd_sub.TryGet(&ir_cmd)) {
+      //根据接收到的指令发送红外数据
+      omni_ir.sendData(uid, ir_cmd.tx_data);
+      uid = getNewUid(uid);
+    }
+    vTaskDelayUntil(&currentTime, 10);
   }
 }
 

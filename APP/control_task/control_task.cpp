@@ -18,11 +18,13 @@
 #include "control_action.hpp"        // ← 新增：动作层（常量 + 工具函数）
 #include "pid_controller.h"
 #include "chassis_task.h"
+#include "stm32h7xx_hal.h"
 #include "topic_pool.h"
 #include "topics.hpp"
 #include "bsp_usart.h"
 #include "tracking.h"
 #include <cmath>
+#include <cstdint>
 
 osThreadId_t ControlTaskHandle;
 
@@ -176,6 +178,7 @@ void controlTask(void *argument) {
     PID_Init(&omega);
 
     controlInit();
+    uint32_t last_time = HAL_GetTick();
     for (;;) {
         /* 从Position订阅者中获取数据 */
         if (control_position_sub.TryGet(&control_position_msg)) {
@@ -211,16 +214,23 @@ void controlTask(void *argument) {
             chassis_data_pub.Publish(robot_v_aim_cmd);
         }
 
-        if(control_ir_sub.TryGet(&control_ir_msg)) {
-          //红外信号处理放这
-          //测试
-          // if(control_ir_msg.data1 == 0x2B && control_ir_msg.data2 == 0xFC)
-          // {
-          //   ir_cmd.tx_data[0] = 0x67; //示例：接收到特定红外信号后，发送0x01命令
-          //   ir_cmd.tx_data[1] = 0x78; //示例：接收到特定红外信号后，发送0x02命令
-          //   ir_cmd_pub.Publish(ir_cmd);
-          // }
+        if(HAL_GetTick() - last_time >= 2000) {
+            uint8_t test_data = 0x2B; // 示例数据
+            ir_cmd.tx_data = test_data;
+            ir_cmd_pub.Publish(ir_cmd);
+            last_time = HAL_GetTick();
         }
+
+        // if(control_ir_sub.TryGet(&control_ir_msg)) {
+        //   //红外信号处理放这
+        //   //测试
+        //   // if(control_ir_msg.data1 == 0x2B && control_ir_msg.data2 == 0xFC)
+        //   // {
+        //   //   ir_cmd.tx_data[0] = 0x67; //示例：接收到特定红外信号后，发送0x01命令
+        //   //   ir_cmd.tx_data[1] = 0x78; //示例：接收到特定红外信号后，发送0x02命令
+        //   //   ir_cmd_pub.Publish(ir_cmd);
+        //   // }
+        // }
 
         //if(qr_code_data_sub.TryGet(&control_qr_code_data)) {
           //二维码输入数据处理放这

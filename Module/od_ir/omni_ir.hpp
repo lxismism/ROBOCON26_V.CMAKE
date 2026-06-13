@@ -9,16 +9,20 @@ constexpr int kMaxDataLength = 32;
 constexpr uint32_t kSendCd = 175;
 constexpr uint32_t kTrySendTimeout = 300;
 
+constexpr uint8_t CMD_RELEASE_CLAW  = 0x0A;
+constexpr uint8_t CMD_PICK_NEW      = 0x1A;
+constexpr uint8_t CMD_ENTER_MF      = 0x1B;
+
 struct IR_FRAME_t{
     uint16_t uid;
     uint8_t data;
 };
 
-class IR_SINGLE {
+class IrSingle {
 
     public:
         
-        IR_SINGLE(UartPort *uart_port, void (*on_frame_func)(IR_FRAME_t *));
+        IrSingle(UartPort *uart_port, void (*on_frame_func)(IR_FRAME_t *));
         
         HAL_StatusTypeDef trySend(uint16_t uid, uint8_t data);
         //解析到至少一个完整帧时返回true，并通过回调函数传出解析到的帧数据；否则返回false
@@ -50,11 +54,11 @@ class IR_SINGLE {
 
 };
 
-class OMNI_IR {
+class OmniIr {
 
     public:
 
-        OMNI_IR(IR_SINGLE *ir_single[], int ir_single_num, void (*on_update_func)(IR_FRAME_t *));
+        OmniIr(IrSingle *IrSingle[], int IrSingle_num, void (*on_update_func)(IR_FRAME_t *));
 
         bool tryUpdate(IR_FRAME_t *frame);
         bool sendData(uint16_t uid, uint8_t data);
@@ -65,6 +69,6 @@ class OMNI_IR {
 
         void (*on_update_func_)(IR_FRAME_t*);
 
-        IR_SINGLE *map_[kMaxMap];
-        int ir_single_num_;
+        IrSingle *map_[kMaxMap];
+        int IrSingle_num_;
 };

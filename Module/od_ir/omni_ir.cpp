@@ -4,14 +4,14 @@
 #include "task.h"
 #include <cstdint>
 
-IR_SINGLE::IR_SINGLE(UartPort *uart_port, void (*on_frame_func)(IR_FRAME_t *))
+IrSingle::IrSingle(UartPort *uart_port, void (*on_frame_func)(IR_FRAME_t *))
     : on_frame_func_(on_frame_func), uart_port_(uart_port)
 {
   last_tx_time_ = 0;
   biggest_rx_uid_ = 0;
 }
 
-bool IR_SINGLE::processData(const uint8_t *data, size_t len) {
+bool IrSingle::processData(const uint8_t *data, size_t len) {
     if(data == nullptr || len == 0) {
         return false;
     }
@@ -65,7 +65,7 @@ bool IR_SINGLE::processData(const uint8_t *data, size_t len) {
     return frame_complete;
 }
 
-HAL_StatusTypeDef IR_SINGLE::trySend(uint16_t uid, uint8_t data) {
+HAL_StatusTypeDef IrSingle::trySend(uint16_t uid, uint8_t data) {
     if(uart_port_ == nullptr) {
         return HAL_ERROR;
     }
@@ -90,16 +90,16 @@ HAL_StatusTypeDef IR_SINGLE::trySend(uint16_t uid, uint8_t data) {
     return ret;
 }
 
-OMNI_IR::OMNI_IR(IR_SINGLE *ir_single[], int ir_single_num, void (*on_update_func)(IR_FRAME_t *))
+OmniIr::OmniIr(IrSingle *IrSingle[], int IrSingle_num, void (*on_update_func)(IR_FRAME_t *))
     : on_update_func_(on_update_func)
 {
-    ir_single_num_ = (ir_single_num > kMaxMap) ? kMaxMap : ir_single_num;
-    for(int i=0;i<ir_single_num && i<kMaxMap;i++) {
-        map_[i] = ir_single[i];
+    IrSingle_num_ = (IrSingle_num > kMaxMap) ? kMaxMap : IrSingle_num;
+    for(int i=0;i<IrSingle_num && i<kMaxMap;i++) {
+        map_[i] = IrSingle[i];
     }
 }
 
-bool OMNI_IR::tryUpdate(IR_FRAME_t *frame) {
+bool OmniIr::tryUpdate(IR_FRAME_t *frame) {
     if(frame == nullptr) {
         return false;
     }
@@ -118,10 +118,10 @@ bool OMNI_IR::tryUpdate(IR_FRAME_t *frame) {
     return true;
 }
 //依次发到每一个模块
-bool OMNI_IR::sendData(uint16_t uid, uint8_t data) {
+bool OmniIr::sendData(uint16_t uid, uint8_t data) {
     
     biggest_used_uid_ = uid;
-    for(int i=0;i<ir_single_num_;i++) {
+    for(int i=0;i<IrSingle_num_;i++) {
         uint32_t first_try_time;
         if(map_[i] != nullptr) {
             first_try_time = HAL_GetTick();
