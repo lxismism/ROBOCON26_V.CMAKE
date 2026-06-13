@@ -23,6 +23,7 @@
 #include "pick_hand.hpp"
 #include "weapon_hand.hpp"
 #include "lift.hpp"
+#include "omni_ir.hpp"
 
 
 
@@ -46,6 +47,8 @@ float kMF_ApproachSpeed = 0.30f;   // 前移/后退速度 (m/s)，实测后改
 extern TypedTopicPublisher<pub_chassis_cmd> chassis_data_pub;
 extern pub_chassis_cmd xbox_cmd;
 
+extern TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub;                
+extern pub_ir_cmd ir_cmd;
 
 // 订阅者
 extern TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub;
@@ -420,8 +423,10 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         }
     }
 
-    if(control_xbox_cmd.btnY == 1 && control_xbox_cmd_Last.btnA == 0){
+    if(control_xbox_cmd.btnY == 1 && control_xbox_cmd_Last.btnY == 0){
         //在这里面配置红外发送
+        ir_cmd.tx_data = CMD_RELEASE_CLAW;
+        ir_cmd_pub.Publish(ir_cmd);
     }
 
     if (MC_headless_xy_mode) {

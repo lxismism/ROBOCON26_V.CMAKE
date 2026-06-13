@@ -223,7 +223,7 @@ pub_upbody_cmd upbody_cmd_msg{};
 // TickType_t last_data_received_time = 0; // 上次接收到数据的时间
 
 TypedTopicSubscriber<pub_ir_cmd> ir_cmd_sub("ir_cmd", 8);
-pub_ir_cmd ir_cmd{};
+static pub_ir_cmd ir_cmd{};
 
 TypedTopicSubscriber<QR_code_cmd_t> qr_code_cmd_sub("qr_code_cmd", 8);
 QR_code_cmd_t qr_code_cmd{};

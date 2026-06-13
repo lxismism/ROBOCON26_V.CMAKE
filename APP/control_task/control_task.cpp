@@ -35,8 +35,8 @@ pub_chassis_cmd xbox_cmd{};
 static TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");      
 static pub_upbody_cmd upbody_cmd_msg{};                                   
 
-static TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");                
-static pub_ir_cmd ir_cmd{};                                               
+TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");                
+pub_ir_cmd ir_cmd{};                                               
 
 // static TypedTopicPublisher<QR_code_cmd_t> qr_code_cmd_pub("qr_code_cmd");   
 // static QR_code_cmd_t qr_code_cmd{};
