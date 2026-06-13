@@ -27,6 +27,7 @@
 #include "lift.hpp"
 #include "Position.hpp"
 #include "ROSCom.hpp"
+#include "omni_ir.hpp"
 #include "UartPort.hpp"
 #include "UsbPort.hpp"
 #include "XboxRemote.hpp"
@@ -151,6 +152,8 @@ DMA_BUFFER_ATTR static uint8_t uart10_tx_dma[64];
 UartPort uart10_port(&huart10, uart10_rx_dma, sizeof(uart10_rx_dma), uart10_tx_dma,
                      sizeof(uart10_tx_dma), onUart10RxCb, nullptr);
 osSemaphoreId_t uart10_rx_semphore = NULL;
+
+IR_SINGLE ir_test(&uart10_port, nullptr);
 
 // IMU姿态传感器解析器 及 Topic发布者
 WitMotionImu wit_imu;
@@ -505,46 +508,11 @@ void uart10RxProcessTask(void *argument) {
   {
     (void)osSemaphoreAcquire(uart10_rx_semphore, osWaitForever);
     
-    UartPort::Packet packet{};
+    UartPort::Packet packet{}; 
 
     while(uart10_port.Read(packet)) {
       // 处理接收到的IR数据
-      for(uint16_t i = 0; i < packet.len; ++i) {
-        if(packet.data[i] == 0xAA)   ir_data_rx_state = wait_for_data;
-        else
-        {
-          switch (ir_data_rx_state) {
-            case wait_for_data_HEAD:
-              break;
-            case wait_for_data:
-              ir_data.data1 = packet.data[i];
-              ir_data_rx_state = wait_for_uidL;
-              break;
-            case wait_for_uidL:
-              rx_uid = packet.data[i];
-              ir_data_rx_state = wait_for_uidH;
-              break;
-            case wait_for_uidH:
-              rx_uid |= static_cast<uint16_t>(packet.data[i]) << 8;
-              ir_data_rx_state = wait_for_data_copy;
-              break;
-            case wait_for_data_copy:
-              temp_data_for_copy = packet.data[i];
-              ir_data_rx_state = wait_for_data_END;
-              break;
-            case wait_for_data_END:
-              if(packet.data[i] == 0xBB) {
-                last_data_received_time = xTaskGetTickCount();
-                if(rx_uid > last_rx_uid && temp_data_for_copy == ir_data.data1) {
-                  last_rx_uid = rx_uid;
-                  ir_data_pub.Publish(ir_data);
-                }
-              }
-              ir_data_rx_state = wait_for_data_HEAD;
-              break;
-          }
-        }   
-      }
+      ir_test.processData(packet.data, packet.len);
     }
   }
 }
@@ -559,47 +527,12 @@ void uart10SendTask(void *argument) {
     return;
   }
 
-  uint8_t tx[6];
-  uint16_t tx_uid = 1;
-  tx[0] = 0xAA; // 数据帧头
-  tx[5] = 0xBB; // 数据帧尾
-
   TickType_t currentTime = xTaskGetTickCount();
-  TickType_t last_transmit_time = 0;
-
-  typedef enum {
-    wait_for_transmit,
-    wait_for_data,
-  } ir_data_tx_state_t;
-  ir_data_tx_state_t ir_data_tx_state = wait_for_data;
 
   for(;;)
   {
-    switch (ir_data_tx_state) {
-      case wait_for_transmit:
-        if(currentTime - last_transmit_time >= 150 && currentTime - last_data_received_time >= 150)
-          ir_data_tx_state = wait_for_data;
-        break;
-      case wait_for_data:
-        if (ir_cmd_sub.TryGet(&ir_cmd)) {
-          tx[1] = ir_cmd.tx_data[0];
-          tx[2] = tx_uid & 0xFF; // UID低8位
-          tx[3] = (tx_uid >> 8) & 0xFF; // UID高8位
-          tx[4] = ir_cmd.tx_data[0];
-          if(uart10_port.writeDma(tx, sizeof(tx)) == HAL_OK)
-          {
-            last_transmit_time = xTaskGetTickCount();
-            ir_data_tx_state = wait_for_transmit;
-            tx_uid++;
-            if((tx_uid >> 8) == 0xAA || (tx_uid >> 8) == 0xBB) // 避免UID高8位与帧头帧尾冲突
-              tx_uid += 0x0100;
-            if((tx_uid & 0xFF) == 0xAA || (tx_uid & 0xFF) == 0xBB) // 避免UID低8位与帧头帧尾冲突
-              tx_uid += 1;
-          }
-        }
-        break;
-    }
-    vTaskDelayUntil(&currentTime, 10);
+    //ir_test.trySend(1, 0x2b);
+    vTaskDelayUntil(&currentTime, 500);
   }
 }
 
