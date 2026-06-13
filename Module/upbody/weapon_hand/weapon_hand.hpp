@@ -55,8 +55,8 @@ public:
 
   // ======== 腕部翻转状态（达妙4310电机，位置速度模式） ========
   bool wrist_flipped_{false};   // false=朝上(初始位), true=朝前(下翻90°)
-  static constexpr float kWristUpAngle_rad = 0.0f;        // 朝上（零位），单位 rad
-  static constexpr float kWristDownAngle_rad = 1.5708f;   // 朝前（下翻90° = π/2 rad）
+  static constexpr float kWristUpAngle_rad = 0.087266f;        // 朝上（零位），单位 rad
+  static constexpr float kWristDownAngle_rad = 1.4835298f;   // 朝前（下翻90° = π/2 rad）
   static constexpr float kWristFlipSpeed_radps = 3.0f;    // 翻转速度 rad/s
 
 

@@ -78,11 +78,13 @@ void posCtrlTask(void *argument) {
 
 
         // --- 切换型：执行GPIO/舵机动作（仅上升沿单帧为true） ---
-        if (upbody_msg.pump_toggle)
-          pick_hand.pumpToggle();
+        if (upbody_msg.pump_cmd == 1)       pick_hand.setPump(true);
+        else if (upbody_msg.pump_cmd == -1) pick_hand.setPump(false);
+        else if (upbody_msg.pump_toggle)    pick_hand.pumpToggle();
 
-        if (upbody_msg.valve_toggle)
-          pick_hand.valveToggle();
+        if (upbody_msg.valve_cmd == 1)       pick_hand.setValve(true);
+        else if (upbody_msg.valve_cmd == -1) pick_hand.setValve(false);
+        else if (upbody_msg.valve_toggle)    pick_hand.valveToggle();
 
         if (upbody_msg.claw_toggle)
           weapon_hand.clawToggle();
