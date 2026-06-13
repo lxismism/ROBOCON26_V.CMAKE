@@ -149,6 +149,7 @@ UartPort uart5_port(&huart5, DMA_USE_t::DMA_on, uart5_rx_dma, sizeof(uart5_rx_dm
                     sizeof(uart5_tx_dma), onUart5RxCb, nullptr);
 osSemaphoreId_t uart5_rx_semphore = NULL;
 
+//IR
 void onUart10RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例化不报错
 
 DMA_BUFFER_ATTR static uint8_t uart10_rx_dma[16];
@@ -157,6 +158,7 @@ UartPort uart10_port(&huart10, DMA_USE_t::DMA_off, uart10_rx_dma, sizeof(uart10_
                      sizeof(uart10_tx_dma), onUart10RxCb, nullptr);
 osSemaphoreId_t uart10_rx_semphore = NULL;
 
+//IR
 void onUart1RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart1_rx_dma[16];
@@ -165,6 +167,7 @@ UartPort uart1_port(&huart1, DMA_USE_t::DMA_off, uart1_rx_dma, sizeof(uart1_rx_d
                     sizeof(uart1_tx_dma), onUart1RxCb, nullptr);
 osSemaphoreId_t uart1_rx_semphore = NULL;
 
+//IR
 void onUart6RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart6_rx_dma[16];
@@ -173,6 +176,7 @@ UartPort uart6_port(&huart6, DMA_USE_t::DMA_off, uart6_rx_dma, sizeof(uart6_rx_d
                     sizeof(uart6_tx_dma), onUart6RxCb, nullptr);
 osSemaphoreId_t uart6_rx_semphore = NULL;
 
+//IR
 void onUart9RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart9_rx_dma[16];
@@ -214,9 +218,9 @@ pub_Position_Data Position_msg{};
 TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");
 pub_upbody_cmd upbody_cmd_msg{};
 //IR模块（基于uart10）
-TypedTopicPublisher<pub_ir_data> ir_data_pub("ir_data");
-pub_ir_data ir_data{};
-TickType_t last_data_received_time = 0; // 上次接收到数据的时间
+// TypedTopicPublisher<pub_ir_data> ir_data_pub("ir_data");
+// pub_ir_data ir_data{};
+// TickType_t last_data_received_time = 0; // 上次接收到数据的时间
 
 TypedTopicSubscriber<pub_ir_cmd> ir_cmd_sub("ir_cmd", 8);
 pub_ir_cmd ir_cmd{};
@@ -309,6 +313,20 @@ uint8_t comServiceInit() {
   
   
   // 串口外设
+  uart1_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  if (uart1_rx_semphore == NULL || uart1_port.startRx() != HAL_OK) {
+    return 1;
+  }
+
+  uart9_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  if (uart9_rx_semphore == NULL || uart9_port.startRx() != HAL_OK) {
+    return 1;
+  }
+
+  uart6_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  if (uart6_rx_semphore == NULL || uart6_port.startRx() != HAL_OK) {
+    return 1;
+  }
 
   uart10_rx_semphore = osSemaphoreNew(1, 0, NULL);
   if (uart10_rx_semphore == NULL || uart10_port.startRx() != HAL_OK) {
@@ -533,7 +551,7 @@ void uart3RxProcessTask(void *argument) {
   }
 }
 
-//暂时先做发送
+//debug串口暂时先做发送
 void uart5RxProcessTask(void *argument) {
   (void)argument;
   for(;;)
@@ -547,14 +565,7 @@ void uart10RxProcessTask(void *argument) {
   (void)argument;
   for(;;)
   {
-    (void)osSemaphoreAcquire(uart10_rx_semphore, osWaitForever);
-    
-    UartPort::Packet packet{}; 
-
-    while(uart10_port.Read(packet)) {
-      // 处理接收到的IR数据
-      //ir_test.processData(packet.data, packet.len);
-    }
+    osDelay(osWaitForever);
   }
 }
 
@@ -668,56 +679,63 @@ void usbCdcProcessTask(void *argument) {
   (void)argument;
 
   for (;;) {
-    (void)osSemaphoreAcquire(usbcdc_rx_semphore, osWaitForever);
+    // (void)osSemaphoreAcquire(usbcdc_rx_semphore, osWaitForever);
 
-    UsbPort::Packet packet{};
-    while (UsbPort::Instance().Read(packet)) {
-      // 逐个字节解析
-      for (uint16_t i = 0; i < packet.len; ++i) {
-        uint8_t frame_id = ros_protocol.processData(packet.data[i]);
-        if (frame_id != 0) {
-          switch (frame_id) {
-            case static_cast<uint8_t>(ROSProtocol::package_id::QR_CODE_BAG): {
-              // 发布二维码类型
-              const auto &qr_types = ros_protocol.getQRCodeBagData().QR_type;
-              qr_code_data.QR_type = qr_types;
-              qr_code_data_pub.Publish(qr_code_data);
-              //重复应答
-              // uint8_t rev[64] = {0};
-              // memcpy(rev, &ros_protocol.getQRCodeBagData(), sizeof(ros_protocol.getQRCodeBagData()));
-              // UsbPort::Instance().WriteAsync(rev, sizeof(ros_protocol.getQRCodeBagData()));
-              break;
-            }
-            default:
-              break;
-          }
+    // UsbPort::Packet packet{};
+    // while (UsbPort::Instance().Read(packet)) {
+    //   // 逐个字节解析
+    //   for (uint16_t i = 0; i < packet.len; ++i) {
+    //     uint8_t frame_id = ros_protocol.processData(packet.data[i]);
+    //     if (frame_id != 0) {
+    //       switch (frame_id) {
+    //         case static_cast<uint8_t>(ROSProtocol::package_id::QR_CODE_BAG): {
+    //           // 发布二维码类型
+    //           const auto &qr_types = ros_protocol.getQRCodeBagData().QR_type;
+    //           qr_code_data.QR_type = qr_types;
+    //           qr_code_data_pub.Publish(qr_code_data);
+    //           //重复应答
+    //           // uint8_t rev[64] = {0};
+    //           // memcpy(rev, &ros_protocol.getQRCodeBagData(), sizeof(ros_protocol.getQRCodeBagData()));
+    //           // UsbPort::Instance().WriteAsync(rev, sizeof(ros_protocol.getQRCodeBagData()));
+    //           break;
+    //         }
+    //         default:
+    //           break;
+    //       }
 
-        }
-      }
-    }
+    //     }
+    //   }
+    // }
+    //原用于二维码显示相关，现屏蔽
+    osDelay(osWaitForever);
   }
 }
 
 void usbCdcSendTask(void *argument) {
   (void)argument;
 
-  TickType_t currentTime = xTaskGetTickCount();
+  // TickType_t currentTime = xTaskGetTickCount();
 
-  if(!qr_code_cmd_sub.IsValid()) {
-    return;
-  }
+  // if(!qr_code_cmd_sub.IsValid()) {
+  //   return;
+  // }
 
-  if(!qr_code_data_pub.IsValid()) {
-    return;
-  }
+  // if(!qr_code_data_pub.IsValid()) {
+  //   return;
+  // }
 
-  for (;;) {
-    if(qr_code_cmd_sub.TryGet(&qr_code_cmd)) {
-      uint8_t tx[64] = {0};
-      uint8_t frame_length = ros_protocol.packQRMsg(tx, qr_code_cmd.QR_type);
-      UsbPort::Instance().WriteAsync(tx, frame_length);
-    }
-    vTaskDelayUntil(&currentTime, 10); // 每10ms发送一次
+  // for (;;) {
+  //   if(qr_code_cmd_sub.TryGet(&qr_code_cmd)) {
+  //     uint8_t tx[64] = {0};
+  //     uint8_t frame_length = ros_protocol.packQRMsg(tx, qr_code_cmd.QR_type);
+  //     UsbPort::Instance().WriteAsync(tx, frame_length);
+  //   }
+  //   vTaskDelayUntil(&currentTime, 10); // 每10ms发送一次
+  // }
+  //原用于二维码显示相关，现屏蔽
+  for(;;)
+  {
+    osDelay(osWaitForever);
   }
 }
 
