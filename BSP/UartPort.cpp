@@ -19,10 +19,10 @@
 UartPort *UartPort::map_[UartPort::kMaxMap] = {nullptr, nullptr, nullptr,
                                                nullptr};
 
-UartPort::UartPort(UART_HandleTypeDef *huart, uint8_t *rx_dma_buf,
+UartPort::UartPort(UART_HandleTypeDef *huart, DMA_USE_t dma_use, uint8_t *rx_dma_buf,
                    size_t rx_dma_buf_size, uint8_t *tx_dma_buf,
                    size_t tx_dma_buf_size, RxCallback cb, void *cb_user)
-    : huart_(huart), rx_dma_buf_(rx_dma_buf), rx_dma_buf_size_(rx_dma_buf_size),
+    : dma_use_(dma_use), huart_(huart), rx_dma_buf_(rx_dma_buf), rx_dma_buf_size_(rx_dma_buf_size),
       tx_dma_raw_{(tx_dma_buf != nullptr && tx_dma_buf_size >= 2)
                       ? static_cast<void *>(tx_dma_buf)
                       : static_cast<void *>(tx_fallback_),
@@ -43,7 +43,10 @@ UartPort::UartPort(UART_HandleTypeDef *huart, uint8_t *rx_dma_buf,
   }
 }
 
-HAL_StatusTypeDef UartPort::startRxDmaIdle() {
+HAL_StatusTypeDef UartPort::startRx() {
+  if(dma_use_ == DMA_USE_t::DMA_off) {
+    return HAL_OK;
+  }
   if (huart_ == nullptr || rx_dma_buf_ == nullptr || rx_dma_buf_size_ == 0) {
     return HAL_ERROR;
   }
@@ -214,7 +217,7 @@ void UartPort::onError(uint32_t error_code) {
 
   // 重启 RX DMA
   last_rx_pos_ = 0;
-  (void)startRxDmaIdle();
+  (void)startRx();
 }
 
 UartPort *UartPort::fromHandle(UART_HandleTypeDef *huart) {

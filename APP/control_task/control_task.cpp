@@ -13,6 +13,7 @@
  * @versioninfo v0.2: 新增上身控制指令 + btnSelect模式切换
  */
 
+#include "main.h"
 #include "control_task.h"
 #include "control_process.hpp"       // ← 新增：流程层
 #include "control_action.hpp"        // ← 新增：动作层（常量 + 工具函数）
@@ -23,6 +24,7 @@
 #include "bsp_usart.h"
 #include "tracking.h"
 #include <cmath>
+#include <cstdint>
 
 osThreadId_t ControlTaskHandle;
 
@@ -33,11 +35,11 @@ pub_chassis_cmd xbox_cmd{};
 static TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");      
 static pub_upbody_cmd upbody_cmd_msg{};                                   
 
-static TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");                
-static pub_ir_cmd ir_cmd{};                                               
+TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");                
+pub_ir_cmd ir_cmd{};                                               
 
-static TypedTopicPublisher<QR_code_cmd_t> qr_code_cmd_pub("qr_code_cmd");   
-static QR_code_cmd_t qr_code_cmd{};       
+// static TypedTopicPublisher<QR_code_cmd_t> qr_code_cmd_pub("qr_code_cmd");   
+// static QR_code_cmd_t qr_code_cmd{};
 
 
 // ===== 订阅者 =====
@@ -55,11 +57,11 @@ float position_correction_x = 0.0f;
 float position_correction_y = -position_center_distance;
 
 
-TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
-pub_ir_data control_ir_msg{};
+// TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
+// pub_ir_data control_ir_msg{};
 
-TypedTopicSubscriber<QR_code_data_t> qr_code_data_sub("qr_code_data", 8);
-QR_code_data_t control_qr_code_data{};
+// TypedTopicSubscriber<QR_code_data_t> qr_code_data_sub("qr_code_data", 8);
+// QR_code_data_t control_qr_code_data{};
 
 // ===== 控制状态变量 =====
 RobotMode_t robot_mode = MC; // 当前机器人模式，默认为MF
@@ -143,18 +145,18 @@ void controlInit() {
     if (!control_position_sub.IsValid()) {
         return;
     }
-    if (!control_ir_sub.IsValid()) {
-        return;
-    }
+    // if (!control_ir_sub.IsValid()) {
+    //     return;
+    // }
     if (!ir_cmd_pub.IsValid()) {
         return;
     }
-    if(!qr_code_cmd_pub.IsValid()) {
-        return;
-    }
-    if(!qr_code_data_sub.IsValid()) {
-        return;
-    }
+    // if(!qr_code_cmd_pub.IsValid()) {
+    //     return;
+    // }
+    // if(!qr_code_data_sub.IsValid()) {
+    //     return;
+    // }
 }
 
 void controlTask(void *argument) {
@@ -165,6 +167,7 @@ void controlTask(void *argument) {
     PID_Init(&omega);
 
     controlInit();
+    uint32_t last_time = HAL_GetTick();
     for (;;) {
         /* 从Position订阅者中获取数据 */
         if (control_position_sub.TryGet(&control_position_msg)) {
@@ -200,16 +203,13 @@ void controlTask(void *argument) {
             chassis_data_pub.Publish(robot_v_aim_cmd);
         }
 
-        if(control_ir_sub.TryGet(&control_ir_msg)) {
-          //红外信号处理放这
-          //测试
-          // if(control_ir_msg.data1 == 0x2B && control_ir_msg.data2 == 0xFC)
-          // {
-          //   ir_cmd.tx_data[0] = 0x67; //示例：接收到特定红外信号后，发送0x01命令
-          //   ir_cmd.tx_data[1] = 0x78; //示例：接收到特定红外信号后，发送0x02命令
-          //   ir_cmd_pub.Publish(ir_cmd);
-          // }
-        }
+        // if(HAL_GetTick() - last_time >= 2000) {
+        //     uint8_t test_data = 0x2B; // 示例数据
+        //     ir_cmd.tx_data = test_data;
+        //     ir_cmd_pub.Publish(ir_cmd);
+        //     last_time = HAL_GetTick();
+        // }
+
 
         //if(qr_code_data_sub.TryGet(&control_qr_code_data)) {
           //二维码输入数据处理放这

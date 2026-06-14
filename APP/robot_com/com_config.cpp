@@ -17,6 +17,7 @@
 #include "pid_controller.h"
 #include "portmacro.h"
 #include "stm32h7xx_hal.h"
+#include "stm32h7xx_hal_def.h"
 #include "stm32h7xx_hal_uart.h"
 #include "task.h"
 
@@ -27,6 +28,7 @@
 #include "lift.hpp"
 #include "Position.hpp"
 #include "ROSCom.hpp"
+#include "omni_ir.hpp"
 #include "UartPort.hpp"
 #include "UsbPort.hpp"
 #include "XboxRemote.hpp"
@@ -51,12 +53,15 @@ osThreadId_t CAN3_Send_TaskHandle;
 osThreadId_t uart2ProcessTaskHandle;
 osThreadId_t uart3ProcessTaskHandle;
 osThreadId_t uart4ProcessTaskHandle;
+osThreadId_t uart1ProcessTaskHandle;
+osThreadId_t uart6ProcessTaskHandle;
+osThreadId_t uart9ProcessTaskHandle;
 osThreadId_t uart5ProcessTaskHandle;
 osThreadId_t uart10ProcessTaskHandle;
-osThreadId_t uart10SendTaskHandle;
 osThreadId_t usbcdcProcessTaskHandle;
 osThreadId_t DebugSerialTaskHandle;
 osThreadId_t usbcdcSendTaskHandle;
+osThreadId_t omniIrSendTaskHandle;
 
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
@@ -113,7 +118,7 @@ extern UART_HandleTypeDef huart10;
 
 DMA_BUFFER_ATTR static uint8_t uart3_rx_dma[64];
 DMA_BUFFER_ATTR static uint8_t uart3_tx_dma[64];
-UartPort uart3_port(&huart3, uart3_rx_dma, sizeof(uart3_rx_dma), uart3_tx_dma,
+UartPort uart3_port(&huart3, DMA_USE_t::DMA_on, uart3_rx_dma, sizeof(uart3_rx_dma), uart3_tx_dma,
                     sizeof(uart3_tx_dma), onUart3RxCb, nullptr);
 osSemaphoreId_t uart3_rx_semphore = NULL;
 
@@ -122,7 +127,7 @@ void onUart2RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart2_rx_dma[128];
 DMA_BUFFER_ATTR static uint8_t uart2_tx_dma[64];
-UartPort uart2_port(&huart2, uart2_rx_dma, sizeof(uart2_rx_dma), uart2_tx_dma,
+UartPort uart2_port(&huart2, DMA_USE_t::DMA_on, uart2_rx_dma, sizeof(uart2_rx_dma), uart2_tx_dma,
                     sizeof(uart2_tx_dma), onUart2RxCb, nullptr);
 osSemaphoreId_t uart2_rx_semphore = NULL;
 
@@ -131,7 +136,7 @@ void onUart4RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart4_rx_dma[128];
 DMA_BUFFER_ATTR static uint8_t uart4_tx_dma[64];
-UartPort uart4_port(&huart4, uart4_rx_dma, sizeof(uart4_rx_dma), uart4_tx_dma,
+UartPort uart4_port(&huart4, DMA_USE_t::DMA_on, uart4_rx_dma, sizeof(uart4_rx_dma), uart4_tx_dma,
                     sizeof(uart4_tx_dma), onUart4RxCb, nullptr);
 osSemaphoreId_t uart4_rx_semphore = NULL;
 
@@ -140,17 +145,59 @@ void onUart5RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例
 
 DMA_BUFFER_ATTR static uint8_t uart5_rx_dma[64];
 DMA_BUFFER_ATTR static uint8_t uart5_tx_dma[512];
-UartPort uart5_port(&huart5, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
+UartPort uart5_port(&huart5, DMA_USE_t::DMA_on, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
                     sizeof(uart5_tx_dma), onUart5RxCb, nullptr);
 osSemaphoreId_t uart5_rx_semphore = NULL;
 
+//IR
 void onUart10RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例化不报错
 
-DMA_BUFFER_ATTR static uint8_t uart10_rx_dma[64];
-DMA_BUFFER_ATTR static uint8_t uart10_tx_dma[64];
-UartPort uart10_port(&huart10, uart10_rx_dma, sizeof(uart10_rx_dma), uart10_tx_dma,
+DMA_BUFFER_ATTR static uint8_t uart10_rx_dma[16];
+DMA_BUFFER_ATTR static uint8_t uart10_tx_dma[16];
+UartPort uart10_port(&huart10, DMA_USE_t::DMA_off, uart10_rx_dma, sizeof(uart10_rx_dma), uart10_tx_dma,
                      sizeof(uart10_tx_dma), onUart10RxCb, nullptr);
 osSemaphoreId_t uart10_rx_semphore = NULL;
+
+//IR
+void onUart1RxCb(const uint8_t *data, size_t len, void *user);
+
+DMA_BUFFER_ATTR static uint8_t uart1_rx_dma[16];
+DMA_BUFFER_ATTR static uint8_t uart1_tx_dma[16];
+UartPort uart1_port(&huart1, DMA_USE_t::DMA_off, uart1_rx_dma, sizeof(uart1_rx_dma), uart1_tx_dma,
+                    sizeof(uart1_tx_dma), onUart1RxCb, nullptr);
+osSemaphoreId_t uart1_rx_semphore = NULL;
+
+//IR
+void onUart6RxCb(const uint8_t *data, size_t len, void *user);
+
+DMA_BUFFER_ATTR static uint8_t uart6_rx_dma[16];
+DMA_BUFFER_ATTR static uint8_t uart6_tx_dma[16];
+UartPort uart6_port(&huart6, DMA_USE_t::DMA_off, uart6_rx_dma, sizeof(uart6_rx_dma), uart6_tx_dma,
+                    sizeof(uart6_tx_dma), onUart6RxCb, nullptr);
+osSemaphoreId_t uart6_rx_semphore = NULL;
+
+//IR
+void onUart9RxCb(const uint8_t *data, size_t len, void *user);
+
+DMA_BUFFER_ATTR static uint8_t uart9_rx_dma[16];
+DMA_BUFFER_ATTR static uint8_t uart9_tx_dma[16];
+UartPort uart9_port(&huart9, DMA_USE_t::DMA_off, uart9_rx_dma, sizeof(uart9_rx_dma), uart9_tx_dma,
+                     sizeof(uart9_tx_dma), onUart9RxCb, nullptr);
+osSemaphoreId_t uart9_rx_semphore = NULL;
+
+void irSingleOnFrame(IR_FRAME_t *frame);
+
+//IrSingle ir_test(&uart10_port, nullptr);
+IrSingle ir_w(&uart10_port, irSingleOnFrame);
+IrSingle ir_e(&uart9_port, irSingleOnFrame);
+IrSingle ir_s(&uart6_port, irSingleOnFrame);
+IrSingle ir_n(&uart1_port, irSingleOnFrame);
+
+IrSingle *IrSingle_map[4] = {&ir_n, &ir_e, &ir_s, &ir_w};
+
+void omniIrOnUpdate(IR_FRAME_t *frame);
+
+OmniIr omni_ir(IrSingle_map, 4, omniIrOnUpdate);
 
 // IMU姿态传感器解析器 及 Topic发布者
 WitMotionImu wit_imu;
@@ -171,12 +218,12 @@ pub_Position_Data Position_msg{};
 TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");
 pub_upbody_cmd upbody_cmd_msg{};
 //IR模块（基于uart10）
-TypedTopicPublisher<pub_ir_data> ir_data_pub("ir_data");
-pub_ir_data ir_data{};
-TickType_t last_data_received_time = 0; // 上次接收到数据的时间
+// TypedTopicPublisher<pub_ir_data> ir_data_pub("ir_data");
+// pub_ir_data ir_data{};
+// TickType_t last_data_received_time = 0; // 上次接收到数据的时间
 
 TypedTopicSubscriber<pub_ir_cmd> ir_cmd_sub("ir_cmd", 8);
-pub_ir_cmd ir_cmd{};
+static pub_ir_cmd ir_cmd{};
 
 TypedTopicSubscriber<QR_code_cmd_t> qr_code_cmd_sub("qr_code_cmd", 8);
 QR_code_cmd_t qr_code_cmd{};
@@ -266,29 +313,43 @@ uint8_t comServiceInit() {
   
   
   // 串口外设
+  uart1_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  if (uart1_rx_semphore == NULL || uart1_port.startRx() != HAL_OK) {
+    return 1;
+  }
+
+  uart9_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  if (uart9_rx_semphore == NULL || uart9_port.startRx() != HAL_OK) {
+    return 1;
+  }
+
+  uart6_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  if (uart6_rx_semphore == NULL || uart6_port.startRx() != HAL_OK) {
+    return 1;
+  }
 
   uart10_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  if (uart10_rx_semphore == NULL || uart10_port.startRxDmaIdle() != HAL_OK) {
+  if (uart10_rx_semphore == NULL || uart10_port.startRx() != HAL_OK) {
     return 1;
   }
 
   uart5_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  if (uart5_rx_semphore == NULL || uart5_port.startRxDmaIdle() != HAL_OK) {
+  if (uart5_rx_semphore == NULL || uart5_port.startRx() != HAL_OK) {
     return 1;
   }
 
   uart3_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  if (uart3_rx_semphore == NULL || uart3_port.startRxDmaIdle() != HAL_OK) {
+  if (uart3_rx_semphore == NULL || uart3_port.startRx() != HAL_OK) {
     return 1;
   }
 
   uart4_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  if (uart4_rx_semphore == NULL || uart4_port.startRxDmaIdle() != HAL_OK) {
+  if (uart4_rx_semphore == NULL || uart4_port.startRx() != HAL_OK) {
     return 1;
   }
 
   uart2_rx_semphore = osSemaphoreNew(1, 0, NULL);
-  if (uart2_rx_semphore == NULL || uart2_port.startRxDmaIdle() != HAL_OK) {
+  if (uart2_rx_semphore == NULL || uart2_port.startRx() != HAL_OK) {
     return 1;
   }
   // Xbox控制器初始化
@@ -311,6 +372,27 @@ void onUart10RxCb(const uint8_t *data, size_t len, void *user) {
   (void)user;
   if (data != nullptr && len > 0 && uart10_rx_semphore != NULL) {
     (void)osSemaphoreRelease(uart10_rx_semphore);
+  }
+}
+
+void onUart1RxCb(const uint8_t *data, size_t len, void *user) {
+  (void)user;
+  if (data != nullptr && len > 0 && uart1_rx_semphore != NULL) {
+    (void)osSemaphoreRelease(uart1_rx_semphore);
+  }
+}
+
+void onUart6RxCb(const uint8_t *data, size_t len, void *user) {
+  (void)user;
+  if (data != nullptr && len > 0 && uart6_rx_semphore != NULL) {
+    (void)osSemaphoreRelease(uart6_rx_semphore);
+  }
+}
+
+void onUart9RxCb(const uint8_t *data, size_t len, void *user) {
+  (void)user;
+  if (data != nullptr && len > 0 && uart9_rx_semphore != NULL) {
+    (void)osSemaphoreRelease(uart9_rx_semphore);
   }
 }
 
@@ -469,7 +551,7 @@ void uart3RxProcessTask(void *argument) {
   }
 }
 
-//暂时先做发送
+//debug串口暂时先做发送
 void uart5RxProcessTask(void *argument) {
   (void)argument;
   for(;;)
@@ -481,107 +563,33 @@ void uart5RxProcessTask(void *argument) {
 //IR
 void uart10RxProcessTask(void *argument) {
   (void)argument;
-  if(!ir_data_pub.IsValid()) {
-    return;
-  }
-
-  typedef enum {
-    wait_for_data_HEAD,
-    wait_for_data1,
-    wait_for_data2,
-    wait_for_data3,
-    wait_for_data_END
-  }ir_data_rx_state_t;
-
-  ir_data_rx_state_t ir_data_rx_state = wait_for_data_HEAD;
-
   for(;;)
   {
-    (void)osSemaphoreAcquire(uart10_rx_semphore, osWaitForever);
-    
-    UartPort::Packet packet{};
-
-    while(uart10_port.Read(packet)) {
-      // 处理接收到的IR数据
-      for(uint16_t i = 0; i < packet.len; ++i) {
-        if(packet.data[i] == 0xAA)   ir_data_rx_state = wait_for_data1;
-        else
-        {
-          switch (ir_data_rx_state) {
-            case wait_for_data_HEAD:
-              break;
-            case wait_for_data1:
-              ir_data.data1 = packet.data[i];
-              ir_data.data2 = 0;
-              ir_data_rx_state = wait_for_data2;
-              break;
-            case wait_for_data2:
-              ir_data.data2 = packet.data[i];
-              ir_data_rx_state = wait_for_data3;
-              break;
-            case wait_for_data3:
-              ir_data.data3 = packet.data[i];
-              ir_data_rx_state = wait_for_data_END;
-              //last_data_received_time = xTaskGetTickCount();
-              //ir_data_pub.Publish(ir_data);
-              break;
-            case wait_for_data_END:
-              if(packet.data[i] == 0xBB) {
-                last_data_received_time = xTaskGetTickCount();
-                if(ir_data.data1 == ir_data.data2 && ir_data.data2 == ir_data.data3)
-                  ir_data_pub.Publish(ir_data);
-              }
-              ir_data_rx_state = wait_for_data_HEAD;
-              break;
-          }
-        }   
-      }
-    }
+    osDelay(osWaitForever);
   }
 }
 
-void uart10SendTask(void *argument) {
+void uart1RxProcessTask(void *argument) {
   (void)argument;
-
-  if(!ir_cmd_sub.IsValid()) {
-    return;
-  }
-  if(!ir_data_pub.IsValid()) {
-    return;
-  }
-
-  uint8_t tx[5];
-  tx[0] = 0xAA; // 数据帧头
-  tx[4] = 0xBB; // 数据帧尾
-
-  TickType_t currentTime = xTaskGetTickCount();
-  TickType_t last_transmit_time = 0;
-
-  typedef enum {
-    wait_for_transmit,
-    wait_for_data,
-  } ir_data_tx_state_t;
-  ir_data_tx_state_t ir_data_tx_state = wait_for_data;
-
   for(;;)
   {
-    switch (ir_data_tx_state) {
-      case wait_for_transmit:
-        if(currentTime - last_transmit_time >= 150 && currentTime - last_data_received_time >= 150)
-          ir_data_tx_state = wait_for_data;
-        break;
-      case wait_for_data:
-        if (ir_cmd_sub.TryGet(&ir_cmd)) {
-          tx[1] = ir_cmd.tx_data[0];
-          tx[2] = ir_cmd.tx_data[1];
-          tx[3] = ir_cmd.tx_data[2];
-          uart10_port.writeDma(tx, sizeof(tx));
-          last_transmit_time = xTaskGetTickCount();
-          ir_data_tx_state = wait_for_transmit;
-        }
-        break;
-    }
-    vTaskDelayUntil(&currentTime, 10);
+    osDelay(osWaitForever);
+  }
+}
+
+void uart6RxProcessTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
+  }
+}
+
+void uart9RxProcessTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
   }
 }
 
@@ -673,56 +681,63 @@ void usbCdcProcessTask(void *argument) {
   (void)argument;
 
   for (;;) {
-    (void)osSemaphoreAcquire(usbcdc_rx_semphore, osWaitForever);
+    // (void)osSemaphoreAcquire(usbcdc_rx_semphore, osWaitForever);
 
-    UsbPort::Packet packet{};
-    while (UsbPort::Instance().Read(packet)) {
-      // 逐个字节解析
-      for (uint16_t i = 0; i < packet.len; ++i) {
-        uint8_t frame_id = ros_protocol.processData(packet.data[i]);
-        if (frame_id != 0) {
-          switch (frame_id) {
-            case static_cast<uint8_t>(ROSProtocol::package_id::QR_CODE_BAG): {
-              // 发布二维码类型
-              const auto &qr_types = ros_protocol.getQRCodeBagData().QR_type;
-              qr_code_data.QR_type = qr_types;
-              qr_code_data_pub.Publish(qr_code_data);
-              //重复应答
-              // uint8_t rev[64] = {0};
-              // memcpy(rev, &ros_protocol.getQRCodeBagData(), sizeof(ros_protocol.getQRCodeBagData()));
-              // UsbPort::Instance().WriteAsync(rev, sizeof(ros_protocol.getQRCodeBagData()));
-              break;
-            }
-            default:
-              break;
-          }
+    // UsbPort::Packet packet{};
+    // while (UsbPort::Instance().Read(packet)) {
+    //   // 逐个字节解析
+    //   for (uint16_t i = 0; i < packet.len; ++i) {
+    //     uint8_t frame_id = ros_protocol.processData(packet.data[i]);
+    //     if (frame_id != 0) {
+    //       switch (frame_id) {
+    //         case static_cast<uint8_t>(ROSProtocol::package_id::QR_CODE_BAG): {
+    //           // 发布二维码类型
+    //           const auto &qr_types = ros_protocol.getQRCodeBagData().QR_type;
+    //           qr_code_data.QR_type = qr_types;
+    //           qr_code_data_pub.Publish(qr_code_data);
+    //           //重复应答
+    //           // uint8_t rev[64] = {0};
+    //           // memcpy(rev, &ros_protocol.getQRCodeBagData(), sizeof(ros_protocol.getQRCodeBagData()));
+    //           // UsbPort::Instance().WriteAsync(rev, sizeof(ros_protocol.getQRCodeBagData()));
+    //           break;
+    //         }
+    //         default:
+    //           break;
+    //       }
 
-        }
-      }
-    }
+    //     }
+    //   }
+    // }
+    //原用于二维码显示相关，现屏蔽
+    osDelay(osWaitForever);
   }
 }
 
 void usbCdcSendTask(void *argument) {
   (void)argument;
 
-  TickType_t currentTime = xTaskGetTickCount();
+  // TickType_t currentTime = xTaskGetTickCount();
 
-  if(!qr_code_cmd_sub.IsValid()) {
-    return;
-  }
+  // if(!qr_code_cmd_sub.IsValid()) {
+  //   return;
+  // }
 
-  if(!qr_code_data_pub.IsValid()) {
-    return;
-  }
+  // if(!qr_code_data_pub.IsValid()) {
+  //   return;
+  // }
 
-  for (;;) {
-    if(qr_code_cmd_sub.TryGet(&qr_code_cmd)) {
-      uint8_t tx[64] = {0};
-      uint8_t frame_length = ros_protocol.packQRMsg(tx, qr_code_cmd.QR_type);
-      UsbPort::Instance().WriteAsync(tx, frame_length);
-    }
-    vTaskDelayUntil(&currentTime, 10); // 每10ms发送一次
+  // for (;;) {
+  //   if(qr_code_cmd_sub.TryGet(&qr_code_cmd)) {
+  //     uint8_t tx[64] = {0};
+  //     uint8_t frame_length = ros_protocol.packQRMsg(tx, qr_code_cmd.QR_type);
+  //     UsbPort::Instance().WriteAsync(tx, frame_length);
+  //   }
+  //   vTaskDelayUntil(&currentTime, 10); // 每10ms发送一次
+  // }
+  //原用于二维码显示相关，现屏蔽
+  for(;;)
+  {
+    osDelay(osWaitForever);
   }
 }
 
@@ -778,4 +793,50 @@ void uart4RxProcessTask(void *argument) {
       }
     }
   }
+}
+
+void irSingleOnFrame(IR_FRAME_t *frame) {
+  omni_ir.tryUpdate(frame);
+}
+
+void omniIrSendTask(void *argument) {
+  (void)argument;
+
+  if(!ir_cmd_sub.IsValid()) {
+    return;
+  }
+
+  uint16_t uid = 1;
+
+  TickType_t currentTime = xTaskGetTickCount();
+
+  auto getNewUid = [](uint16_t current_uid) -> uint16_t {
+    current_uid++;
+
+    uint8_t low_byte = current_uid & 0xFF;
+    if (low_byte == 0xAA || low_byte == 0xBB) {
+      current_uid++;
+    }
+
+    uint8_t high_byte = (current_uid >> 8) & 0xFF;
+    if (high_byte == 0xAA || high_byte == 0xBB) {
+      current_uid += 0x0100;
+    }
+
+    return current_uid;
+  };
+
+  for(;;)
+  {
+    if(ir_cmd_sub.TryGet(&ir_cmd)) {
+      //根据接收到的指令发送红外数据
+      omni_ir.sendData(uid, ir_cmd.tx_data);
+      uid = getNewUid(uid);
+    }
+    vTaskDelayUntil(&currentTime, 10);
+  }
+}
+
+void omniIrOnUpdate(IR_FRAME_t *frame) {
+//暂时没有接受数据的需求  
 }
