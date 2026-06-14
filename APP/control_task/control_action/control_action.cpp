@@ -298,7 +298,7 @@ void ActionController::GrabKFS(const RobotPose& pose) {
 void ActionController::PlaceKFS(const RobotPose& pose) {
     ActionConfig step1;
     step1.target = pose;
-    step1.target.pick_lift_mm     = 372.6f;
+    step1.target.pick_lift_mm     = 382.6f;
     step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
     step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
     step1.priorities.pick_lift    = 0;
@@ -341,7 +341,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
     // Step 3: 电梯升到安全高度
     ActionConfig step3;
     step3.target = pose_Place;
-    step3.target.pick_lift_mm     = 372.6f;
+    step3.target.pick_lift_mm     = 390.6f;
     step3.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
     step3.target.pick_extend_mm   = pose_Grab.pick_extend_mm;
     step3.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
@@ -354,7 +354,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
     ActionConfig step4;
     step4.target = pose_Place;
     step4.target.pick_extend_mm   = 0.0f;
-    step4.target.pick_lift_mm     = 372.6f;
+    step4.target.pick_lift_mm     = 390.6f;
     step4.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
     step4.priorities.pick_extend  = 0;
     step4.step_done_mask = 0x04;
@@ -365,7 +365,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
     ActionConfig step5;
     step5.target = pose_Place;
     step5.target.pick_extend_mm   = 0.0f;
-    step5.target.pick_lift_mm     = 372.6f;
+    step5.target.pick_lift_mm     = 390.6f;
     step5.priorities.pick_yaw     = 0;
     step5.step_done_mask = 0x02;
     step5.skip_safety = true;
@@ -374,7 +374,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
     // Step 6: 吸取手伸缩伸到放置位置
     ActionConfig step6;
     step6.target = pose_Place;
-    step6.target.pick_lift_mm     = 372.6f;
+    step6.target.pick_lift_mm     = 390.6f;
     step6.priorities.pick_extend  = 0;
     step6.step_done_mask = 0x04;
     step6.skip_safety = true;

@@ -37,10 +37,10 @@ enum Height : size_t{
 
 // ===== 动作速度配置 =====
 struct ActionSpeeds {
-    float pick_lift     = 330.0f;   // 吸取手抬升 mm/s
-    float pick_yaw      = 400.0f;   // 云台旋转 °/s
-    float pick_extend   = 250.0f;    // 吸取手伸缩 mm/s
-    float weapon_lift   = 160.0f;    // 武器手抬升 mm/s
+    float pick_lift     = 350.0f;   // 吸取手抬升 mm/s
+    float pick_yaw      = 500.0f;   // 云台旋转 °/s
+    float pick_extend   = 280.0f;    // 吸取手伸缩 mm/s
+    float weapon_lift   = 180.0f;    // 武器手抬升 mm/s
     float weapon_extend = 180.0f;    // 武器手伸缩 mm/s
     float lift          = 40.0f;    // 电梯 mm/s
 };
@@ -114,8 +114,8 @@ inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f,
 
 inline constexpr RobotPose kPose_Place[3]   = {
     {78.1f, -302.0f, 160.59f, 347.0f, 0.0f, 100.0f},
-    {78.1f, -129.0f, 70.0f, 347.0f, 0.0f, 100.0f},
-    {280.0f, -190.5f, 0.0f, 347.0f, 0.0f, 0.0f}
+    {78.1f, -129.0f, 150.0f, 347.0f, 0.0f, 100.0f},
+    {310.0f, -230.5f, 0.0f, 347.0f, 0.0f, 0.0f}
 };
 inline constexpr RobotPose kPose_Pick[3] = {
     {0.0f,   392.0f, 181.6f, 347.0f, 0.0f, 0.0f},
@@ -127,7 +127,7 @@ inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0
 inline constexpr RobotPose kPose_Grid9_Bot3  = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 140.0f};
 
 inline constexpr RobotPose kPose_Get1   = {98.1f, -312.0f, 290.0f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 120.0f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 180.0f, 347.0f, 0.0f, 140.0f};
 
 inline constexpr RobotPose kPose_R2_First_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 inline constexpr RobotPose kPose_R2_Second_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 257.3f};
