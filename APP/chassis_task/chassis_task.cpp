@@ -55,10 +55,10 @@ const std::array<OmniChassis::SpeedPidParam, OmniChassis::kWheelCount>
         // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右上
         // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 左下
         // OmniChassis::SpeedPidParam(1200.0f, 750.0f, 0.0f, 16000.0f, 0.5f, NONE), // 右下
-        OmniChassis::SpeedPidParam(3800.0f, 8200.0f, 0.003f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左上
-        OmniChassis::SpeedPidParam(3800.0f, 8200.0f, 0.001f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右上
-        OmniChassis::SpeedPidParam(3800.0f, 8200.0f, 0.003f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左下
-        OmniChassis::SpeedPidParam(3800.0f, 8200.0f, 0.001f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右下
+        OmniChassis::SpeedPidParam(4000.0f, 8600.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左上
+        OmniChassis::SpeedPidParam(4000.0f, 8600.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右上
+        OmniChassis::SpeedPidParam(4000.0f, 8600.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 左下
+        OmniChassis::SpeedPidParam(4000.0f, 8600.0f, 0.0f, 16000.0f, 0.0f, IMCREATEMENT_OF_OUT), // 右下
     };
 
 const std::array<OmniChassis::SpeedPidParam, OmniChassis::kWheelCount>

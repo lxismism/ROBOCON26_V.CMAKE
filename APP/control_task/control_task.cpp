@@ -116,7 +116,7 @@ float Acc_omega_dt = 0.0f; //加速计时器，单位s
 uint32_t Acc_omega_DWT_CNT = 0;
 
 float predict_yaw = 0.0f;
-float yaw_delay_time = 0.007f;
+float yaw_delay_time = 0.0085f;
 
 pub_chassis_cmd robot_v_aim_cmd{};
 pub_chassis_cmd state_now_cmd{};
@@ -125,8 +125,8 @@ pub_chassis_cmd state_target_cmd{};
 pub_chassis_cmd state_target_last_cmd{};
 
 // 车体目标角度环 PID
-PID_t lateral{.Kp = 4.3f,.Ki = 0.01f,.Kd = 0.3f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-PID_t path{.Kp = 4.68f,.Ki = 0.03f,.Kd = 0.85f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+PID_t lateral{.Kp = 5.1f,.Ki = 0.00f,.Kd = 0.3f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+PID_t path{.Kp = 4.68f,.Ki = 0.03f,.Kd = 0.75f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
 PID_t omega{.Kp = 2.10f,.Ki = 0.22f,.Kd = 0.08f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
 
 

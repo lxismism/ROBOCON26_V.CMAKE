@@ -607,6 +607,8 @@ void DebugSerialTask(void *argument) {
   const PID_t& pid_RD = Omnichassis_solver.pid(OmniChassis::kRightDown);
 
   TickType_t currentTime = xTaskGetTickCount();
+  extern PID_t lateral;
+
 
   for(;;)
   {
@@ -634,7 +636,7 @@ void DebugSerialTask(void *argument) {
                                               static_cast<int>(pid_RD.Measure), (static_cast<int>(abs(pid_RD.Measure * 100)))%100,
                                               static_cast<int>(control_position.x), (static_cast<int>(abs(control_position.x * 1000)))%1000,
                                               static_cast<int>(control_position.y), (static_cast<int>(abs(control_position.y * 1000)))%1000,
-                                              static_cast<int>(control_position.yaw), (static_cast<int>(abs(control_position.yaw * 100)))%100
+                                              static_cast<int>(lateral.Ref), (static_cast<int>(abs(lateral.Ref * 100)))%100
 
     // int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d\n",
     //                                           static_cast<int>(robot_v_aim_cmd.linear_x_), (static_cast<int>(abs(robot_v_aim_cmd.linear_x_ * 100)))%100,
