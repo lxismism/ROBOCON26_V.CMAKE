@@ -367,7 +367,9 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
     step5.target.pick_extend_mm   = 0.0f;
     step5.target.pick_lift_mm     = 390.6f;
     step5.priorities.pick_yaw     = 0;
-    step5.step_done_mask = 0x02;
+    step5.priorities.pick_lift    = 1;
+    step5.priorities.pick_extend  = 2;
+    step5.step_done_mask = 0x07;
     step5.skip_safety = true;
     AddStep(step5);
 
