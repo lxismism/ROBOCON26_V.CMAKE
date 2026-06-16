@@ -844,7 +844,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                         }
                     }
                     
-                     if(MF_omega_complete_Flag == true && MF_xy_complete_Flag == true){
+                    if(MF_omega_complete_Flag == true && MF_xy_complete_Flag == true){
                     //if(true){
                     //拔开调试上身时把上面两行的注释对调一下，不然上身不会动。
                         if(MF_plan[MF_plan_run_i].is_picking == true){

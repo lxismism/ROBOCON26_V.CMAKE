@@ -103,6 +103,7 @@ struct RobotPose {
     float weapon_lift_mm;
     float weapon_extend_mm;
     float lift_mm;
+    int8_t name = -1;
 };
 
 inline constexpr RobotPose kPose_KFS_Low  = {0.0f,   392.0f, 0.0f, 347.0f, 0.0f, 0.0f};
@@ -113,21 +114,21 @@ inline constexpr RobotPose kPose_Moving_In_MF = {352.6f, 0.0f, 0.0f, 347.0f, 0.0
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};
 
 inline constexpr RobotPose kPose_Place[3]   = {
-    {78.1f, -302.0f, 160.59f, 347.0f, 0.0f, 100.0f},
-    {78.1f, -129.0f, 140.0f, 347.0f, 0.0f, 100.0f},
-    {330.0f, -230.5f, 0.0f, 347.0f, 0.0f, 0.0f}
+    {78.1f, -302.0f, 150.59f, 347.0f, 0.0f, 100.0f,0},
+    {78.1f, -159.0f, 140.0f, 347.0f, 0.0f, 100.0f,1},
+    {370.0f, -230.5f, 0.0f, 347.0f, 0.0f, 0.0f,2}
 };
 inline constexpr RobotPose kPose_Pick[3] = {
-    {0.0f,   392.0f, 290.0f, 347.0f, 0.0f, 0.0f},
-    {149.2f, 392.0f, 290.0f, 347.0f, 0.0f, 0.0f},
-    {352.6f, 392.0f, 290.0f, 347.0f, 0.0f, 0.0f}
+    {0.0f,   392.0f, 191.6f, 347.0f, 0.0f, 0.0f},
+    {179.2f, 392.0f, 191.6f, 347.0f, 0.0f, 0.0f},
+    {392.6f, 392.0f, 191.6f, 347.0f, 0.0f, 0.0f}
 };
 
-inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Grid9_Bot3  = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_Grid9_Bot3  = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 
-inline constexpr RobotPose kPose_Get1   = {98.1f, -312.0f, 290.0f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 180.0f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get1   = {98.1f, -312.0f, 191.6f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 170.0f, 347.0f, 0.0f, 140.0f};
 
 inline constexpr RobotPose kPose_R2_First_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 inline constexpr RobotPose kPose_R2_Second_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 257.3f};

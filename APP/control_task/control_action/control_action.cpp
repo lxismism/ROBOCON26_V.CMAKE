@@ -319,81 +319,160 @@ void ActionController::PlaceKFS(const RobotPose& pose) {
 }
 
 void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose_Place, bool close_pump_at_end){
-    // Step 1: 云台转到位 + 抬升降到抓取高度 → 步首开泵/阀
-    ActionConfig step1;
-    step1.target = pose_Grab;
-    step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
-    step1.priorities.pick_yaw     = 0;
-    step1.priorities.pick_lift    = 1;
-    step1.step_done_mask = 0x03;
-    step1.pump_cmd  = 1;   // 开泵
-    step1.valve_cmd = 1;   // 开阀
-    AddStep(step1);
+    if(pose_Place.name == 1){
+        // Step 1: 云台转到位 + 抬升降到抓取高度 → 步首开泵/阀
+        ActionConfig step1;
+        step1.target = pose_Grab;
+        step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
+        step1.priorities.pick_yaw     = 0;
+        step1.priorities.pick_lift    = 1;
+        step1.step_done_mask = 0x03;
+        step1.pump_cmd  = 1;   // 开泵
+        step1.valve_cmd = 1;   // 开阀
+        AddStep(step1);
 
-    // Step 2: 伸缩伸出够到KFS → 底盘同步前移逼近
-    ActionConfig step2;
-    step2.target = pose_Grab;
-    step2.priorities.pick_extend = 0;
-    step2.step_done_mask = 0x04;
-    step2.enable_chassis_approach = true;
-    AddStep(step2);
+        // Step 2: 伸缩伸出够到KFS → 底盘同步前移逼近
+        ActionConfig step2;
+        step2.target = pose_Grab;
+        step2.priorities.pick_extend = 0;
+        step2.step_done_mask = 0x04;
+        step2.enable_chassis_approach = true;
+        AddStep(step2);
 
-    // Step 3: 电梯升到安全高度
-    ActionConfig step3;
-    step3.target = pose_Place;
-    step3.target.pick_lift_mm     = 390.6f;
-    step3.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
-    step3.target.pick_extend_mm   = pose_Grab.pick_extend_mm;
-    step3.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
-    step3.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
-    step3.priorities.pick_lift    = 1;   // 再抬吸取手
-    step3.step_done_mask = 0x01;         // 只等吸取手抬升到位，电梯并发不阻塞
-    AddStep(step3);
+        // Step 3: 电梯升到安全高度
+        ActionConfig step3;
+        step3.target = pose_Place;
+        step3.target.pick_lift_mm     = 390.6f;
+        step3.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
+        step3.target.pick_extend_mm   = pose_Grab.pick_extend_mm;
+        step3.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
+        step3.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
+        step3.priorities.pick_lift    = 1;   // 再抬吸取手
+        step3.step_done_mask = 0x01;         // 只等吸取手抬升到位，电梯并发不阻塞
+        AddStep(step3);
 
-    // Step 4: 吸取手伸缩缩到最小（避免干涉）
-    ActionConfig step4;
-    step4.target = pose_Place;
-    step4.target.pick_extend_mm   = 0.0f;
-    step4.target.pick_lift_mm     = 390.6f;
-    step4.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
-    step4.priorities.pick_extend  = 0;
-    step4.step_done_mask = 0x04;
-    step4.skip_safety = true;
-    AddStep(step4);
+        // Step 4: 吸取手伸缩缩到最小（避免干涉）
+        ActionConfig step4;
+        step4.target = pose_Place;
+        step4.target.pick_extend_mm   = 0.0f;
+        step4.target.pick_lift_mm     = 390.6f;
+        step4.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
+        step4.priorities.pick_extend  = 0;
+        step4.step_done_mask = 0x04;
+        step4.skip_safety = true;
+        AddStep(step4);
 
-    // Step 5: 吸取手云台转到放置角度
-    ActionConfig step5;
-    step5.target = pose_Place;
-    step5.target.pick_extend_mm   = 0.0f;
-    step5.target.pick_lift_mm     = 390.6f;
-    step5.priorities.pick_yaw     = 0;
-    step5.priorities.pick_lift    = 1;
-    step5.priorities.pick_extend  = 2;
-    step5.step_done_mask = 0x07;
-    step5.skip_safety = true;
-    AddStep(step5);
+        // Step 5: 吸取手云台转到放置角度
+        ActionConfig step5;
+        step5.target = pose_Place;
+        step5.target.pick_extend_mm   = 0.0f;
+        step5.target.pick_lift_mm     = 200.6f;
+        step5.priorities.pick_yaw     = 0;
+        step5.priorities.pick_lift    = 1;
+        step5.step_done_mask = 0x07;
+        step5.skip_safety = true;
+        AddStep(step5);
 
-    // Step 6: 吸取手伸缩伸到放置位置
-    ActionConfig step6;
-    step6.target = pose_Place;
-    step6.target.pick_lift_mm     = 390.6f;
-    step6.priorities.pick_extend  = 0;
-    step6.step_done_mask = 0x04;
-    step6.skip_safety = true;
-    AddStep(step6);
+        // Step 6: 吸取手伸缩伸到放置位置
+        ActionConfig step6;
+        step6.target = pose_Place;
+        step6.target.pick_lift_mm     = 200.6f;
+        step6.priorities.pick_extend  = 0;
+        step6.step_done_mask = 0x04;
+        step6.skip_safety = true;
+        AddStep(step6);
 
-    // Step 7: 吸取手抬升降到放置高度 → 到位后关泵/阀
-    ActionConfig step7;
-    step7.target = pose_Place;
-    step7.priorities.pick_lift    = 0;
-    step7.step_done_mask = 0x01;
-    step7.skip_safety = true;
-    if (close_pump_at_end) {
-        step7.pump_cmd_done  = -1;  // 关泵
-        step7.valve_cmd_done = -1;  // 关阀
+        // Step 7: 吸取手抬升降到放置高度 → 到位后关泵/阀
+        ActionConfig step7;
+        step7.target = pose_Place;
+        step7.priorities.pick_lift    = 0;
+        step7.step_done_mask = 0x01;
+        step7.skip_safety = true;
+        if (close_pump_at_end) {
+            step7.pump_cmd_done  = -1;  // 关泵
+            step7.valve_cmd_done = -1;  // 关阀
+        }
+        AddStep(step7);
+
+    } else{
+        // Step 1: 云台转到位 + 抬升降到抓取高度 → 步首开泵/阀
+        ActionConfig step1;
+        step1.target = pose_Grab;
+        step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
+        step1.priorities.pick_yaw     = 0;
+        step1.priorities.pick_lift    = 1;
+        step1.priorities.pick_extend  = 2;
+        step1.step_done_mask = 0x03;
+        step1.pump_cmd  = 1;   // 开泵
+        step1.valve_cmd = 1;   // 开阀
+        AddStep(step1);
+
+        // Step 2: 伸缩伸出够到KFS → 底盘同步前移逼近
+        ActionConfig step2;
+        step2.target = pose_Grab;
+        step2.priorities.pick_extend = 0;
+        step2.step_done_mask = 0x04;
+        step2.enable_chassis_approach = true;
+        AddStep(step2);
+
+        // Step 3: 电梯升到安全高度
+        ActionConfig step3;
+        step3.target = pose_Place;
+        step3.target.pick_lift_mm     = 390.6f;
+        step3.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
+        step3.target.pick_extend_mm   = pose_Grab.pick_extend_mm;
+        step3.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
+        step3.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
+        step3.priorities.pick_lift    = 1;   // 再抬吸取手
+        step3.step_done_mask = 0x01;         // 只等吸取手抬升到位，电梯并发不阻塞
+        AddStep(step3);
+
+        // Step 4: 吸取手伸缩缩到最小（避免干涉）
+        ActionConfig step4;
+        step4.target = pose_Place;
+        step4.target.pick_extend_mm   = 0.0f;
+        step4.target.pick_lift_mm     = 390.6f;
+        step4.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
+        step4.priorities.pick_extend  = 0;
+        step4.step_done_mask = 0x04;
+        step4.skip_safety = true;
+        AddStep(step4);
+
+        // Step 5: 吸取手云台转到放置角度
+        ActionConfig step5;
+        step5.target = pose_Place;
+        step5.target.pick_extend_mm   = 0.0f;
+        step5.target.pick_lift_mm     = 390.6f;
+        step5.priorities.pick_yaw     = 0;
+        step5.priorities.pick_lift    = 1;
+        step5.priorities.pick_extend  = 2;
+        step5.step_done_mask = 0x07;
+        step5.skip_safety = true;
+        AddStep(step5);
+
+        // Step 6: 吸取手伸缩伸到放置位置
+        ActionConfig step6;
+        step6.target = pose_Place;
+        step6.target.pick_lift_mm     = 390.6f;
+        step6.priorities.pick_extend  = 0;
+        step6.step_done_mask = 0x04;
+        step6.skip_safety = true;
+        AddStep(step6);
+
+        // Step 7: 吸取手抬升降到放置高度 → 到位后关泵/阀
+        ActionConfig step7;
+        step7.target = pose_Place;
+        step7.priorities.pick_lift    = 0;
+        step7.step_done_mask = 0x01;
+        step7.skip_safety = true;
+        if (close_pump_at_end) {
+            step7.pump_cmd_done  = -1;  // 关泵
+            step7.valve_cmd_done = -1;  // 关阀
+        }
+        AddStep(step7);
+
     }
-    AddStep(step7);
-    
+
     RunSteps();
 }
 
