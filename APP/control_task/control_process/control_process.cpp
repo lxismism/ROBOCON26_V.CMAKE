@@ -24,6 +24,7 @@
 #include "weapon_hand.hpp"
 #include "lift.hpp"
 #include "omni_ir.hpp"
+#include "control_Traject.hpp"
 
 
 
@@ -74,6 +75,7 @@ extern float v_aim;
 
 extern bool headless_xy_mode;
 extern bool headless_omega_mode;
+bool headless_mode = true;
 
 extern bool Normal_control_mode;
 // MC 模式相关
@@ -138,7 +140,6 @@ extern uint32_t Acc_omega_DWT_CNT;
 extern float predict_yaw;
 extern float yaw_delay_time;
 
-
 static bool mf_placing = false;   // 放置进行中，禁止梯度打断
 
 // ===== 九宫格模式渐变状态 =====
@@ -146,7 +147,7 @@ static ActionController upbody_ctrl;
 static int8_t last_mf_action = -1;      
 static int8_t last_arena_x = -1;
 
-
+TrajectChassis Traject_chassis;
 
 
 // =====================================================
@@ -300,21 +301,14 @@ void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, 
 //  普通手操 / 定位模式
 // =====================================================
 void Normal_control_Process() {
-    // btnLS 上升沿切换 xy 模式
-    if (control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS) {
-        if (control_xbox_cmd.btnLS == true) {
-            headless_xy_mode = !headless_xy_mode;
+
+    // btnX 上身沿切换轨迹模式和手控模式
+    if (control_xbox_cmd.btnX != control_xbox_cmd_Last.btnX) {
+        if (control_xbox_cmd.btnX == true) {
+            headless_mode = !headless_mode;
         }
     }
-
-    // btnRS 上升沿切换 omega 模式
-    if (control_xbox_cmd.btnRS != control_xbox_cmd_Last.btnRS) {
-        if (control_xbox_cmd.btnRS == true) {
-            headless_omega_mode = !headless_omega_mode;
-        }
-    }
-
-    if (headless_xy_mode) {
+    if(headless_mode == true){
         // xy 手控模式：摇杆 → 速度，直接进入速度环 PID
         xbox_angle_deg = atan2(xbox_cmd.linear_y_, xbox_cmd.linear_x_) / kDegToRad;
         v_aim = sqrt(xbox_cmd.linear_x_ * xbox_cmd.linear_x_ + xbox_cmd.linear_y_ * xbox_cmd.linear_y_);
@@ -324,59 +318,122 @@ void Normal_control_Process() {
 
         state_target_cmd.linear_x_ = state_now_cmd.linear_x_;
         state_target_cmd.linear_y_ = state_now_cmd.linear_y_;
-    } else {
+        // omega 手控模式：右摇杆直接控制角速度
+        robot_v_aim_cmd.omega_ = xbox_cmd.omega_;
+        state_target_cmd.omega_ = control_position.yaw;
+    }else{
         // xy 定位模式：方向键控制目标位置，进入位置环 PID】
 
-       
-
-        
         // 上下控制
         if (control_xbox_cmd.btnDirUp == 1) {
             if (control_xbox_cmd_Last.btnDirUp == 0) {
                 state_target_cmd.linear_y_ = state_target_cmd.linear_y_ + 3.0f;
+                state_target_cmd.omega_ = Warp_ToRange(state_target_cmd.omega_ + 90.0f,-180.0f,180.0f);
             }
         } else if (control_xbox_cmd.btnDirDown == 1) {
             if (control_xbox_cmd_Last.btnDirDown == 0) {
                 state_target_cmd.linear_y_ = state_target_cmd.linear_y_ - 3.0f;
+                state_target_cmd.omega_ = Warp_ToRange(state_target_cmd.omega_ - 90.0f,-180.0f,180.0f);
             }
         }
         // 左右控制
         if (control_xbox_cmd.btnDirLeft == 1) {
             if (control_xbox_cmd_Last.btnDirLeft == 0) {
                 state_target_cmd.linear_x_ = state_target_cmd.linear_x_ - 1.0f;
+                state_target_cmd.omega_ = Warp_ToRange(state_target_cmd.omega_ + 90.0f,-180.0f,180.0f);
             }
         } else if (control_xbox_cmd.btnDirRight == 1) {
             if (control_xbox_cmd_Last.btnDirRight == 0) {
                 state_target_cmd.linear_x_ = state_target_cmd.linear_x_ + 1.0f;
+                state_target_cmd.omega_ = Warp_ToRange(state_target_cmd.omega_ - 90.0f,-180.0f,180.0f);
             }
         }
+
+        predict_yaw = state_now_cmd.omega_ + (control_position.yaw_speed/kDegToRad)*yaw_delay_time;
+        Traject_chassis.Set_Ref(state_target_cmd);
+        Traject_chassis.Run(state_now_cmd);
+        robot_v_aim_cmd = Traject_chassis.Get_output_b();
+
+    }
+
+
+
+
+
+    // // btnLS 上升沿切换 xy 模式
+    // if (control_xbox_cmd.btnLS != control_xbox_cmd_Last.btnLS) {
+    //     if (control_xbox_cmd.btnLS == true) {
+    //         headless_xy_mode = !headless_xy_mode;
+    //     }
+    // }
+
+    // // btnRS 上升沿切换 omega 模式
+    // if (control_xbox_cmd.btnRS != control_xbox_cmd_Last.btnRS) {
+    //     if (control_xbox_cmd.btnRS == true) {
+    //         headless_omega_mode = !headless_omega_mode;
+    //     }
+    // }
+
+    // if (headless_xy_mode) {
+    //     // xy 手控模式：摇杆 → 速度，直接进入速度环 PID
+    //     xbox_angle_deg = atan2(xbox_cmd.linear_y_, xbox_cmd.linear_x_) / kDegToRad;
+    //     v_aim = sqrt(xbox_cmd.linear_x_ * xbox_cmd.linear_x_ + xbox_cmd.linear_y_ * xbox_cmd.linear_y_);
+
+    //     robot_v_aim_cmd.linear_x_ = v_aim * cos((xbox_angle_deg - state_now_cmd.omega_) * kDegToRad);
+    //     robot_v_aim_cmd.linear_y_ = v_aim * sin((xbox_angle_deg - state_now_cmd.omega_) * kDegToRad);
+
+    //     state_target_cmd.linear_x_ = state_now_cmd.linear_x_;
+    //     state_target_cmd.linear_y_ = state_now_cmd.linear_y_;
+    // } else {
+    //     // xy 定位模式：方向键控制目标位置，进入位置环 PID】
+
+    //     // 上下控制
+    //     if (control_xbox_cmd.btnDirUp == 1) {
+    //         if (control_xbox_cmd_Last.btnDirUp == 0) {
+    //             state_target_cmd.linear_y_ = state_target_cmd.linear_y_ + 3.0f;
+    //         }
+    //     } else if (control_xbox_cmd.btnDirDown == 1) {
+    //         if (control_xbox_cmd_Last.btnDirDown == 0) {
+    //             state_target_cmd.linear_y_ = state_target_cmd.linear_y_ - 3.0f;
+    //         }
+    //     }
+    //     // 左右控制
+    //     if (control_xbox_cmd.btnDirLeft == 1) {
+    //         if (control_xbox_cmd_Last.btnDirLeft == 0) {
+    //             state_target_cmd.linear_x_ = state_target_cmd.linear_x_ - 1.0f;
+    //         }
+    //     } else if (control_xbox_cmd.btnDirRight == 1) {
+    //         if (control_xbox_cmd_Last.btnDirRight == 0) {
+    //             state_target_cmd.linear_x_ = state_target_cmd.linear_x_ + 1.0f;
+    //         }
+    //     }
         
 
-        Aim_State_xy_Process();
-    }
+    //     Aim_State_xy_Process();
+    // }
 
-    if (headless_omega_mode) {
-        // omega 手控模式：右摇杆直接控制角速度
-        robot_v_aim_cmd.omega_ = xbox_cmd.omega_;
-        state_target_cmd.omega_ = control_position.yaw;
-    } else {
-        // omega 定位模式：右摇杆推到极限 → 设定目标角度
-        if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > 30000) {
-            if ((control_xbox_cmd.joyRHori - kJoyCenter) > 0) {
-                state_target_cmd.omega_ = -90.0f;
-            } else {
-                state_target_cmd.omega_ = 90.0f;
-            }
-        } else if (ABS(control_xbox_cmd.joyRVert - kJoyCenter) > 30000) {
-            if ((control_xbox_cmd.joyRVert - kJoyCenter) > 0) {
-                state_target_cmd.omega_ = 180.0f;
-            } else {
-                state_target_cmd.omega_ = 0.0f;
-            }
-        }
+    // if (headless_omega_mode) {
+    //     // omega 手控模式：右摇杆直接控制角速度
+    //     robot_v_aim_cmd.omega_ = xbox_cmd.omega_;
+    //     state_target_cmd.omega_ = control_position.yaw;
+    // } else {
+    //     // omega 定位模式：右摇杆推到极限 → 设定目标角度
+    //     if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > 30000) {
+    //         if ((control_xbox_cmd.joyRHori - kJoyCenter) > 0) {
+    //             state_target_cmd.omega_ = -90.0f;
+    //         } else {
+    //             state_target_cmd.omega_ = 90.0f;
+    //         }
+    //     } else if (ABS(control_xbox_cmd.joyRVert - kJoyCenter) > 30000) {
+    //         if ((control_xbox_cmd.joyRVert - kJoyCenter) > 0) {
+    //             state_target_cmd.omega_ = 180.0f;
+    //         } else {
+    //             state_target_cmd.omega_ = 0.0f;
+    //         }
+    //     }
 
-        Aim_State_omega_Process();
-    }
+    //     Aim_State_omega_Process();
+    // }
 }
 
 
@@ -1245,4 +1302,24 @@ float Warp_ToRange(float value,float min,float max){
         value = value + range;
     }
     return value;
+}
+
+// =====================================================
+//  返回预测yaw角
+// =====================================================
+float Get_predict_yaw(){
+    return predict_yaw;
+}
+
+// =====================================================
+//  限值
+// =====================================================
+float clamp(float value,float min,float max){
+    if(value > max){
+        return max;
+    }else if(value < min){
+        return min;
+    }else {
+        return value;
+    }
 }

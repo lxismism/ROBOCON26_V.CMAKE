@@ -65,3 +65,8 @@ void Reset_position();
 
 /** @brief 工具函数 归一化*/
 float Warp_ToRange(float value,float min,float max);
+
+/** @brief 返回预测yaw*/
+float Get_predict_yaw();
+
+float clamp(float value,float min,float max);
