@@ -19,6 +19,7 @@
 #include "control_action.hpp"        // ← 新增：动作层（常量 + 工具函数）
 #include "pid_controller.h"
 #include "chassis_task.h"
+#include "rm_pocket.hpp"
 #include "topic_pool.h"
 #include "topics.hpp"
 #include "bsp_usart.h"
@@ -46,6 +47,9 @@ pub_ir_cmd ir_cmd{};
 TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub("xbox", 8);
 pub_Xbox_Data control_xbox_cmd{};
 pub_Xbox_Data control_xbox_cmd_Last{};
+
+TypedTopicSubscriber<pub_RC_Data> control_rc_sub("rc", 8);
+pub_RC_Data control_rc_cmd{};
 
 TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
 pub_Position_Data control_position_msg{};
@@ -142,6 +146,11 @@ void controlInit() {
     if (!control_xbox_sub.IsValid()) {
         return;
     }
+
+    if (!control_rc_sub.IsValid()) {
+        return;
+    }
+
     if (!control_position_sub.IsValid()) {
         return;
     }
@@ -169,6 +178,14 @@ void controlTask(void *argument) {
     controlInit();
     uint32_t last_time = HAL_GetTick();
     for (;;) {
+        //test begin
+        if(control_rc_sub.TryGet(&control_rc_cmd)) {
+            if(control_rc_cmd.swA == RC_2_POS_SW_State_t::UP) {
+                // 处理 swA 按钮按下
+            }
+        }
+        //test end
+
         /* 从Position订阅者中获取数据 */
         if (control_position_sub.TryGet(&control_position_msg)) {
             control_position.frame_id = control_position_msg.frame_id;
