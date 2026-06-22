@@ -178,13 +178,7 @@ void controlTask(void *argument) {
     controlInit();
     uint32_t last_time = HAL_GetTick();
     for (;;) {
-        //test begin
-        if(control_rc_sub.TryGet(&control_rc_cmd)) {
-            if(control_rc_cmd.swA == RC_2_POS_SW_State_t::UP) {
-                // 处理 swA 按钮按下
-            }
-        }
-        //test end
+
 
         /* 从Position订阅者中获取数据 */
         if (control_position_sub.TryGet(&control_position_msg)) {
@@ -200,7 +194,7 @@ void controlTask(void *argument) {
         }
 
         /* 从xbox数据订阅者中获取数据 */
-        if (control_xbox_sub.TryGet(&control_xbox_cmd)) {
+        if (control_rc_sub.TryGet(&control_rc_cmd)) {
 
             if(control_xbox_cmd.btnSelect == 1 && control_xbox_cmd_Last.btnSelect == 0) {
                 robot_mode = MC;
