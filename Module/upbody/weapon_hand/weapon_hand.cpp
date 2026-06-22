@@ -19,9 +19,9 @@
 void WeaponHand::init() {
   // ---- 抬升电机 PID (3508) ----
   PID_Init(&lift_pid_);
-  lift_pid_.Kp = 90.0f;  //原来是40
+  lift_pid_.Kp = 600.0f;  //原来是40
   lift_pid_.Ki = 30.0f;  //原来40  //还没试这个
-  lift_pid_.Kd = 10.0f;  //9
+  lift_pid_.Kd = 30.0f;  //9
   lift_pid_.MaxOut = 8000.0f;  //8000
   lift_pid_.IntegralLimit = 1000.0f;  //5000
   lift_pid_.DeadBand = 0.5f;  //0.5
@@ -29,9 +29,9 @@ void WeaponHand::init() {
 
   // ---- 伸缩电机 PID (2006) ----
   PID_Init(&extend_pid_);
-  extend_pid_.Kp = 90.0f;  //原来40
+  extend_pid_.Kp = 1200.0f;  //原来40
   extend_pid_.Ki = 20.0f;  //40
-  extend_pid_.Kd = 10.0f;   //6
+  extend_pid_.Kd = 60.0f;   //6
   extend_pid_.MaxOut = 5000.0f;  //5000
   extend_pid_.IntegralLimit = 800.0f;  //3000
   extend_pid_.DeadBand = 0.1f;

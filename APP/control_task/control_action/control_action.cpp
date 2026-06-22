@@ -326,6 +326,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
         step1.priorities.pick_yaw     = 0;
         step1.priorities.pick_lift    = 1;
+        step1.priorities.pick_extend  = 2;
         step1.step_done_mask = 0x03;
         step1.pump_cmd  = 1;   // 开泵
         step1.valve_cmd = 1;   // 开阀
@@ -486,28 +487,27 @@ void ActionController::Moving(const RobotPose& pose) {
 
 //Arena动作
 void ActionController::GrabKFS_Arena(const RobotPose& pose) {
-    if (ramp_.cur_pick_lift_mm < 300.0f) {
-        ActionConfig step1;
-        step1.target = pose;
-        step1.target.pick_lift_mm     = 392.6f;
-        step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
-        step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
-        step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
-        step1.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
-        
-        step1.speeds.pick_yaw         = 300.0f;
+    // Step 1: 先抬到最高，冻结 yaw 和 extend 不动
+    ActionConfig step1;
+    step1.target = pose;
+    step1.target.pick_lift_mm     = 392.6f;
+    step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
+    step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
+    step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
+    step1.target.weapon_extend_mm = ramp_.cur_weapon_extend_mm;
+    step1.priorities.pick_lift    = 0;
+    step1.step_done_mask = 0x01;
+    AddStep(step1);
 
-        step1.priorities.pick_lift    = 0;
-        step1.step_done_mask = 0x01;
-        AddStep(step1);
-    }
-    ActionConfig config;
-    config.target = pose;
-    config.priorities.pick_yaw  = 0;   // 先转云台
-    config.priorities.pick_lift = 1;   // 再降高度
-    AddStep(config);
+    // Step 2: 云台转到位 → 再降高度
+    ActionConfig step2;
+    step2.target = pose;
+    step2.priorities.pick_yaw  = 0;   // 先转云台
+    step2.priorities.pick_lift = 1;   // 再降高度
+    AddStep(step2);
     RunSteps();
 }
+
 
 void ActionController::GetKFS(const RobotPose& pose) {
     if (ramp_.cur_pick_extend_mm > 1.0f && pose.pick_extend_mm < 1.0f
