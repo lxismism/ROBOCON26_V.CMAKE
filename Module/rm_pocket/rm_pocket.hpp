@@ -55,10 +55,10 @@ class rmPocket {
     struct RC_state_t {
 
         //摇杆，值域172-1810 建议映射值：min200 max1780 mid~=985 死区+-100
-        uint16_t joyLHori;  //左小
-        uint16_t joyLVert;  //下小
-        uint16_t joyRHori;  //左小
-        uint16_t joyRVert;  //下小
+        uint16_t joyLHori;  //往左边拨值会变小
+        uint16_t joyLVert;  //往下边拨值会变小
+        uint16_t joyRHori;  //往左边拨值会变小
+        uint16_t joyRVert;  //往下边拨值会变小
 
         RC_2_POS_SW_State_t swA;        //阴刻有SA的两端开关
         RC_2_POS_SW_State_t swA_last;

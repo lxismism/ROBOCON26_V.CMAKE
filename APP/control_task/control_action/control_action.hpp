@@ -23,6 +23,11 @@
 inline constexpr uint16_t kJoyCenter = 32767;
 inline constexpr uint16_t kJoyDeadZoneLeft = 3500;
 inline constexpr uint16_t kJoyDeadZoneRight = 2000;
+
+// RC（航模遥控）摇杆常量
+inline constexpr uint16_t kRCJoyCenter = 985;      // RC摇杆中心值（中位 ~985）
+inline constexpr uint16_t kRCJoyDeadZone = 100;     // RC摇杆死区 ±100
+
 inline constexpr float kDegToRad = M_PI / 180.0f;
 
 #ifndef ABS
@@ -209,7 +214,7 @@ private:
 };
 
 // ===== 摇杆处理 =====
-float JoyToVelocity(uint16_t raw, uint16_t deadzone, float max_vel);
+float JoyToVelocity(uint16_t raw, uint16_t deadzone, float max_vel, uint16_t center = kJoyCenter);
 
 // ===== 坐标变换 =====
 void ApplyFieldCentricRotation(float& vx, float& vy, float yaw_deg);

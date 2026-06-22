@@ -55,6 +55,11 @@ extern TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub;
 extern pub_Xbox_Data control_xbox_cmd;
 extern pub_Xbox_Data control_xbox_cmd_Last;
 
+//航模遥控topic
+extern TypedTopicSubscriber<pub_RC_Data> control_rc_sub;
+extern pub_RC_Data control_rc_cmd;
+
+
 extern TypedTopicSubscriber<pub_Position_Data> control_position_sub;
 extern pub_Position_Data control_position_msg;
 extern pub_Position_Data control_position;
@@ -154,9 +159,10 @@ static int8_t last_arena_x = -1;
 // =====================================================
 void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd& msg) {
     // ---- 底盘：摇杆直驱 ----
-    robot_v_aim_cmd.linear_x_ = JoyToVelocity(control_xbox_cmd.joyLHori, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
-    robot_v_aim_cmd.linear_y_ = -JoyToVelocity(control_xbox_cmd.joyLVert, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
-    robot_v_aim_cmd.omega_    = -JoyToVelocity(control_xbox_cmd.joyRHori, kJoyDeadZoneRight, MAX_VELOCITY_ANGULAR);
+    robot_v_aim_cmd.linear_x_ = JoyToVelocity(control_rc_cmd.joyLHori, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
+    robot_v_aim_cmd.linear_y_ = -JoyToVelocity(control_rc_cmd.joyLVert, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
+    robot_v_aim_cmd.omega_    = -JoyToVelocity(control_rc_cmd.joyRHori, kRCJoyDeadZone, MAX_VELOCITY_ANGULAR, kRCJoyCenter);
+
 
     // 无头旋转：场地坐标系 → 车身坐标系
     ApplyFieldCentricRotation(robot_v_aim_cmd.linear_x_, robot_v_aim_cmd.linear_y_, control_position.yaw);
@@ -193,10 +199,10 @@ void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd
 
     // ▼ 持续型：右摇杆前推吸取手伸 / 后拉吸取手缩
     {
-        int32_t rvert_diff = (int32_t)control_xbox_cmd.joyRVert - (int32_t)kJoyCenter;
-        if (rvert_diff > (int32_t)kJoyDeadZoneRight)
+        int32_t rvert_diff = (int32_t)control_rc_cmd.joyRVert - (int32_t)kRCJoyCenter;
+        if (rvert_diff > (int32_t)kRCJoyDeadZone)
             msg.pick_extend_delta = -kPickExtendStep;
-        else if (rvert_diff < -(int32_t)kJoyDeadZoneRight)
+        else if (rvert_diff < -(int32_t)kRCJoyDeadZone)
             msg.pick_extend_delta = kPickExtendStep;
     }
 
@@ -239,9 +245,10 @@ void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd
 //  队友模式入口
 // =====================================================
 void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
-    xbox_cmd.linear_x_ = JoyToVelocity(control_xbox_cmd.joyLHori, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
-    xbox_cmd.linear_y_ = -JoyToVelocity(control_xbox_cmd.joyLVert, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
-    xbox_cmd.omega_    = -JoyToVelocity(control_xbox_cmd.joyRHori, kJoyDeadZoneRight, MAX_VELOCITY_ANGULAR);
+    xbox_cmd.linear_x_ = JoyToVelocity(control_rc_cmd.joyLHori, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
+    xbox_cmd.linear_y_ = -JoyToVelocity(control_rc_cmd.joyLVert, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
+    xbox_cmd.omega_    = -JoyToVelocity(control_rc_cmd.joyRHori, kRCJoyDeadZone, MAX_VELOCITY_ANGULAR, kRCJoyCenter);
+
 
     // btnB 上升沿切换普通模式
     if (control_xbox_cmd.btnB != control_xbox_cmd_Last.btnB) {
@@ -361,14 +368,16 @@ void Normal_control_Process() {
         state_target_cmd.omega_ = control_position.yaw;
     } else {
         // omega 定位模式：右摇杆推到极限 → 设定目标角度
-        if (ABS(control_xbox_cmd.joyRHori - kJoyCenter) > 30000) {
-            if ((control_xbox_cmd.joyRHori - kJoyCenter) > 0) {
+        if (ABS(control_rc_cmd.joyRHori - kRCJoyCenter) > 100) {
+            if ((control_rc_cmd.joyRHori - kRCJoyCenter) > 0) {
+
                 state_target_cmd.omega_ = -90.0f;
             } else {
                 state_target_cmd.omega_ = 90.0f;
             }
-        } else if (ABS(control_xbox_cmd.joyRVert - kJoyCenter) > 30000) {
-            if ((control_xbox_cmd.joyRVert - kJoyCenter) > 0) {
+        } else if (ABS(control_rc_cmd.joyRVert - kRCJoyCenter) > 100) {
+            if ((control_rc_cmd.joyRVert - kRCJoyCenter) > 0) {
+
                 state_target_cmd.omega_ = 180.0f;
             } else {
                 state_target_cmd.omega_ = 0.0f;
@@ -456,10 +465,10 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
     // 持续型：右摇杆前推抬升 / 后拉下降（霍尔值线性映射速度）
     {
-        int32_t rvert_diff = (int32_t)control_xbox_cmd.joyRVert - (int32_t)kJoyCenter;
-        if (ABS(rvert_diff) > (int32_t)kJoyDeadZoneRight) {
-            float ratio = (float)(ABS(rvert_diff) - (int32_t)kJoyDeadZoneRight)
-                          / (float)(kJoyCenter - kJoyDeadZoneRight)
+        int32_t rvert_diff = (int32_t)control_rc_cmd.joyRVert - (int32_t)kRCJoyCenter;
+        if (ABS(rvert_diff) > (int32_t)kRCJoyDeadZone) {
+            float ratio = (float)(ABS(rvert_diff) - (int32_t)kRCJoyDeadZone)
+                          / (float)(kRCJoyCenter - kRCJoyDeadZone)
                           * (rvert_diff > 0 ? -1.0f : 1.0f);
             upbody_msg.weapon_lift_delta = ratio * kWeaponLiftStep;
         }
@@ -1166,9 +1175,9 @@ void Aim_State_omega_Process() {
 void UpperDebug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd& msg) {
 
     // ---- 底盘：摇杆直驱（始终运行）----
-    robot_v_aim_cmd.linear_x_ = JoyToVelocity(control_xbox_cmd.joyLHori, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
-    robot_v_aim_cmd.linear_y_ = -JoyToVelocity(control_xbox_cmd.joyLVert, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
-    robot_v_aim_cmd.omega_    = -JoyToVelocity(control_xbox_cmd.joyRHori, kJoyDeadZoneRight, MAX_VELOCITY_ANGULAR);
+    robot_v_aim_cmd.linear_x_ = JoyToVelocity(control_rc_cmd.joyLHori, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
+    robot_v_aim_cmd.linear_y_ = -JoyToVelocity(control_rc_cmd.joyLVert, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
+    robot_v_aim_cmd.omega_    = -JoyToVelocity(control_rc_cmd.joyRHori, kRCJoyDeadZone, MAX_VELOCITY_ANGULAR, kRCJoyCenter);
     ApplyFieldCentricRotation(robot_v_aim_cmd.linear_x_, robot_v_aim_cmd.linear_y_, control_position.yaw);
     chassis_data_pub.Publish(robot_v_aim_cmd);
 

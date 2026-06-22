@@ -20,15 +20,16 @@ int8_t sign(double value) {
 
 // ===== 摇杆处理 =====
 
-float JoyToVelocity(uint16_t raw, uint16_t deadzone, float max_vel) {
-    int32_t diff = (int32_t)raw - (int32_t)kJoyCenter;
+float JoyToVelocity(uint16_t raw, uint16_t deadzone, float max_vel, uint16_t center) {
+    int32_t diff = (int32_t)raw - (int32_t)center;
     if (ABS(diff) <= (int32_t)deadzone) {
         return 0.0f;
     }
     return (float)(diff - sign(diff) * (int32_t)deadzone)
-           / (float)(kJoyCenter - deadzone)
+           / (float)(center - deadzone)
            * max_vel;
 }
+
 
 // ===== 坐标变换 =====
 
