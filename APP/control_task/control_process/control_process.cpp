@@ -160,7 +160,7 @@ static int8_t last_arena_x = -1;
 void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd& msg) {
     // ---- 底盘：摇杆直驱 ----
     robot_v_aim_cmd.linear_x_ = JoyToVelocity(control_rc_cmd.joyLHori, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
-    robot_v_aim_cmd.linear_y_ = -JoyToVelocity(control_rc_cmd.joyLVert, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
+    robot_v_aim_cmd.linear_y_ = JoyToVelocity(control_rc_cmd.joyLVert, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
     robot_v_aim_cmd.omega_    = -JoyToVelocity(control_rc_cmd.joyRHori, kRCJoyDeadZone, MAX_VELOCITY_ANGULAR, kRCJoyCenter);
 
 
@@ -246,7 +246,7 @@ void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd
 // =====================================================
 void Chassis_Xbox_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
     xbox_cmd.linear_x_ = JoyToVelocity(control_rc_cmd.joyLHori, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
-    xbox_cmd.linear_y_ = -JoyToVelocity(control_rc_cmd.joyLVert, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
+    xbox_cmd.linear_y_ = JoyToVelocity(control_rc_cmd.joyLVert, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
     xbox_cmd.omega_    = -JoyToVelocity(control_rc_cmd.joyRHori, kRCJoyDeadZone, MAX_VELOCITY_ANGULAR, kRCJoyCenter);
 
 
@@ -1176,7 +1176,7 @@ void UpperDebug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbod
 
     // ---- 底盘：摇杆直驱（始终运行）----
     robot_v_aim_cmd.linear_x_ = JoyToVelocity(control_rc_cmd.joyLHori, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
-    robot_v_aim_cmd.linear_y_ = -JoyToVelocity(control_rc_cmd.joyLVert, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
+    robot_v_aim_cmd.linear_y_ = JoyToVelocity(control_rc_cmd.joyLVert, kRCJoyDeadZone, MAX_VELOCITY_LINEAR, kRCJoyCenter);
     robot_v_aim_cmd.omega_    = -JoyToVelocity(control_rc_cmd.joyRHori, kRCJoyDeadZone, MAX_VELOCITY_ANGULAR, kRCJoyCenter);
     ApplyFieldCentricRotation(robot_v_aim_cmd.linear_x_, robot_v_aim_cmd.linear_y_, control_position.yaw);
     chassis_data_pub.Publish(robot_v_aim_cmd);
