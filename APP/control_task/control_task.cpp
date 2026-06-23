@@ -64,7 +64,7 @@ float position_correction_y = -position_center_distance;
 // QR_code_data_t control_qr_code_data{};
 
 // ===== 控制状态变量 =====
-RobotMode_t robot_mode = MC; // 当前机器人模式，默认为MF
+RobotMode_t robot_mode = MC; // 当前机器人模式，默认为MC
 
 float xbox_angle_deg;
 float v_aim;

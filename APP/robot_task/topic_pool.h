@@ -34,6 +34,7 @@ typedef enum {
 }FieldSide_t;
 
 typedef enum {
+    Normal = 0,
     MC = 1,
     MF = 2,
     Arena = 3,
@@ -74,12 +75,26 @@ typedef struct {
 } pub_imu_data;
 
 
-// 底盘运动指令
+// 发布底盘运动指令
 typedef struct {
   float linear_x_;
   float linear_y_;
   float omega_;
 } pub_chassis_cmd;
+
+// 底盘速度
+typedef struct {
+  float vx;
+  float vy;
+  float w;
+} chassis_speed;
+
+// 底盘定位
+typedef struct {
+  float x;
+  float y;
+  float yaw;
+} chassis_position;
 
 //Position模块数据结构体
 typedef struct {
@@ -92,6 +107,8 @@ typedef struct {
   float yaw_speed;
 
 } pub_Position_Data;
+
+
 
 // 上身机构控制指令（control_task → pos_ctrl_task）
 typedef struct {
