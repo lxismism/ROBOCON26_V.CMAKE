@@ -37,6 +37,12 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
+# Work around STM32 GNU Tools 14.3 newlib math.h missing the hypotf declaration.
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-include>
+    $<$<COMPILE_LANGUAGE:CXX>:${CMAKE_SOURCE_DIR}/cmake/stm32_newlib_math_compat.h>
+)
+
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
