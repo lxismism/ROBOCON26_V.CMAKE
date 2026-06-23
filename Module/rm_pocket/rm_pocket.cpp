@@ -53,32 +53,51 @@ bool rmPocket::processByte(uint8_t byte) {
 
 bool rmPocket::onFrameComplete(const CRSF_broadcast_frame_t &frame) {
     
-    auto fuzzyEqual = [](int16_t a, int16_t b) -> int8_t {
+    auto fuzzyEqual35 = [](int16_t a, int16_t b) -> int8_t {
         return std::abs(a - b) <=35 ? 1 : 0;
     };
+
+    auto fuzzyEqual100 = [](int16_t a, int16_t b) -> int8_t {
+        return std::abs(a - b) <=100 ? 1 : 0;
+    };
+
     //该映射表适用于16ch Rate/2模式
-    auto cntTrans = [fuzzyEqual](uint16_t ch_value) -> int8_t{
-        return (fuzzyEqual(ch_value, 186) * -10
-                + fuzzyEqual(ch_value, 254) * -9
-                + fuzzyEqual(ch_value, 330) * -8
-                + fuzzyEqual(ch_value, 416) * -7
-                + fuzzyEqual(ch_value, 500) * -6
-                + fuzzyEqual(ch_value, 582) * -5
-                + fuzzyEqual(ch_value, 664) * -4
-                + fuzzyEqual(ch_value, 742) * -3
-                + fuzzyEqual(ch_value, 828) * -2
-                + fuzzyEqual(ch_value, 906) * -1
-                + fuzzyEqual(ch_value, 992) * 0
-                + fuzzyEqual(ch_value, 1076) * 1
-                + fuzzyEqual(ch_value, 1156) * 2
-                + fuzzyEqual(ch_value, 1240) * 3
-                + fuzzyEqual(ch_value, 1320) * 4
-                + fuzzyEqual(ch_value, 1400) * 5
-                + fuzzyEqual(ch_value, 1482) * 6
-                + fuzzyEqual(ch_value, 1568) * 7
-                + fuzzyEqual(ch_value, 1654) * 8
-                + fuzzyEqual(ch_value, 1730) * 9
-                + fuzzyEqual(ch_value, 1796) * 10);
+    auto cntTrans = [fuzzyEqual35](uint16_t ch_value) -> int8_t{
+        return (fuzzyEqual35(ch_value, 186) * -10
+                + fuzzyEqual35(ch_value, 254) * -9
+                + fuzzyEqual35(ch_value, 330) * -8
+                + fuzzyEqual35(ch_value, 416) * -7
+                + fuzzyEqual35(ch_value, 500) * -6
+                + fuzzyEqual35(ch_value, 582) * -5
+                + fuzzyEqual35(ch_value, 664) * -4
+                + fuzzyEqual35(ch_value, 742) * -3
+                + fuzzyEqual35(ch_value, 828) * -2
+                + fuzzyEqual35(ch_value, 906) * -1
+                + fuzzyEqual35(ch_value, 992) * 0
+                + fuzzyEqual35(ch_value, 1076) * 1
+                + fuzzyEqual35(ch_value, 1156) * 2
+                + fuzzyEqual35(ch_value, 1240) * 3
+                + fuzzyEqual35(ch_value, 1320) * 4
+                + fuzzyEqual35(ch_value, 1400) * 5
+                + fuzzyEqual35(ch_value, 1482) * 6
+                + fuzzyEqual35(ch_value, 1568) * 7
+                + fuzzyEqual35(ch_value, 1654) * 8
+                + fuzzyEqual35(ch_value, 1730) * 9
+                + fuzzyEqual35(ch_value, 1796) * 10);
+    };
+
+    auto trimTrans = [fuzzyEqual100](uint16_t ch_value) -> RC_Trim_State_t {
+        if (fuzzyEqual100(ch_value, 1760)) {
+            return RC_Trim_State_t::UP;
+        } else if (fuzzyEqual100(ch_value, 1401)) {
+            return RC_Trim_State_t::DOWN;
+        } else if (fuzzyEqual100(ch_value, 222)) {
+            return RC_Trim_State_t::LEFT;
+        } else if (fuzzyEqual100(ch_value, 583)) {
+            return RC_Trim_State_t::RIGHT;
+        } else {
+            return RC_Trim_State_t::MIDDLE; //默认返回中立
+        }
     };
     
     if(frame.type == CRSF_CP_TYPE)
@@ -119,12 +138,15 @@ bool rmPocket::onFrameComplete(const CRSF_broadcast_frame_t &frame) {
         rc_state_.y_cnt = cntTrans(ch[6]);
         rc_state_.cursor = cntTrans(ch[7]);
 
-        rc_state_.swB = (fuzzyEqual(ch[8], 172) ? RC_3_POS_SW_State_t::UP : (fuzzyEqual(ch[8], 992) ? RC_3_POS_SW_State_t::MIDDLE : RC_3_POS_SW_State_t::DOWN));
-        rc_state_.swC = (fuzzyEqual(ch[9], 172) ? RC_3_POS_SW_State_t::UP : (fuzzyEqual(ch[9], 992) ? RC_3_POS_SW_State_t::MIDDLE : RC_3_POS_SW_State_t::DOWN));
+        rc_state_.swB = (fuzzyEqual35(ch[8], 172) ? RC_3_POS_SW_State_t::UP : (fuzzyEqual35(ch[8], 992) ? RC_3_POS_SW_State_t::MIDDLE : RC_3_POS_SW_State_t::DOWN));
+        rc_state_.swC = (fuzzyEqual35(ch[9], 172) ? RC_3_POS_SW_State_t::UP : (fuzzyEqual35(ch[9], 992) ? RC_3_POS_SW_State_t::MIDDLE : RC_3_POS_SW_State_t::DOWN));
 
         rc_state_.swA = ch[10] > 1500 ? RC_2_POS_SW_State_t::DOWN : RC_2_POS_SW_State_t::UP;
         rc_state_.swD = ch[11] > 1500 ? RC_2_POS_SW_State_t::DOWN : RC_2_POS_SW_State_t::UP;
         rc_state_.pot = ch[12];
+
+        rc_state_.trimLeft = trimTrans(ch[13]);
+        rc_state_.trimRight = trimTrans(ch[14]);
 
         return true;
     }

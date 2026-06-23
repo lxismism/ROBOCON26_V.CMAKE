@@ -218,7 +218,9 @@ pub_RC_Data rc_msg = {
   .swB_last = RC_3_POS_SW_State_t::UP,
   .swC_last = RC_3_POS_SW_State_t::UP,
   .swD_last = RC_2_POS_SW_State_t::UP,
-  .swE_last = RC_2_POS_SW_State_t::UP
+  .swE_last = RC_2_POS_SW_State_t::UP,
+  .trimLeft = RC_Trim_State_t::MIDDLE,
+  .trimRight = RC_Trim_State_t::MIDDLE
 };
 
 // Position模块（基于uart4）
@@ -536,6 +538,9 @@ void uart3RxProcessTask(void *argument) {
           rc_msg.swC_last = rc_msg.swC;
           rc_msg.swD_last = rc_msg.swD;
           rc_msg.swE_last = rc_msg.swE;
+
+          rc_msg.trimLeft_last = rc_msg.trimLeft;
+          rc_msg.trimRight_last = rc_msg.trimRight;
           
           rc_msg.joyLHori = rc_data.joyLHori;
           rc_msg.joyLVert = rc_data.joyLVert;
@@ -550,6 +555,8 @@ void uart3RxProcessTask(void *argument) {
           rc_msg.x_cnt = rc_data.x_cnt;
           rc_msg.y_cnt = rc_data.y_cnt;
           rc_msg.cursor = rc_data.cursor;
+          rc_msg.trimLeft = rc_data.trimLeft;
+          rc_msg.trimRight = rc_data.trimRight;
 
           rc_data_pub.Publish(rc_msg);
         }

@@ -85,6 +85,11 @@ typedef struct {
   RC_2_POS_SW_State_t swE;
   RC_2_POS_SW_State_t swE_last;
 
+  RC_Trim_State_t trimLeft;        //左微调按钮
+  RC_Trim_State_t trimLeft_last;
+  RC_Trim_State_t trimRight;       //右微调按钮
+  RC_Trim_State_t trimRight_last;
+
   //电位器
   uint16_t pot;
 
