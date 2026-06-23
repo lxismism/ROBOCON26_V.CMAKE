@@ -57,6 +57,7 @@ osThreadId_t uart3ProcessTaskHandle;
 osThreadId_t uart4ProcessTaskHandle;
 osThreadId_t uart1ProcessTaskHandle;
 osThreadId_t uart6ProcessTaskHandle;
+osThreadId_t uart8ProcessTaskHandle;
 osThreadId_t uart9ProcessTaskHandle;
 osThreadId_t uart5ProcessTaskHandle;
 osThreadId_t uart10ProcessTaskHandle;
@@ -64,6 +65,7 @@ osThreadId_t usbcdcProcessTaskHandle;
 osThreadId_t DebugSerialTaskHandle;
 osThreadId_t usbcdcSendTaskHandle;
 osThreadId_t omniIrSendTaskHandle;
+osThreadId_t whisperIrSendTaskHandle;
 
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
@@ -116,6 +118,7 @@ extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
 extern UART_HandleTypeDef huart4;
 extern UART_HandleTypeDef huart5;
+extern UART_HandleTypeDef huart8;
 extern UART_HandleTypeDef huart10;
 
 DMA_BUFFER_ATTR static uint8_t uart3_rx_dma[64];
@@ -150,6 +153,13 @@ DMA_BUFFER_ATTR static uint8_t uart5_tx_dma[512];
 UartPort uart5_port(&huart5, DMA_USE_t::DMA_on, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
                     sizeof(uart5_tx_dma), onUart5RxCb, nullptr);
 osSemaphoreId_t uart5_rx_semphore = NULL;
+
+void onUart8RxCb(const uint8_t *data, size_t len, void *user);
+DMA_BUFFER_ATTR static uint8_t uart8_rx_dma[16];
+DMA_BUFFER_ATTR static uint8_t uart8_tx_dma[16];
+UartPort uart8_port(&huart8, DMA_USE_t::DMA_off, uart8_rx_dma, sizeof(uart8_rx_dma), uart8_tx_dma,
+                    sizeof(uart8_tx_dma), onUart8RxCb, nullptr);
+osSemaphoreId_t uart8_rx_semphore = NULL;
 
 //IR
 void onUart10RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例化不报错
@@ -188,12 +198,15 @@ UartPort uart9_port(&huart9, DMA_USE_t::DMA_off, uart9_rx_dma, sizeof(uart9_rx_d
 osSemaphoreId_t uart9_rx_semphore = NULL;
 
 void irSingleOnFrame(IR_FRAME_t *frame);
+void irWhisperOnFrame(IR_FRAME_t *frame);
 
 //IrSingle ir_test(&uart10_port, nullptr);
+uint16_t biggest_used_uid = 0;
 IrSingle ir_w(&uart10_port, irSingleOnFrame);
 IrSingle ir_e(&uart9_port, irSingleOnFrame);
 IrSingle ir_s(&uart6_port, irSingleOnFrame);
 IrSingle ir_n(&uart1_port, irSingleOnFrame);
+IrSingle ir_whisper(&uart8_port, irWhisperOnFrame);
 
 IrSingle *IrSingle_map[4] = {&ir_n, &ir_e, &ir_s, &ir_w};
 
@@ -234,8 +247,11 @@ pub_upbody_cmd upbody_cmd_msg{};
 // pub_ir_data ir_data{};
 // TickType_t last_data_received_time = 0; // 上次接收到数据的时间
 
-TypedTopicSubscriber<pub_ir_cmd> ir_cmd_sub("ir_cmd", 8);
-static pub_ir_cmd ir_cmd{};
+TypedTopicSubscriber<pub_ir_cmd> omni_ir_cmd_sub("omni_ir_cmd", 8);
+pub_ir_cmd omni_ir_cmd_pop{};
+
+TypedTopicSubscriber<pub_ir_cmd> whisper_ir_cmd_sub("whisper_ir_cmd", 8);
+pub_ir_cmd whisper_ir_pop{};
 
 TypedTopicSubscriber<QR_code_cmd_t> qr_code_cmd_sub("qr_code_cmd", 8);
 QR_code_cmd_t qr_code_cmd{};
@@ -340,6 +356,11 @@ uint8_t comServiceInit() {
     return 1;
   }
 
+  uart8_rx_semphore = osSemaphoreNew(1, 0, NULL);
+  if (uart8_rx_semphore == NULL || uart8_port.startRx() != HAL_OK) {
+    return 1;
+  }
+
   uart10_rx_semphore = osSemaphoreNew(1, 0, NULL);
   if (uart10_rx_semphore == NULL || uart10_port.startRx() != HAL_OK) {
     return 1;
@@ -412,6 +433,13 @@ void onUart5RxCb(const uint8_t *data, size_t len, void *user) {
   (void)user;
   if (data != nullptr && len > 0 && uart5_rx_semphore != NULL) {
     (void)osSemaphoreRelease(uart5_rx_semphore);
+  }
+}
+
+void onUart8RxCb(const uint8_t *data, size_t len, void *user) {
+  (void)user;
+  if (data != nullptr && len > 0 && uart8_rx_semphore != NULL) {
+    (void)osSemaphoreRelease(uart8_rx_semphore);
   }
 }
 
@@ -585,6 +613,14 @@ void uart1RxProcessTask(void *argument) {
 }
 
 void uart6RxProcessTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
+  }
+}
+
+void uart8RxProcessTask(void *argument) {
   (void)argument;
   for(;;)
   {
@@ -806,10 +842,14 @@ void irSingleOnFrame(IR_FRAME_t *frame) {
   omni_ir.tryUpdate(frame);
 }
 
+void irWhisperOnFrame(IR_FRAME_t *frame) {
+  
+}
+
 void omniIrSendTask(void *argument) {
   (void)argument;
 
-  if(!ir_cmd_sub.IsValid()) {
+  if(!omni_ir_cmd_sub.IsValid()) {
     return;
   }
 
@@ -835,9 +875,50 @@ void omniIrSendTask(void *argument) {
 
   for(;;)
   {
-    if(ir_cmd_sub.TryGet(&ir_cmd)) {
+    if(omni_ir_cmd_sub.TryGet(&omni_ir_cmd_pop)) {
       //根据接收到的指令发送红外数据
-      omni_ir.sendData(uid, ir_cmd.tx_data);
+      omni_ir.sendData(uid, omni_ir_cmd_pop.tx_data);
+      uid = getNewUid(uid);
+    }
+    vTaskDelayUntil(&currentTime, 10);
+  }
+}
+
+void whisperIrSendTask(void *argument) {
+  (void)argument;
+
+  if(!whisper_ir_cmd_sub.IsValid()) {
+    return;
+  }
+
+  uint16_t uid = 125;//临时区分whisper和omni
+
+  TickType_t currentTime = xTaskGetTickCount();
+
+  auto getNewUid = [](uint16_t current_uid) -> uint16_t {
+    current_uid++;
+
+    uint8_t low_byte = current_uid & 0xFF;
+    if (low_byte == 0xAA || low_byte == 0xBB) {
+      current_uid++;
+    }
+
+    uint8_t high_byte = (current_uid >> 8) & 0xFF;
+    if (high_byte == 0xAA || high_byte == 0xBB) {
+      current_uid += 0x0100;
+    }
+
+    return current_uid;
+  };
+
+  for(;;)
+  {
+    if(whisper_ir_cmd_sub.TryGet(&whisper_ir_pop)) {
+      //根据接收到的指令发送红外数据
+      uint32_t first_try_time = HAL_GetTick();
+      while(ir_whisper.trySend(uid, whisper_ir_pop.tx_data) != HAL_OK && HAL_GetTick() - first_try_time < kTrySendTimeout) {
+          osDelay(20);
+      }
       uid = getNewUid(uid);
     }
     vTaskDelayUntil(&currentTime, 10);
