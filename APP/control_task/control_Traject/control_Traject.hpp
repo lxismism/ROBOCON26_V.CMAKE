@@ -282,7 +282,7 @@ private:
         float_t e_lateral = nx*e_x + ny*e_y;
 
         if(Traj_complete_Flag == true){
-            if(e_xy < 0.01f && fabsf(e_yaw) < 0.1f){
+            if(e_xy < 0.03f && fabsf(e_yaw) < 0.5f){
                 static uint8_t count = 0 ;
                 if(count >= 10){
                     PointTrack_complete_Flag = true;
@@ -323,12 +323,12 @@ private:
         if(fabsf(x - 2.1f*field_side) < 0.1f){
             if(y >= 0.1f && y < 0.9f)       {yaw = (-90.0f*field_side)*(sinf(M_PI_2*((2*y-1.0f)/0.8f)) + 1.0f)/2.0f;}
             else if(y >= 0.9f && y < 4.1f)  {yaw = -90.0f*field_side;}
-            else if(y >= 4.1f && y <= 4.9f) {yaw = (180.0f - (-90.0f*field_side))*(sinf(M_PI_2*((2*y-9.0f)/0.8f)) + 1.0f)/2.0f + (-90.0f*field_side);}
+            else if(y >= 4.1f && y <= 4.9f) {yaw = Warp_ToRange(180.0f - (-90.0f*field_side),-180.0f,180.0f)*(sinf(M_PI_2*((2*y-9.0f)/0.8f)) + 1.0f)/2.0f + (-90.0f*field_side);}
 
         }else if(fabsf(x - 8.1f*field_side) < 0.1f){
             if(y >= 0.1f && y < 0.9f)       {yaw = (90.0f*field_side)*(sinf(M_PI_2*((2*y-1.0f)/0.8f)) + 1.0f)/2.0f;}
             else if(y >= 0.9f && y < 4.1f)  {yaw = 90.0f*field_side;}
-            else if(y >= 4.1f && y <= 4.9f) {yaw = (180.0f - (90.0f*field_side))*(sinf(M_PI_2*((2*y-9.0f)/0.8f)) + 1.0f)/2.0f + (90.0f*field_side);}
+            else if(y >= 4.1f && y <= 4.9f) {yaw = Warp_ToRange(180.0f - (90.0f*field_side),-180.0f,180.0f)*(sinf(M_PI_2*((2*y-9.0f)/0.8f)) + 1.0f)/2.0f + (90.0f*field_side);}
 
         }else if(x > 2.1f*field_side && x < 8.1f*field_side){
             if(fabsf(y - 0.1f) < 0.05f)      {yaw = 0.0f;}
@@ -336,7 +336,7 @@ private:
         }else {
             yaw = start.yaw + s_tmp*(ref.yaw - start.yaw)/L;
         }
-        return yaw;
+        return Warp_ToRange(yaw, -180.0f, 180.0f);
     }
 
     // =====================================================
