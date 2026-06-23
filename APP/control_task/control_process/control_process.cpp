@@ -903,6 +903,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 // =====================================================
 void Aim_State_xy_Process() {
 
+
+
     static float tx = 1.0f;
     static float ty = 0.0f;
     static float nx = 0.0f;
@@ -912,7 +914,7 @@ void Aim_State_xy_Process() {
     position_correction_x = position_correction_x + 0.001f * xbox_cmd.linear_x_;
     position_correction_y = position_correction_y + 0.001f * xbox_cmd.linear_y_;
 
-    if(fabsf(state_target_cmd.linear_x_ - state_target_last_cmd.linear_x_) > 0.001f || fabsf(state_target_cmd.linear_y_ - state_target_last_cmd.linear_y_) > 0.001f){
+    if(fabsf(state_target_cmd.linear_x_ - state_target_last_cmd.linear_x_) > 0.0015f || fabsf(state_target_cmd.linear_y_ - state_target_last_cmd.linear_y_) > 0.0015f){
         //设置初始点位和目标点位
         state_start_cmd.linear_x_ = state_now_cmd.linear_x_;
         state_start_cmd.linear_y_ = state_now_cmd.linear_y_;

@@ -104,13 +104,13 @@ float Arena_close_position_y_Max = 0.64f;
 const FieldSide_t field_side = Left;
 const float robot_center_to_gimbal_x = 0.4f;
 
-float Acc_path_SpeedUp = 2.1f; //加速度，单位m/s^2
+float Acc_path_SpeedUp = 2.9f; //加速度，单位m/s^2
 float Acc_path_SpeedDown = 1.8f; //加速度，单位m/s^2
-float path_plan_Max_Max = 2.1f; //规划最大速度
+float path_plan_Max_Max = 1.9f; //规划最大速度
 
-float Acc_omega_SpeedUp = M_PI*0.75f; //加速度，单位m/s^2
+float Acc_omega_SpeedUp = M_PI*1.2f; //加速度，单位m/s^2
 float Acc_omega_SpeedDown = M_PI*0.5f; //加速度，单位m/s^2
-float v_omega_plan_Max_Max = M_PI*0.55f;
+float v_omega_plan_Max_Max = M_PI*0.45f;
 
 float Acc_xy_dt = 0.0f; //加速计时器，单位s
 uint32_t Acc_xy_DWT_CNT = 0;
