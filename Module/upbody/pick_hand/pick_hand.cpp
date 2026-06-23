@@ -19,9 +19,9 @@
 void PickHand::init() {
   // ---- 抬升电机 PID (3508) ----
   PID_Init(&lift_pid_);
-  lift_pid_.Kp = 70.0f;
+  lift_pid_.Kp = 300.0f;
   lift_pid_.Ki = 60.0f;
-  lift_pid_.Kd = 9.0f;
+  lift_pid_.Kd = 20.0f;
   lift_pid_.MaxOut = 8000.0f;
   lift_pid_.IntegralLimit = 1000.0f;
   lift_pid_.DeadBand = 0.5f;
@@ -29,9 +29,9 @@ void PickHand::init() {
 
   // ---- 云台旋转电机 PID (2006) ----
   PID_Init(&yaw_pid_);
-  yaw_pid_.Kp = 700.0f;
+  yaw_pid_.Kp = 900.0f;
   yaw_pid_.Ki = 70.0f;
-  yaw_pid_.Kd = 35.0f;
+  yaw_pid_.Kd = 45.0f;
   yaw_pid_.MaxOut = 5000.0f;
   yaw_pid_.IntegralLimit = 700.0f;
   yaw_pid_.DeadBand = 0.05f;
@@ -39,9 +39,9 @@ void PickHand::init() {
 
   // ---- 伸缩电机 PID (2006) ----
   PID_Init(&extend_pid_);
-  extend_pid_.Kp = 230.0f;
+  extend_pid_.Kp = 330.0f;
   extend_pid_.Ki = 40.0f;
-  extend_pid_.Kd = 11.0f;
+  extend_pid_.Kd = 15.0f;
   extend_pid_.MaxOut = 5000.0f;
   extend_pid_.IntegralLimit = 600.0f;
   extend_pid_.DeadBand = 0.2f;
