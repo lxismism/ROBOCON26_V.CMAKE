@@ -34,6 +34,7 @@ typedef enum {
 }FieldSide_t;
 
 typedef enum {
+    Normal = 0,
     MC = 1,
     MF = 2,
     Arena = 3,

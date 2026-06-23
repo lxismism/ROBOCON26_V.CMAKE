@@ -32,15 +32,14 @@
 static constexpr float kLiftStep = 0.2f;
 static constexpr float kPickLiftStep = 0.4f;
 static constexpr float kPickYawStep = 1.0f;
-static constexpr float kPickExtendStep = 0.5f;  //0.2
-static constexpr float kWeaponLiftStep = 0.5f;  //0.25
+static constexpr float kPickExtendStep = 0.5f;
+static constexpr float kWeaponLiftStep = 0.5f;
 static constexpr float kWeaponExtendStep = 0.4f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
 // ===== MF 自动逼近参数（可配） =====
 float kMF_ApproachDist  = 0.18f;   // 底盘前移距离 (m)，例如 0.07 = 7cm
 float kMF_ApproachSpeed = 0.30f;   // 前移/后退速度 (m/s)，实测后改
-
 
 // ===== 外部变量（定义在 control_task.cpp，此处声明引用） =====
 
@@ -350,8 +349,11 @@ void Normal_control_Process() {
         }
 
         predict_yaw = state_now_cmd.omega_ + (control_position.yaw_speed/kDegToRad)*yaw_delay_time;
+
+        position_correction_x = position_correction_x + 0.001f * xbox_cmd.linear_x_;
+        position_correction_y = position_correction_y + 0.001f * xbox_cmd.linear_y_;
         Traject_chassis.Set_Ref(state_target_cmd);
-        Traject_chassis.Run(state_now_cmd);
+        Traject_chassis.Run(state_now_cmd,(RobotMode_t)Normal);
         robot_v_aim_cmd = Traject_chassis.Get_output_b();
 
     }
@@ -552,7 +554,16 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     static float   mf_approach_offset = 0.0f;   // 底盘逼近偏移量 (mm)，渐变值
     static int16_t mf_approach_facing = 0;      // 逼近时锁定 KFS 朝向
 
-    if(false){
+    bool MF_plan_run_Flag_Last = MF_plan_run_Flag;
+    bool MF_plan_record_Flag_Last = MF_plan_record_Flag;
+
+    if(control_xbox_cmd.btnX == true && control_xbox_cmd_Last.btnX == false){
+        if(MF_plan_run_Flag == false){
+            MF_plan_record_Flag = !MF_plan_record_Flag;
+        }
+    }
+
+    if(MF_plan_record_Flag == true){
         if (MF_x == 0 || MF_x == 5) {
             if (control_xbox_cmd.btnDirUp == 1) {
                 if (control_xbox_cmd_Last.btnDirUp == 0) {
@@ -584,396 +595,188 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 }
             }
         }
-        
-        /*上层机构执行*/
-        switch ((int8_t)robot_position_MF[MF_x][MF_y][3]) {
-            case 1:
-                if (last_mf_action != 1 && !mf_placing) {
-                    upbody_ctrl.GrabKFS(kPose_KFS_Low);
-                    last_mf_action = 1;
-                }
-                break;
-            case 2:
-                if (last_mf_action != 2 && !mf_placing) {
-                    upbody_ctrl.GrabKFS(kPose_KFS_Mid);
-                    last_mf_action = 2;
-                }
-                break;
-            case 3:
-                if (last_mf_action != 3 && !mf_placing) {
-                    upbody_ctrl.GrabKFS(kPose_KFS_High);
-                    last_mf_action = 3;
-                }
-                break;
-            default:
-                last_mf_action = -1;
-                break;
-        }
 
-
-
-        if(control_xbox_cmd.btnRB == 1){
-
-            switch ((int16_t)robot_position_MF[MF_x][MF_y][2]) {
-                case 0:
-
-                    MF_close_position_y = MF_close_position_y + 0.0015f;
-                    break;
-
-                case 90:
-
-                    MF_close_position_x = MF_close_position_x - 0.0015f;
-                    break;
-
-                case -90:
-
-                    MF_close_position_x = MF_close_position_x + 0.0015f;
-                    break;
-
-                case 180:
-
-                    MF_close_position_y = MF_close_position_y - 0.0015f;
-                    break;
-
-                default:
-                    break;
-            }
-
-        }else{
-            MF_close_position_x = 0.0f;
-            MF_close_position_y = 0.0f;
-        }
-
-        
-        state_target_cmd.linear_x_ = robot_position_MF[MF_x][MF_y][0] + MF_close_position_x;
-        state_target_cmd.linear_y_ = robot_position_MF[MF_x][MF_y][1] + MF_close_position_y;
-        state_target_cmd.omega_    = robot_position_MF[MF_x][MF_y][2];
-
-        // RB 按住：底盘前移(队友代码) + 吸取手前伸
-        if (control_xbox_cmd.btnRB == 1 && !mf_placing && !upbody_ctrl.IsActive()) {
-            pub_upbody_cmd tmp = {};
-            tmp.active = true;
-            tmp.pick_extend_delta = 1.2f;
-            upbody_pub.Publish(tmp);
-        }
-
-
-    // 每帧推进渐变
-    upbody_ctrl.Update(0.005f, upbody_pub);
-    if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && mf_placing) {
-        mf_placing = false;
-    }
-
-
-
-
-
-        // 真空泵/阀（始终可用，不受渐变限制）
-        static bool last_btnX_mf = false;
-        if (control_xbox_cmd.btnX && !last_btnX_mf) {
-            upbody_msg = {};
-            upbody_msg.active = true;
-            upbody_msg.pump_toggle  = true;
-            upbody_msg.valve_toggle = true;
-            upbody_pub.Publish(upbody_msg);
-        }
-        last_btnX_mf = control_xbox_cmd.btnX;
-
-        // 放置（渐变空闲时响应）
-        static bool last_btnA_mf  = false;
-        if (!upbody_ctrl.IsActive()) {
-            if (control_xbox_cmd.btnA && !last_btnA_mf) {
-                mf_placing = true;
-                upbody_ctrl.PlaceKFS(kPose_Place[mf_place_cycle]);
-                mf_place_cycle = (mf_place_cycle + 1) % 3;
-                HAL_GPIO_WritePin(PUMP_LIFT_GPIO_Port, PUMP_LIFT_Pin, GPIO_PIN_SET);
-
-            }
-        }
-        last_btnA_mf = control_xbox_cmd.btnA;
-
-    }else{
-
-        bool MF_plan_run_Flag_Last = MF_plan_run_Flag;
-        bool MF_plan_record_Flag_Last = MF_plan_record_Flag;
-
-        if(control_xbox_cmd.btnX == true && control_xbox_cmd_Last.btnX == false){
-            if(MF_plan_run_Flag == false){
-                MF_plan_record_Flag = !MF_plan_record_Flag;
-            }
-        }
-
-        if(MF_plan_record_Flag == true){
-            if (MF_x == 0 || MF_x == 5) {
-                if (control_xbox_cmd.btnDirUp == 1) {
-                    if (control_xbox_cmd_Last.btnDirUp == 0) {
-                        if (MF_y < 4) {
-                            MF_y = MF_y + 1;
-                        }
-                    }
-                } else if (control_xbox_cmd.btnDirDown == 1) {
-                    if (control_xbox_cmd_Last.btnDirDown == 0) {
-                        if (MF_y > 0) {
-                            MF_y = MF_y - 1;
-                        }
-                    }
-                }
-            }
-
-            if (MF_y == 0 || MF_y == 4) {
-                if (control_xbox_cmd.btnDirLeft == 1) {
-                    if (control_xbox_cmd_Last.btnDirLeft == 0) {
-                        if (MF_x < 5) {
-                            MF_x = MF_x - field_side;
-                        }
-                    }
-                } else if (control_xbox_cmd.btnDirRight == 1) {
-                    if (control_xbox_cmd_Last.btnDirRight == 0) {
-                        if (MF_x > 0) {
-                            MF_x = MF_x + field_side;
-                        }
-                    }
-                }
-            }
-
-            if(MF_plan_record_i < 14){
-                if(MF_x != MF_x_Last || MF_y != MF_y_Last){
-                    if((MF_x == 0 || MF_x == 5) && (MF_y == 0 || MF_y == 4)){
-                        MF_plan[MF_plan_record_i].MF_x = MF_x;
-                        MF_plan[MF_plan_record_i].MF_y = MF_y;
-                        MF_plan[MF_plan_record_i].is_picking = false;
-                        MF_plan[MF_plan_record_i].is_valid = true;
-                        MF_plan_record_i++;
-                        MF_pick_Flag = false;
-                    }else {
-                        MF_pick_Flag = true;
-                    }
-                }
-                if(MF_pick_Flag){
-                    if(control_xbox_cmd.btnA == true && control_xbox_cmd_Last.btnA == false){
-                        MF_plan[MF_plan_record_i].MF_x = MF_x;
-                        MF_plan[MF_plan_record_i].MF_y = MF_y;
-                        MF_plan[MF_plan_record_i].is_picking = true;
-                        MF_plan[MF_plan_record_i].is_valid = true;
-                        MF_plan_record_i++;
-                        MF_pick_Flag = false;
-                    }
-                }
-            }
-        }else if(MF_plan_record_Flag_Last == true){
-            if(MF_plan_record_i > 0){
-                if(MF_x != MF_plan[MF_plan_record_i-1].MF_x || MF_y != MF_plan[MF_plan_record_i-1].MF_y){
+        if(MF_plan_record_i < 14){
+            if(MF_x != MF_x_Last || MF_y != MF_y_Last){
+                if((MF_x == 0 || MF_x == 5) && (MF_y == 0 || MF_y == 4)){
                     MF_plan[MF_plan_record_i].MF_x = MF_x;
                     MF_plan[MF_plan_record_i].MF_y = MF_y;
                     MF_plan[MF_plan_record_i].is_picking = false;
                     MF_plan[MF_plan_record_i].is_valid = true;
                     MF_plan_record_i++;
+                    MF_pick_Flag = false;
+                }else {
+                    MF_pick_Flag = true;
                 }
-            }else if(MF_plan_record_i == 0){
+            }
+            if(MF_pick_Flag){
+                if(control_xbox_cmd.btnA == true && control_xbox_cmd_Last.btnA == false){
+                    MF_plan[MF_plan_record_i].MF_x = MF_x;
+                    MF_plan[MF_plan_record_i].MF_y = MF_y;
+                    MF_plan[MF_plan_record_i].is_picking = true;
+                    MF_plan[MF_plan_record_i].is_valid = true;
+                    MF_plan_record_i++;
+                    MF_pick_Flag = false;
+                }
+            }
+        }
+    }else if(MF_plan_record_Flag_Last == true){
+        if(MF_plan_record_i > 0){
+            if(MF_x != MF_plan[MF_plan_record_i-1].MF_x || MF_y != MF_plan[MF_plan_record_i-1].MF_y){
                 MF_plan[MF_plan_record_i].MF_x = MF_x;
                 MF_plan[MF_plan_record_i].MF_y = MF_y;
                 MF_plan[MF_plan_record_i].is_picking = false;
                 MF_plan[MF_plan_record_i].is_valid = true;
                 MF_plan_record_i++;
             }
-            
-            MF_plan_run_Flag = true;
+        }else if(MF_plan_record_i == 0){
+            MF_plan[MF_plan_record_i].MF_x = MF_x;
+            MF_plan[MF_plan_record_i].MF_y = MF_y;
+            MF_plan[MF_plan_record_i].is_picking = false;
+            MF_plan[MF_plan_record_i].is_valid = true;
+            MF_plan_record_i++;
         }
-
-        if(MF_plan_run_Flag == true){
-
-            // === 上身动作每帧推进（无论 MF_action_Flag 状态，有动作就必须跑） ===
-            upbody_ctrl.Update(0.005f, upbody_pub);
-
-            // === 动作完成检测：全部步执行完毕 → 收尾 ===
-            if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && mf_placing) {
-                mf_placing = false;
-                MF_action_Flag = false;
-                MF_plan[MF_plan_run_i].is_picking = false;
-                MF_plan_run_i++;
-                MF_xy_complete_Flag = false;
-                MF_omega_complete_Flag = false;
-                MF_omega_control_Flag = 0;
-                last_mf_action = -1;  // 重置，下个拾取点不受限制
-            }
-
-
-            // === 底盘逼近偏移渐变（每帧运行，不受 MF_action_Flag 限制） ===
-            {
-                float target = (mf_placing && upbody_ctrl.IsApproachPhase()) ? kMF_ApproachDist : 0.0f;
-                float step   = kMF_ApproachSpeed * 0.005f;  // dt = 5ms
-                if (mf_approach_offset < target) {
-                    mf_approach_offset += step;
-                    if (mf_approach_offset > target) mf_approach_offset = target;
-                } else if (mf_approach_offset > target) {
-                    mf_approach_offset -= step;
-                    if (mf_approach_offset < target) mf_approach_offset = target;
-                }
-
-                switch (mf_approach_facing) {
-                    case 0:   MF_close_position_x = 0.0f;                     MF_close_position_y =  mf_approach_offset; break;
-                    case 90:  MF_close_position_x = -mf_approach_offset;      MF_close_position_y = 0.0f;                   break;
-                    case -90: MF_close_position_x =  mf_approach_offset;      MF_close_position_y = 0.0f;                   break;
-                    case 180: MF_close_position_x = 0.0f;                     MF_close_position_y = -mf_approach_offset; break;
-                    default:  MF_close_position_x = 0.0f;                     MF_close_position_y = 0.0f;                   break;
-                }
-
-
-                // 偏移叠加到底盘目标（动作执行期间 state_aim_cmd 也需要跟着变）
-                if (MF_plan_run_i < MF_plan_record_i && MF_plan[MF_plan_run_i].is_valid) {
-                    state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0] + MF_close_position_x;
-                    state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1] + MF_close_position_y;
-                }
-            }
-
-            if(MF_action_Flag == false){
-
-                if((MF_plan_run_i < MF_plan_record_i) && (MF_plan[MF_plan_run_i].is_valid == true)){
-
-                    state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0];
-                    state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1];
-                    if((int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] != (int16_t)state_target_cmd.omega_){
-                        if(MF_omega_control_Flag == 0){
-                            if(control_position.y < 1.3f-MF_omega_correction){
-                                if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_target_cmd.omega_,-180.0f,180.0f)) > 100){
-                                    state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
-                                }else {
-                                    state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                }
-                                MF_omega_control_Flag = -1;
-                            }else if(control_position.y > 3.7f+MF_omega_correction){
-                                if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_target_cmd.omega_,-180.0f,180.0f)) > 100){
-                                    state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
-                                }else {
-                                    state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                }
-                                MF_omega_control_Flag = 1;
-                            }
-                        }else if(MF_omega_control_Flag == -1){
-                            if(control_position.y > 3.7f-MF_omega_correction){
-                            // if(true){
-                                if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_target_cmd.omega_,-180.0f,180.0f)) > 100){
-                                    state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
-                                }else {
-                                    state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                }
-                            }
-                        }else if(MF_omega_control_Flag == 1){
-                            if(control_position.y < 1.3f+MF_omega_correction){
-                                if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_target_cmd.omega_,-180.0f,180.0f)) > 100){
-                                    state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
-                                }else {
-                                    state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                }
-                            }
-                        }
-                    }
-
-                    // 上身保持行进姿态（每个新路径点仅触发一次）
-                    if (last_moving_pose_i != MF_plan_run_i
-                        && !upbody_ctrl.IsActive()
-                        && !upbody_ctrl.HasPending()
-                        && !mf_placing) {
-                        upbody_ctrl.Moving(kPose_Moving_In_MF);
-                        last_moving_pose_i = MF_plan_run_i;
-                    }
-
-                    if(((state_target_cmd.linear_x_ - control_position.x)*(state_target_cmd.linear_x_ - control_position.x) + (state_target_cmd.linear_y_ - control_position.y)*(state_target_cmd.linear_y_ - control_position.y)) < 0.03*0.03){
-                        static uint8_t count_xy = 0;
-                        if(MF_xy_complete_Flag == false){
-                            if(count_xy >= 10){
-                                MF_xy_complete_Flag = true;
-                                count_xy = 0 ;
-                            }else {
-                                count_xy ++;
-                            }
-                        }
-                    }
-                    if(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - control_position.yaw,-180.0f,180.0f) < 0.5){
-                        static uint8_t count_omega = 0;
-                        if(MF_omega_complete_Flag == false){
-                            if(count_omega >= 10){
-                                MF_omega_complete_Flag = true;
-                                count_omega = 0;
-                            }else {
-                                count_omega ++;
-                            }
-                        }
-                    }
-                    
-                    if(MF_omega_complete_Flag == true && MF_xy_complete_Flag == true){
-                        if(MF_plan[MF_plan_run_i].is_picking == true){
-                            /*上层机构执行*/
-                            switch ((int8_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][3]) {
-                                case 1:
-                                    if (last_mf_action != 1 && !mf_placing) {
-                                        bool close_pump = (mf_place_cycle != 2);  // 第3个KFS不关泵
-                                        upbody_ctrl.PickKFS(kPose_Pick[Low], kPose_Place[mf_place_cycle], close_pump);
-                                        last_mf_action = 1;
-                                        MF_action_Flag = true;
-                                        mf_placing = true;
-                                        mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                        mf_place_cycle = (mf_place_cycle + 1) % 3;
-                                    }
-                                    break;
-                                case 2:
-                                    if (last_mf_action != 2 && !mf_placing) {
-                                        bool close_pump = (mf_place_cycle != 2);
-                                        upbody_ctrl.PickKFS(kPose_Pick[Mid], kPose_Place[mf_place_cycle], close_pump);
-                                        last_mf_action = 2;
-                                        MF_action_Flag = true;
-                                        mf_placing = true;
-                                        mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                        mf_place_cycle = (mf_place_cycle + 1) % 3;
-                                    }
-                                    break;
-                                case 3:
-                                    if (last_mf_action != 3 && !mf_placing) {
-                                        bool close_pump = (mf_place_cycle != 2);
-                                        upbody_ctrl.PickKFS(kPose_Pick[High], kPose_Place[mf_place_cycle], close_pump);
-                                        last_mf_action = 3;
-                                        MF_action_Flag = true;
-                                        mf_placing = true;
-                                        mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                        mf_place_cycle = (mf_place_cycle + 1) % 3;
-                                    }
-                                    break;
-
-                                default:
-                                    last_mf_action = -1;
-                                    break;
-                            }
-                        } else {
-                            // 非拾取点（纯路径点）：无需上身动作，直接推进
-                            MF_plan_run_i++;
-                            MF_xy_complete_Flag = false;
-                            MF_omega_complete_Flag = false;
-                            MF_omega_control_Flag = 0;
-                        }
-                    }
-
-                }else {
-                    MF_plan_record_i = 0;
-                    MF_plan_run_i = 0;
-                    MF_plan_run_Flag = false;
-                    MF_pick_Flag = false;
-                    MF_action_Flag = false;
-                    last_mf_action = -1;
-                    mf_approach_offset = 0.0f;
-                    MF_close_position_x = 0.0f;
-                    MF_close_position_y = 0.0f;
-                    for(uint8_t i;i<15;i++){
-                        MF_plan[i] = MF_plan_zero;
-                    }
-                }
-            }
-        }else if(MF_plan_run_Flag_Last == true){
-        }
-
+        
+        MF_plan_run_Flag = true;
     }
 
-    Aim_State_xy_Process();
-    Aim_State_omega_Process();
+    if(MF_plan_run_Flag == true){
+
+        // === 上身动作每帧推进（无论 MF_action_Flag 状态，有动作就必须跑） ===
+        upbody_ctrl.Update(0.005f, upbody_pub);
+
+        // === 动作完成检测：全部步执行完毕 → 收尾 ===
+        if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && mf_placing) {
+            mf_placing = false;
+            MF_action_Flag = false;
+            MF_plan[MF_plan_run_i].is_picking = false;
+            MF_plan_run_i++;
+            MF_xy_complete_Flag = false;
+            MF_omega_complete_Flag = false;
+            MF_omega_control_Flag = 0;
+            last_mf_action = -1;  // 重置，下个拾取点不受限制
+        }
+
+
+        // === 底盘逼近偏移渐变（每帧运行，不受 MF_action_Flag 限制） ===
+        {
+            float target = (mf_placing && upbody_ctrl.IsApproachPhase()) ? kMF_ApproachDist : 0.0f;
+            float step   = kMF_ApproachSpeed * 0.005f;  // dt = 5ms
+            if (mf_approach_offset < target) {
+                mf_approach_offset += step;
+                if (mf_approach_offset > target) mf_approach_offset = target;
+            } else if (mf_approach_offset > target) {
+                mf_approach_offset -= step;
+                if (mf_approach_offset < target) mf_approach_offset = target;
+            }
+
+            switch (mf_approach_facing) {
+                case 0:   MF_close_position_x = 0.0f;                     MF_close_position_y =  mf_approach_offset; break;
+                case 90:  MF_close_position_x = -mf_approach_offset;      MF_close_position_y = 0.0f;                   break;
+                case -90: MF_close_position_x =  mf_approach_offset;      MF_close_position_y = 0.0f;                   break;
+                case 180: MF_close_position_x = 0.0f;                     MF_close_position_y = -mf_approach_offset; break;
+                default:  MF_close_position_x = 0.0f;                     MF_close_position_y = 0.0f;                   break;
+            }
+
+
+            // 偏移叠加到底盘目标（动作执行期间 state_aim_cmd 也需要跟着变）
+            if (MF_plan_run_i < MF_plan_record_i && MF_plan[MF_plan_run_i].is_valid) {
+                state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0] + MF_close_position_x;
+                state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1] + MF_close_position_y;
+            }
+        }
+
+        if(MF_action_Flag == false){
+
+            if((MF_plan_run_i < MF_plan_record_i) && (MF_plan[MF_plan_run_i].is_valid == true)){
+
+                state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0];
+                state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1];
+                Traject_chassis.Set_Ref(state_target_cmd);
+ 
+                // 上身保持行进姿态（每个新路径点仅触发一次）
+                if (last_moving_pose_i != MF_plan_run_i
+                    && !upbody_ctrl.IsActive()
+                    && !upbody_ctrl.HasPending()
+                    && !mf_placing) {
+                    upbody_ctrl.Moving(kPose_Moving_In_MF);
+                    last_moving_pose_i = MF_plan_run_i;
+                }
+                
+                if(Traject_chassis.PointTrack_complete_Flag == true){
+                    if(MF_plan[MF_plan_run_i].is_picking == true){
+                        /*上层机构执行*/
+                        switch ((int8_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][3]) {
+                            case 1:
+                                if (last_mf_action != 1 && !mf_placing) {
+                                    bool close_pump = (mf_place_cycle != 2);  // 第3个KFS不关泵
+                                    upbody_ctrl.PickKFS(kPose_Pick[Low], kPose_Place[mf_place_cycle], close_pump);
+                                    last_mf_action = 1;
+                                    MF_action_Flag = true;
+                                    mf_placing = true;
+                                    mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                                    mf_place_cycle = (mf_place_cycle + 1) % 3;
+                                }
+                                break;
+                            case 2:
+                                if (last_mf_action != 2 && !mf_placing) {
+                                    bool close_pump = (mf_place_cycle != 2);
+                                    upbody_ctrl.PickKFS(kPose_Pick[Mid], kPose_Place[mf_place_cycle], close_pump);
+                                    last_mf_action = 2;
+                                    MF_action_Flag = true;
+                                    mf_placing = true;
+                                    mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                                    mf_place_cycle = (mf_place_cycle + 1) % 3;
+                                }
+                                break;
+                            case 3:
+                                if (last_mf_action != 3 && !mf_placing) {
+                                    bool close_pump = (mf_place_cycle != 2);
+                                    upbody_ctrl.PickKFS(kPose_Pick[High], kPose_Place[mf_place_cycle], close_pump);
+                                    last_mf_action = 3;
+                                    MF_action_Flag = true;
+                                    mf_placing = true;
+                                    mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                                    mf_place_cycle = (mf_place_cycle + 1) % 3;
+                                }
+                                break;
+
+                            default:
+                                last_mf_action = -1;
+                                break;
+                        }
+                    } else {
+                        // 非拾取点（纯路径点）：无需上身动作，直接推进
+                        MF_plan_run_i++;
+                    }
+                }
+
+            }else {
+                MF_plan_record_i = 0;
+                MF_plan_run_i = 0;
+                MF_plan_run_Flag = false;
+                MF_pick_Flag = false;
+                MF_action_Flag = false;
+                last_mf_action = -1;
+                mf_approach_offset = 0.0f;
+                MF_close_position_x = 0.0f;
+                MF_close_position_y = 0.0f;
+                for(uint8_t i = 0;i<15;i++){
+                    MF_plan[i] = MF_plan_zero;
+                }
+            }
+        }
+    }else if(MF_plan_run_Flag_Last == true){
+    }
+
+    predict_yaw = state_now_cmd.omega_ + (control_position.yaw_speed/kDegToRad)*yaw_delay_time;
+
+    position_correction_x = position_correction_x + 0.001f * xbox_cmd.linear_x_;
+    position_correction_y = position_correction_y + 0.001f * xbox_cmd.linear_y_;
+    Traject_chassis.Run(state_now_cmd,(RobotMode_t)MF);
+    robot_v_aim_cmd = Traject_chassis.Get_output_b();
+    // Aim_State_xy_Process();
+    // Aim_State_omega_Process();
 }
 
 
@@ -1104,12 +907,10 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 // =====================================================
 void Aim_State_xy_Process() {
 
-
-
-    static float tx = 0.0f;
+    static float tx = 1.0f;
     static float ty = 0.0f;
     static float nx = 0.0f;
-    static float ny = 0.0f;
+    static float ny = 1.0f;
 
     // 里程计定位修正
     position_correction_x = position_correction_x + 0.001f * xbox_cmd.linear_x_;
@@ -1323,3 +1124,7 @@ float clamp(float value,float min,float max){
         return value;
     }
 }
+
+// =====================================================
+//  计算
+// =====================================================
