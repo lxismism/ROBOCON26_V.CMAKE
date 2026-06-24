@@ -25,6 +25,7 @@
 #include "weapon_hand.hpp"
 #include "lift.hpp"
 #include "omni_ir.hpp"
+#include "control_Traject.hpp"
 
 
 
@@ -32,15 +33,14 @@
 static constexpr float kLiftStep = 0.2f;
 static constexpr float kPickLiftStep = 0.4f;
 static constexpr float kPickYawStep = 1.0f;
-static constexpr float kPickExtendStep = 0.5f;  //0.2
-static constexpr float kWeaponLiftStep = 0.5f;  //0.25
+static constexpr float kPickExtendStep = 0.5f;
+static constexpr float kWeaponLiftStep = 0.5f;
 static constexpr float kWeaponExtendStep = 0.4f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
 // ===== MF 自动逼近参数（可配） =====
 float kMF_ApproachDist  = 0.18f;   // 底盘前移距离 (m)，例如 0.07 = 7cm
 float kMF_ApproachSpeed = 0.30f;   // 前移/后退速度 (m/s)，实测后改
-
 
 // ===== 外部变量（定义在 control_task.cpp，此处声明引用） =====
 
@@ -80,6 +80,7 @@ extern float v_aim;
 
 extern bool headless_xy_mode;
 extern bool headless_omega_mode;
+bool headless_mode = true;
 
 extern bool Normal_control_mode;
 // MC 模式相关
@@ -144,7 +145,6 @@ extern uint32_t Acc_omega_DWT_CNT;
 extern float predict_yaw;
 extern float yaw_delay_time;
 
-
 static bool mf_placing = false;   // 放置进行中，禁止梯度打断
 
 // ===== 九宫格模式渐变状态 =====
@@ -152,7 +152,7 @@ static ActionController upbody_ctrl;
 static int8_t last_mf_action = -1;      
 static int8_t last_arena_x = -1;
 
-
+TrajectChassis Traject_chassis;
 
 
 // =====================================================
@@ -587,6 +587,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
             MF_plan[MF_plan_record_i].is_valid = true;
             MF_plan_record_i++;
         }
+        
         MF_plan_run_Flag = true;
     }
 
@@ -642,43 +643,9 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
                 state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0];
                 state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1];
-                if((int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] != (int16_t)state_target_cmd.omega_){
-                    if(MF_omega_control_Flag == 0){
-                        if(control_position.y < 1.3f-MF_omega_correction){
-                            if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_target_cmd.omega_,-180.0f,180.0f)) > 100){
-                                state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
-                            }else {
-                                state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                            }
-                            MF_omega_control_Flag = -1;
-                        }else if(control_position.y > 3.7f+MF_omega_correction){
-                            if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_target_cmd.omega_,-180.0f,180.0f)) > 100){
-                                state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
-                            }else {
-                                state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                            }
-                            MF_omega_control_Flag = 1;
-                        }
-                    }else if(MF_omega_control_Flag == -1){
-                        if(control_position.y > 3.7f-MF_omega_correction){
-                        // if(true){
-                            if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_target_cmd.omega_,-180.0f,180.0f)) > 100){
-                                state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
-                            }else {
-                                state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                            }
-                        }
-                    }else if(MF_omega_control_Flag == 1){
-                        if(control_position.y < 1.3f+MF_omega_correction){
-                            if(abs(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - state_target_cmd.omega_,-180.0f,180.0f)) > 100){
-                                state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][2][2];
-                            }else {
-                                state_target_cmd.omega_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                            }
-                        }
-                    }
-                }
-
+                state_target_cmd.omega_    = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                Traject_chassis.Set_Ref(state_target_cmd);
+ 
                 // 上身保持行进姿态（每个新路径点仅触发一次）
                 if (last_moving_pose_i != MF_plan_run_i
                     && !upbody_ctrl.IsActive()
@@ -687,33 +654,8 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                     upbody_ctrl.Moving(kPose_Moving_In_MF);
                     last_moving_pose_i = MF_plan_run_i;
                 }
-
-                if(((state_target_cmd.linear_x_ - control_position.x)*(state_target_cmd.linear_x_ - control_position.x) + (state_target_cmd.linear_y_ - control_position.y)*(state_target_cmd.linear_y_ - control_position.y)) < 0.03*0.03){
-                    static uint8_t count_xy = 0;
-                    if(MF_xy_complete_Flag == false){
-                        if(count_xy >= 10){
-                            MF_xy_complete_Flag = true;
-                            count_xy = 0 ;
-                        }else {
-                            count_xy ++;
-                        }
-                    }
-                }
-                if(Warp_ToRange(robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2] - control_position.yaw,-180.0f,180.0f) < 0.5){
-                    static uint8_t count_omega = 0;
-                    if(MF_omega_complete_Flag == false){
-                        if(count_omega >= 10){
-                            MF_omega_complete_Flag = true;
-                            count_omega = 0;
-                        }else {
-                            count_omega ++;
-                        }
-                    }
-                }
                 
-                if(MF_omega_complete_Flag == true && MF_xy_complete_Flag == true){
-                //if(true){
-                //拔开调试上身时把上面两行的注释对调一下，不然上身不会动。
+                if(Traject_chassis.PointTrack_complete_Flag == true){
                     if(MF_plan[MF_plan_run_i].is_picking == true){
                         /*上层机构执行*/
                         switch ((int8_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][3]) {
@@ -758,9 +700,6 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                     } else {
                         // 非拾取点（纯路径点）：无需上身动作，直接推进
                         MF_plan_run_i++;
-                        MF_xy_complete_Flag = false;
-                        MF_omega_complete_Flag = false;
-                        MF_omega_control_Flag = 0;
                     }
                 }
 
@@ -774,7 +713,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 mf_approach_offset = 0.0f;
                 MF_close_position_x = 0.0f;
                 MF_close_position_y = 0.0f;
-                for(uint8_t i;i<15;i++){
+                for(uint8_t i = 0;i<15;i++){
                     MF_plan[i] = MF_plan_zero;
                 }
             }
@@ -782,8 +721,14 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     }else if(MF_plan_run_Flag_Last == true){
     }
 
-    Aim_State_xy_Process();
-    Aim_State_omega_Process();
+    predict_yaw = state_now_cmd.omega_ + (control_position.yaw_speed/kDegToRad)*yaw_delay_time;
+
+    position_correction_x = position_correction_x + 0.001f * xbox_cmd.linear_x_;
+    position_correction_y = position_correction_y + 0.001f * xbox_cmd.linear_y_;
+    Traject_chassis.Run(state_now_cmd,(RobotMode_t)MF);
+    robot_v_aim_cmd = Traject_chassis.Get_output_b();
+    // Aim_State_xy_Process();
+    // Aim_State_omega_Process();
 }
 
 
@@ -1111,3 +1056,27 @@ float Warp_ToRange(float value,float min,float max){
     }
     return value;
 }
+
+// =====================================================
+//  返回预测yaw角
+// =====================================================
+float Get_predict_yaw(){
+    return predict_yaw;
+}
+
+// =====================================================
+//  限值
+// =====================================================
+float clamp(float value,float min,float max){
+    if(value > max){
+        return max;
+    }else if(value < min){
+        return min;
+    }else {
+        return value;
+    }
+}
+
+// =====================================================
+//  计算
+// =====================================================

@@ -19,6 +19,7 @@
 
 #include "task.h"
 #include "topics.hpp"
+#include "topic_pool.h"
 
 void chassisTask(void *argument);
 
