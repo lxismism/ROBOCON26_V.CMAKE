@@ -71,7 +71,7 @@ float position_correction_y = -position_center_distance;
 // ===== 控制状态变量 =====
 RobotMode_t robot_mode = MC; // 当前机器人模式，默认为MC
 RobotMode_t robot_mode_last = MC; // 当前机器人模式，默认为MC
-RobotCase_t robot_case = Normal; // 当前机器人模式，默认为Normal
+RobotCase_t robot_case = Normal_case; // 当前机器人模式，默认为Normal
 
 float rm_angle_deg;
 float v_aim;
@@ -188,7 +188,7 @@ void controlTask(void *argument) {
             // }
             switch (control_rm_cmd.swB){
                 case RC_3_POS_SW_State_t::UP : {
-                    robot_case = Normal;
+                    robot_case = Normal_case;
                     break;
                 }
                 case RC_3_POS_SW_State_t::MIDDLE :{

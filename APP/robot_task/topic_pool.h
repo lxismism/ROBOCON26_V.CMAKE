@@ -42,7 +42,7 @@ typedef enum {
 }RobotMode_t;
 
 typedef enum {
-    Normal = 1,
+    Normal_case = 1,
     Special = 2,
     Debug = 3,
 }RobotCase_t;

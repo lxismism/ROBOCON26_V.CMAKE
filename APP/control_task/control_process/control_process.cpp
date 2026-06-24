@@ -250,7 +250,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
     rm_cmd.omega_    = -JoyToVelocity(control_rm_cmd.joyRHori, kJoyDeadZoneRight, MAX_VELOCITY_ANGULAR);
 
     switch (robot_case) {
-        case RobotCase_t::Normal : {
+        case RobotCase_t::Normal_case : {
             Normal_control_Process();
             break;
         }
@@ -723,8 +723,8 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
     predict_yaw = state_now_cmd.omega_ + (control_position.yaw_speed/kDegToRad)*yaw_delay_time;
 
-    position_correction_x = position_correction_x + 0.001f * xbox_cmd.linear_x_;
-    position_correction_y = position_correction_y + 0.001f * xbox_cmd.linear_y_;
+    position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
+    position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
     Traject_chassis.Run(state_now_cmd,(RobotMode_t)MF);
     robot_v_aim_cmd = Traject_chassis.Get_output_b();
     // Aim_State_xy_Process();
