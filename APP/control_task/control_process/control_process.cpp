@@ -464,7 +464,7 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
     // 持续型：右摇杆前推抬升 / 后拉下降（霍尔值线性映射速度）
     {
-        int32_t rvert_diff = (int32_t)(-control_rm_cmd.joyRVert) - (int32_t)kJoyCenter;
+        int32_t rvert_diff = -((int32_t)control_rm_cmd.joyRVert - (int32_t)kJoyCenter);
         if (ABS(rvert_diff) > (int32_t)kJoyDeadZoneRight) {
             float ratio = (float)(ABS(rvert_diff) - (int32_t)kJoyDeadZoneRight)
                           / (float)(kJoyCenter - kJoyDeadZoneRight)
