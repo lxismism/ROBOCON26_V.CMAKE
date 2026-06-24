@@ -56,6 +56,9 @@ float position_center_distance = 0.25f;
 float position_correction_x = 0.0f;
 float position_correction_y = -position_center_distance;
 
+float position_close_x = 0.0f;
+float position_close_y = 0.0f;
+
 
 // TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
 // pub_ir_data control_ir_msg{};
@@ -174,8 +177,8 @@ void controlTask(void *argument) {
             control_position.frame_id = control_position_msg.frame_id;
             control_position.yaw = -control_position_msg.yaw;
             control_position.yaw_speed = control_position_msg.yaw_speed;
-            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw*kDegToRad) - position_correction_x ;
-            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw*kDegToRad) - position_correction_y ;
+            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw*kDegToRad) - position_correction_x - position_close_x;
+            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw*kDegToRad) - position_correction_y - position_close_y;
 
             state_now_cmd.linear_x_ = control_position.x;
             state_now_cmd.linear_y_ = control_position.y;

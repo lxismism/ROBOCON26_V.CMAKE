@@ -653,12 +653,12 @@ void DebugSerialTask(void *argument) {
     //                                           static_cast<int>(control_position.y), (static_cast<int>(abs(control_position.y * 1000)))%1000,
     //                                           static_cast<int>(lateral.Ref), (static_cast<int>(abs(lateral.Ref * 100)))%100
 
-    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
-                                                  static_cast<int>(Traject_chassis.watch_1), (static_cast<int>(abs(Traject_chassis.watch_1 * 100)))%100,
-                                                  static_cast<int>(Traject_chassis.watch_2), (static_cast<int>(abs(Traject_chassis.watch_2 * 100)))%100,
-                                                  static_cast<int>(Traject_chassis.watch_3), (static_cast<int>(abs(Traject_chassis.watch_3 * 100)))%100,
-                                                  static_cast<int>(Traject_chassis.watch_4), (static_cast<int>(abs(Traject_chassis.watch_4 * 100)))%100,
-                                                  static_cast<int>(Traject_chassis.watch_5), (static_cast<int>(abs(Traject_chassis.watch_5 * 100)))%100
+    // int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
+    //                                               static_cast<int>(Traject_chassis.watch_1), (static_cast<int>(abs(Traject_chassis.watch_1 * 100)))%100,
+    //                                               static_cast<int>(Traject_chassis.watch_2), (static_cast<int>(abs(Traject_chassis.watch_2 * 100)))%100,
+    //                                               static_cast<int>(Traject_chassis.watch_3), (static_cast<int>(abs(Traject_chassis.watch_3 * 100)))%100,
+    //                                               static_cast<int>(Traject_chassis.watch_4), (static_cast<int>(abs(Traject_chassis.watch_4 * 100)))%100,
+    //                                               static_cast<int>(Traject_chassis.watch_5), (static_cast<int>(abs(Traject_chassis.watch_5 * 100)))%100
     // int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d\n",
     //                                           static_cast<int>(robot_v_aim_cmd.linear_x_), (static_cast<int>(abs(robot_v_aim_cmd.linear_x_ * 100)))%100,
     //                                           static_cast<int>(robot_v_aim_cmd.linear_y_), (static_cast<int>(abs(robot_v_aim_cmd.linear_y_ * 100)))%100,
