@@ -525,7 +525,7 @@ void ActionController::GrabKFS_Arena(const RobotPose& pose) {
     // Step 1: 先抬到最高，冻结 yaw 和 extend 不动
     ActionConfig step1;
     step1.target = pose;
-    step1.target.pick_lift_mm     = 392.6f;
+    step1.target.pick_lift_mm     = 442.6f;
     step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
     step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
     step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
