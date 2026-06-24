@@ -32,7 +32,7 @@
 
 // 最大topic数量
 #ifndef TOPICS_MAX_TOPICS
-#define TOPICS_MAX_TOPICS 8U
+#define TOPICS_MAX_TOPICS 10U
 #endif
 
 // 某个topics上能挂载订阅者的最大数目

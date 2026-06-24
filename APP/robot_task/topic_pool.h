@@ -15,6 +15,7 @@
  */
 #pragma once
 #include "fdcan.h"
+#include "rm_pocket.hpp"
 #include "portmacro.h"
 #include "usart.h"
 #include <stdbool.h>
@@ -39,6 +40,12 @@ typedef enum {
     MF = 2,
     Arena = 3,
 }RobotMode_t;
+
+typedef enum {
+    Normal = 1,
+    Special = 2,
+    Debug = 3,
+}RobotCase_t;
 
 typedef struct {
   bool btnY;
@@ -66,6 +73,40 @@ typedef struct {
   uint16_t joyRVert;
 
 } pub_Xbox_Data;
+
+typedef struct {
+    //摇杆
+  uint16_t joyLHori;
+  uint16_t joyLVert;
+  uint16_t joyRHori;
+  uint16_t joyRVert;
+
+  RC_2_POS_SW_State_t swA;
+  RC_2_POS_SW_State_t swA_last;
+  RC_3_POS_SW_State_t swB;
+  RC_3_POS_SW_State_t swB_last;
+  RC_3_POS_SW_State_t swC;
+  RC_3_POS_SW_State_t swC_last;
+  RC_2_POS_SW_State_t swD;
+  RC_2_POS_SW_State_t swD_last;
+  RC_2_POS_SW_State_t swE;
+  RC_2_POS_SW_State_t swE_last;
+
+  RC_Trim_State_t trimLeft;        //左微调按钮
+  RC_Trim_State_t trimLeft_last;
+  RC_Trim_State_t trimRight;       //右微调按钮
+  RC_Trim_State_t trimRight_last;
+
+  //电位器
+  uint16_t pot;
+
+  //左微调按钮控制的光标
+  int8_t x_cnt;
+  int8_t y_cnt;
+
+  //右微调按钮控制的光标
+  int8_t cursor;
+} pub_RC_Data;
 
 // IMU姿态传感器数据 —— 无头模式用
 typedef struct {

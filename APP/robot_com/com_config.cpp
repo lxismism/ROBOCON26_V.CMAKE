@@ -32,6 +32,7 @@
 #include "UartPort.hpp"
 #include "UsbPort.hpp"
 #include "XboxRemote.hpp"
+#include "rm_pocket.hpp"
 #include "pm20s.hpp"
 #include "tim.h"
 #include "WitMotionImu.hpp"
@@ -44,6 +45,7 @@
 #include "chassis_solution.hpp" //访问底盘控制器用于串口调参
 #include "lift.hpp"             //访问lift模块用于串口调参
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -210,6 +212,18 @@ pub_imu_data imu_msg{};
 XboxRemote xbox_remote(uart3_port);
 TypedTopicPublisher<pub_Xbox_Data> xbox_data_pub("xbox");
 pub_Xbox_Data xbox_msg;
+
+rmPocket rm_pocket;
+TypedTopicPublisher<pub_RC_Data> rc_data_pub("rc");
+pub_RC_Data rc_msg = {
+  .swA_last = RC_2_POS_SW_State_t::UP,
+  .swB_last = RC_3_POS_SW_State_t::UP,
+  .swC_last = RC_3_POS_SW_State_t::UP,
+  .swD_last = RC_2_POS_SW_State_t::UP,
+  .swE_last = RC_2_POS_SW_State_t::UP,
+  .trimLeft = RC_Trim_State_t::MIDDLE,
+  .trimRight = RC_Trim_State_t::MIDDLE
+};
 
 // Position模块（基于uart4）
 Position position;
@@ -510,43 +524,43 @@ void can3SendTask(void *argument) {
 
 void uart3RxProcessTask(void *argument) {
   (void)argument;
-  if(!xbox_data_pub.IsValid()) {
-    return;
-  }
-  for (;;) {
-    (void)osSemaphoreAcquire(uart3_rx_semphore, osWaitForever);
+  if(!rc_data_pub.IsValid()) return;
 
+  for(;;) {
+    (void)osSemaphoreAcquire(uart3_rx_semphore, osWaitForever);
     UartPort::Packet packet{};
-    while (uart3_port.Read(packet)) {
-      // 逐字节送进Xbox协议解析器
-      for (uint16_t i = 0; i < packet.len; ++i) {
-        uint8_t frame_id = xbox_remote.processByte(packet.data[i]);
-        if (frame_id != 0) {
-          // 帧解析完成，可以在这里获取控制器数据并做业务处理
-          const auto &ctrl_data = xbox_remote.getControllerData();
-          xbox_msg.btnY = ctrl_data.btnY;
-          xbox_msg.btnA = ctrl_data.btnA;
-          xbox_msg.btnB = ctrl_data.btnB;
-          xbox_msg.btnX = ctrl_data.btnX;
-          xbox_msg.btnLB = ctrl_data.btnLB;
-          xbox_msg.btnRB = ctrl_data.btnRB;
-          xbox_msg.btnLS = ctrl_data.btnLS;
-          xbox_msg.btnRS = ctrl_data.btnRS;
-          xbox_msg.btnSelect = ctrl_data.btnSelect;
-          xbox_msg.btnShare = ctrl_data.btnShare;
-          xbox_msg.btnStart = ctrl_data.btnStart;
-          xbox_msg.btnXbox = ctrl_data.btnXbox;
-          xbox_msg.trigLT = ctrl_data.trigLT;
-          xbox_msg.trigRT = ctrl_data.trigRT;
-          xbox_msg.btnDirUp = ctrl_data.btnDirUp;
-          xbox_msg.btnDirDown = ctrl_data.btnDirDown;
-          xbox_msg.btnDirLeft = ctrl_data.btnDirLeft;
-          xbox_msg.btnDirRight = ctrl_data.btnDirRight;
-          xbox_msg.joyLHori = ctrl_data.joyLHori;
-          xbox_msg.joyLVert = ctrl_data.joyLVert;
-          xbox_msg.joyRHori = ctrl_data.joyRHori;
-          xbox_msg.joyRVert = ctrl_data.joyRVert;
-          xbox_data_pub.Publish(xbox_msg);
+    while(uart3_port.Read(packet)) {
+      for(uint16_t i = 0; i < packet.len; ++i) {
+        uint8_t frame_id = rm_pocket.processByte(packet.data[i]);
+        if(frame_id != 0) {
+          const auto &rc_data = rm_pocket.getRCState();
+          
+          rc_msg.swA_last = rc_msg.swA;
+          rc_msg.swB_last = rc_msg.swB;
+          rc_msg.swC_last = rc_msg.swC;
+          rc_msg.swD_last = rc_msg.swD;
+          rc_msg.swE_last = rc_msg.swE;
+
+          rc_msg.trimLeft_last = rc_msg.trimLeft;
+          rc_msg.trimRight_last = rc_msg.trimRight;
+          
+          rc_msg.joyLHori = rc_data.joyLHori;
+          rc_msg.joyLVert = rc_data.joyLVert;
+          rc_msg.joyRHori = rc_data.joyRHori;
+          rc_msg.joyRVert = rc_data.joyRVert;
+          rc_msg.swA = rc_data.swA;
+          rc_msg.swB = rc_data.swB;
+          rc_msg.swC = rc_data.swC;
+          rc_msg.swD = rc_data.swD;
+          rc_msg.swE = rc_data.swE;
+          rc_msg.pot = rc_data.pot;
+          rc_msg.x_cnt = rc_data.x_cnt;
+          rc_msg.y_cnt = rc_data.y_cnt;
+          rc_msg.cursor = rc_data.cursor;
+          rc_msg.trimLeft = rc_data.trimLeft;
+          rc_msg.trimRight = rc_data.trimRight;
+
+          rc_data_pub.Publish(rc_msg);
         }
       }
     }

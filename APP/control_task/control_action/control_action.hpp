@@ -20,9 +20,9 @@
 #include <cstddef>
 
 // ===== 摇杆 + 坐标常量 =====
-inline constexpr uint16_t kJoyCenter = 32767;
-inline constexpr uint16_t kJoyDeadZoneLeft = 3500;
-inline constexpr uint16_t kJoyDeadZoneRight = 2000;
+inline constexpr uint16_t kJoyCenter = 985;
+inline constexpr uint16_t kJoyDeadZoneLeft = 100;
+inline constexpr uint16_t kJoyDeadZoneRight = 100;
 inline constexpr float kDegToRad = M_PI / 180.0f;
 
 #ifndef ABS
