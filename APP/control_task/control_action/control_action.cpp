@@ -115,6 +115,10 @@ void ActionController::Start_(const ActionConfig& config) {
     ramp_.chassis_approach_active = config.enable_chassis_approach;
     ramp_.chassis_release_pending = config.release_chassis;
 
+    ramp_.dwell_ms = config.dwell_ms;        
+    ramp_.dwell_timer_ms = 0;                
+
+
 }
 
 
@@ -195,9 +199,14 @@ void ActionController::Step_(float dt) {
         ramp_.chassis_released = true;
     }
 
-
-    if (all_done) ramp_.active = false;
+    if (all_done) {
+        ramp_.dwell_timer_ms += (uint16_t)(dt * 1000.0f);   // dt=0.005s → +5ms
+        if (ramp_.dwell_timer_ms >= ramp_.dwell_ms) {
+            ramp_.active = false;
+        }
+    }
 }
+
 
 // ---- private: 渐变状态 → 消息 ----
 
@@ -346,6 +355,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step2.priorities.pick_extend = 0;
         step2.step_done_mask = 0x04;
         step2.enable_chassis_approach = true;
+        step2.dwell_ms = 200;                    // ← 加：伸到头等200ms吸稳
         AddStep(step2);
 
         // Step 3: 电梯升到安全高度
@@ -411,6 +421,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7.priorities.pick_lift    = 0;
         step7.step_done_mask = 0x01;
         step7.skip_safety = true;
+        step7.dwell_ms = 250;                    // ← 加：关泵后等250ms破真空
         if (close_pump_at_end) {
             step7.pump_cmd_done  = -1;  // 关泵
             step7.valve_cmd_done = -1;  // 关阀
@@ -436,6 +447,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step2.priorities.pick_extend = 0;
         step2.step_done_mask = 0x04;
         step2.enable_chassis_approach = true;
+        step2.dwell_ms = 200;                    // ← 加：伸到头等200ms吸稳
         AddStep(step2);
 
         // Step 3: 电梯升到安全高度
@@ -501,6 +513,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7.priorities.pick_lift    = 0;
         step7.step_done_mask = 0x01;
         step7.skip_safety = true;
+        step7.dwell_ms = 250;                    // ← 加：关泵后等200ms破真空
         if (close_pump_at_end) {
             step7.pump_cmd_done  = -1;  // 关泵
             step7.valve_cmd_done = -1;  // 关阀
@@ -525,7 +538,7 @@ void ActionController::GrabKFS_Arena(const RobotPose& pose) {
     // Step 1: 先抬到最高，冻结 yaw 和 extend 不动
     ActionConfig step1;
     step1.target = pose;
-    step1.target.pick_lift_mm     = 392.6f;
+    step1.target.pick_lift_mm     = 442.6f;
     step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
     step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
     step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;

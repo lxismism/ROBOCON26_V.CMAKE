@@ -90,8 +90,12 @@ struct RampState {
     // 底盘逼近
     bool chassis_approach_active = false;  // 当前步是否触发底盘前移逼近
     
-    bool chassis_released = false;  // 底盘已解锁
+    bool chassis_released = false;
     bool chassis_release_pending = false;
+
+    uint16_t dwell_ms = 0;          // 本步驻留时间（毫秒）
+    uint16_t dwell_timer_ms = 0;    // 驻留计时器（毫秒）
+
 
 };
 
@@ -153,7 +157,9 @@ struct ActionConfig {
     int8_t valve_cmd_done = 0;
 
     bool enable_chassis_approach = false;  // 本步期间触发底盘逼近
-    bool release_chassis = false;  // 本步完成后通知底盘可以出发
+    bool release_chassis = false;
+    uint16_t dwell_ms = 0;          // 到位后驻留时间（毫秒），0=不等
+
 
 
 };
