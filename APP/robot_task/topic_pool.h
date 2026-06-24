@@ -40,6 +40,12 @@ typedef enum {
     Arena = 3,
 }RobotMode_t;
 
+typedef enum {
+    Normal = 1,
+    Special = 2,
+    Debug = 3,
+}RobotCase_t;
+
 typedef struct {
   bool btnY;
   bool btnA;

@@ -20,27 +20,27 @@ struct CRSF_broadcast_frame_t {
 };
 
 //按钮
-enum class RC_BTN_State_t {
+enum class RC_BTN_State_t : uint8_t {
     RELESED,
     PRESSED,
 };
 
 
 //两段开关
-enum class RC_2_POS_SW_State_t {
+enum class RC_2_POS_SW_State_t : uint8_t {
     UP,
     DOWN
 };
 
 
 //三段开关
-enum class RC_3_POS_SW_State_t {
+enum class RC_3_POS_SW_State_t : uint8_t {
     UP, //后端按下，前端翘起
     MIDDLE,
     DOWN
 };
 
-enum class RC_Trim_State_t {
+enum class RC_Trim_State_t : uint8_t {
     UP,
     DOWN,
     LEFT,
