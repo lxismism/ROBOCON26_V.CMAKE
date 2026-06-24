@@ -69,6 +69,9 @@ extern float position_center_distance;
 extern float position_correction_x;
 extern float position_correction_y;
 
+extern float position_close_x;
+extern float position_close_y;
+
 
 // 控制模式状态
 extern RobotMode_t robot_mode;
@@ -632,8 +635,8 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
             // 偏移叠加到底盘目标（动作执行期间 state_aim_cmd 也需要跟着变）
             if (MF_plan_run_i < MF_plan_record_i && MF_plan[MF_plan_run_i].is_valid) {
-                state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0] + MF_close_position_x;
-                state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1] + MF_close_position_y;
+                position_close_x = MF_close_position_x;
+                position_close_y = MF_close_position_y;
             }
         }
 
@@ -823,7 +826,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         
     } else {
         state_target_cmd.linear_x_ = robot_position_Arena_withR2[Arena_x][0];
-        state_target_cmd.linear_y_ = robot_position_Arena_withR2[Arena_x][1] + Arena_close_position_y;
+        state_target_cmd.linear_y_ = robot_position_Arena_withR2[Arena_x][1];
+        position_close_y = Arena_close_position_y;
         Aim_State_xy_Process();
 
         state_target_cmd.omega_    = robot_position_Arena_withR2[Arena_x][2];
