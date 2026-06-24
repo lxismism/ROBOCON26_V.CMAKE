@@ -415,7 +415,7 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
     if(control_xbox_cmd.btnY == 1 && control_xbox_cmd_Last.btnY == 0){
         //在这里面配置红外发送
-        omni_ir_cmd_push.tx_data = CMD_RELEASE_CLAW;
+        omni_ir_cmd_push.tx_data = CMD_MC_RELEASE_CLAW;
         omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
     }
 

@@ -203,7 +203,7 @@ void irSingleOnFrame(IR_FRAME_t *frame);
 void irWhisperOnFrame(IR_FRAME_t *frame);
 
 //IrSingle ir_test(&uart10_port, nullptr);
-uint16_t biggest_used_uid = 0;
+uint16_t biggest_used_uid = 1;
 IrSingle ir_w(&uart10_port, irSingleOnFrame);
 IrSingle ir_e(&uart9_port, irSingleOnFrame);
 IrSingle ir_s(&uart6_port, irSingleOnFrame);
@@ -215,6 +215,8 @@ IrSingle *IrSingle_map[4] = {&ir_n, &ir_e, &ir_s, &ir_w};
 void omniIrOnUpdate(IR_FRAME_t *frame);
 
 OmniIr omni_ir(IrSingle_map, 4, omniIrOnUpdate);
+
+osMutexId_t ir_uid_mutex = NULL;
 
 // IMU姿态传感器解析器 及 Topic发布者
 WitMotionImu wit_imu;
@@ -256,13 +258,6 @@ pub_ir_cmd omni_ir_cmd_pop{};
 
 TypedTopicSubscriber<pub_ir_cmd> whisper_ir_cmd_sub("whisper_ir_cmd", 8);
 pub_ir_cmd whisper_ir_pop{};
-
-TypedTopicSubscriber<QR_code_cmd_t> qr_code_cmd_sub("qr_code_cmd", 8);
-QR_code_cmd_t qr_code_cmd{};
-
-TypedTopicPublisher<QR_code_data_t> qr_code_data_pub("qr_code_data");
-QR_code_data_t qr_code_data{};
-
 
 // usb
 osSemaphoreId_t usbcdc_rx_semphore = NULL;
@@ -389,6 +384,16 @@ uint8_t comServiceInit() {
   if (uart2_rx_semphore == NULL || uart2_port.startRx() != HAL_OK) {
     return 1;
   }
+
+  const osMutexAttr_t ir_uid_mutex_attr = {
+    .name = "ir_uid_mutex"
+  };
+  
+  ir_uid_mutex = osMutexNew(&ir_uid_mutex_attr);
+  if (ir_uid_mutex == NULL) {
+    return 1;
+  }
+
   // Xbox控制器初始化
   xbox_remote.init();
 
@@ -873,8 +878,6 @@ void omniIrSendTask(void *argument) {
     return;
   }
 
-  uint16_t uid = 1;
-
   TickType_t currentTime = xTaskGetTickCount();
 
   auto getNewUid = [](uint16_t current_uid) -> uint16_t {
@@ -897,8 +900,10 @@ void omniIrSendTask(void *argument) {
   {
     if(omni_ir_cmd_sub.TryGet(&omni_ir_cmd_pop)) {
       //根据接收到的指令发送红外数据
-      omni_ir.sendData(uid, omni_ir_cmd_pop.tx_data);
-      uid = getNewUid(uid);
+      omni_ir.sendData(biggest_used_uid, omni_ir_cmd_pop.tx_data);
+      osMutexAcquire(ir_uid_mutex, osWaitForever);
+      biggest_used_uid = getNewUid(biggest_used_uid);
+      osMutexRelease(ir_uid_mutex);
     }
     vTaskDelayUntil(&currentTime, 10);
   }
@@ -910,8 +915,6 @@ void whisperIrSendTask(void *argument) {
   if(!whisper_ir_cmd_sub.IsValid()) {
     return;
   }
-
-  uint16_t uid = 125;//临时区分whisper和omni
 
   TickType_t currentTime = xTaskGetTickCount();
 
@@ -936,10 +939,12 @@ void whisperIrSendTask(void *argument) {
     if(whisper_ir_cmd_sub.TryGet(&whisper_ir_pop)) {
       //根据接收到的指令发送红外数据
       uint32_t first_try_time = HAL_GetTick();
-      while(ir_whisper.trySend(uid, whisper_ir_pop.tx_data) != HAL_OK && HAL_GetTick() - first_try_time < kTrySendTimeout) {
+      while(ir_whisper.trySend(biggest_used_uid, whisper_ir_pop.tx_data) != HAL_OK && HAL_GetTick() - first_try_time < kTrySendTimeout) {
           osDelay(20);
       }
-      uid = getNewUid(uid);
+      osMutexAcquire(ir_uid_mutex, osWaitForever);
+      biggest_used_uid = getNewUid(biggest_used_uid);
+      osMutexRelease(ir_uid_mutex);
     }
     vTaskDelayUntil(&currentTime, 10);
   }
