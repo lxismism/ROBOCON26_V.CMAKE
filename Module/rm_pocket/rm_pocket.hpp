@@ -20,26 +20,33 @@ struct CRSF_broadcast_frame_t {
 };
 
 //按钮
-enum class RC_BTN_State_t {
+enum class RC_BTN_State_t : uint8_t {
     RELESED,
     PRESSED,
 };
 
 
 //两段开关
-enum class RC_2_POS_SW_State_t {
+enum class RC_2_POS_SW_State_t : uint8_t {
     UP,
     DOWN
 };
 
 
 //三段开关
-enum class RC_3_POS_SW_State_t {
+enum class RC_3_POS_SW_State_t : uint8_t {
     UP, //后端按下，前端翘起
     MIDDLE,
     DOWN
 };
 
+enum class RC_Trim_State_t : uint8_t {
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT,
+    MIDDLE
+};
 class rmPocket {
 
     enum class CRSF_rx_state_t {
@@ -70,6 +77,11 @@ class rmPocket {
         RC_2_POS_SW_State_t swD_last;
         RC_2_POS_SW_State_t swE;        //阴刻有SE的按钮
         RC_2_POS_SW_State_t swE_last;
+
+        RC_Trim_State_t trimLeft;        //左微调按钮
+        RC_Trim_State_t trimLeft_last;
+        RC_Trim_State_t trimRight;       //右微调按钮
+        RC_Trim_State_t trimRight_last;
 
         //电位器 往左推小，值域172-1810 实际可能取不到端点
         uint16_t pot;                   //阴刻有S1的拨盘

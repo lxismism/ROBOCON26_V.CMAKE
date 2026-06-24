@@ -106,7 +106,6 @@ void ActionController::Start_(const ActionConfig& config) {
     }
 
     ramp_.active = true;
-
     // 泵/阀切换暂存（本步首帧发出）
     ramp_.pending_pump_cmd  = config.pump_cmd;
     ramp_.pending_valve_cmd = config.valve_cmd;
@@ -114,6 +113,8 @@ void ActionController::Start_(const ActionConfig& config) {
     ramp_.valve_cmd_at_done = config.valve_cmd_done;
 
     ramp_.chassis_approach_active = config.enable_chassis_approach;
+    ramp_.chassis_release_pending = config.release_chassis;
+
 }
 
 
@@ -189,6 +190,12 @@ void ActionController::Step_(float dt) {
     if (ramp_.step_done_mask & 0x08) all_done &= weapon_lift_done;
     if (ramp_.step_done_mask & 0x10) all_done &= weapon_extend_done;
     if (ramp_.step_done_mask & 0x20) all_done &= lift_done;
+
+    if (all_done && ramp_.chassis_release_pending) {
+        ramp_.chassis_released = true;
+    }
+
+
     if (all_done) ramp_.active = false;
 }
 
@@ -231,6 +238,7 @@ void ActionController::AddStep(const ActionConfig& config) {
 
 void ActionController::RunSteps() {
     step_index_ = 0;
+    ramp_.chassis_released = false;
     // 第一步在 Update 中自动启动
 }
 
@@ -363,16 +371,30 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step4.skip_safety = true;
         AddStep(step4);
 
-        // Step 5: 吸取手云台转到放置角度
-        ActionConfig step5;
-        step5.target = pose_Place;
-        step5.target.pick_extend_mm   = 0.0f;
-        step5.target.pick_lift_mm     = 200.6f;
-        step5.priorities.pick_yaw     = 0;
-        step5.priorities.pick_lift    = 1;
-        step5.step_done_mask = 0x07;
-        step5.skip_safety = true;
-        AddStep(step5);
+        // Step 5a: 只转云台到 0°，完成后释放底盘
+        ActionConfig step5a;
+        step5a.target = pose_Place;
+        step5a.target.pick_extend_mm   = 0.0f;
+        step5a.target.pick_lift_mm     = 390.6f;
+        step5a.target.pick_yaw_deg     = 0.0f;           // ← 转到 0°
+        step5a.priorities.pick_yaw     = 0;
+        step5a.step_done_mask = 0x02;                     // ← 只等 yaw
+        step5a.skip_safety = true;
+        step5a.release_chassis = true;                    // ← 解锁底盘！
+        AddStep(step5a);
+
+        // Step 5b: 抬升 + 伸出 + 转放置角度
+        ActionConfig step5b;
+        step5b.target = pose_Place;
+        step5b.target.pick_extend_mm   = 0.0f;
+        step5b.target.pick_lift_mm     = 390.6f;
+        step5b.priorities.pick_yaw     = 0;
+        step5b.priorities.pick_lift    = 1;
+        step5b.priorities.pick_extend  = 2;
+        step5b.step_done_mask = 0x03;                     // ← 等 yaw + lift
+        step5b.skip_safety = true;
+        AddStep(step5b);
+
 
         // Step 6: 吸取手伸缩伸到放置位置
         ActionConfig step6;
@@ -419,7 +441,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         // Step 3: 电梯升到安全高度
         ActionConfig step3;
         step3.target = pose_Place;
-        step3.target.pick_lift_mm     = 390.6f;
+        step3.target.pick_lift_mm     = 440.6f;
         step3.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
         step3.target.pick_extend_mm   = pose_Grab.pick_extend_mm;
         step3.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
@@ -432,29 +454,42 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         ActionConfig step4;
         step4.target = pose_Place;
         step4.target.pick_extend_mm   = 0.0f;
-        step4.target.pick_lift_mm     = 390.6f;
+        step4.target.pick_lift_mm     = 440.6f;
         step4.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
         step4.priorities.pick_extend  = 0;
         step4.step_done_mask = 0x04;
         step4.skip_safety = true;
         AddStep(step4);
 
-        // Step 5: 吸取手云台转到放置角度
-        ActionConfig step5;
-        step5.target = pose_Place;
-        step5.target.pick_extend_mm   = 0.0f;
-        step5.target.pick_lift_mm     = 390.6f;
-        step5.priorities.pick_yaw     = 0;
-        step5.priorities.pick_lift    = 1;
-        step5.priorities.pick_extend  = 2;
-        step5.step_done_mask = 0x07;
-        step5.skip_safety = true;
-        AddStep(step5);
+        // Step 5a: 只转云台到 0°，完成后释放底盘
+        ActionConfig step5a;
+        step5a.target = pose_Place;
+        step5a.target.pick_extend_mm   = 0.0f;
+        step5a.target.pick_lift_mm     = 440.6f;
+        step5a.target.pick_yaw_deg     = 0.0f;           // ← 转到 0°
+        step5a.priorities.pick_yaw     = 0;
+        step5a.step_done_mask = 0x02;                     // ← 只等 yaw
+        step5a.skip_safety = true;
+        step5a.release_chassis = true;                    // ← 解锁底盘！
+        AddStep(step5a);
+
+        // Step 5b: 抬升 + 伸出 + 转放置角度
+        ActionConfig step5b;
+        step5b.target = pose_Place;
+        step5b.target.pick_extend_mm   = 0.0f;
+        step5b.target.pick_lift_mm     = 440.6f;
+        step5b.priorities.pick_yaw     = 0;
+        step5b.priorities.pick_lift    = 1;
+        step5b.priorities.pick_extend  = 2;
+        step5b.step_done_mask = 0x03;                     // ← 等 yaw + lift
+        step5b.skip_safety = true;
+        AddStep(step5b);
+
 
         // Step 6: 吸取手伸缩伸到放置位置
         ActionConfig step6;
         step6.target = pose_Place;
-        step6.target.pick_lift_mm     = 390.6f;
+        step6.target.pick_lift_mm     = 440.6f;
         step6.priorities.pick_extend  = 0;
         step6.step_done_mask = 0x04;
         step6.skip_safety = true;
