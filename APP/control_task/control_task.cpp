@@ -61,6 +61,9 @@ float position_center_distance = 0.25f;
 float position_correction_x = 0.0f;
 float position_correction_y = -position_center_distance;
 
+float position_close_x = 0.0f;
+float position_close_y = 0.0f;
+
 
 // TypedTopicSubscriber<pub_ir_data> control_ir_sub("ir_data", 8);
 // pub_ir_data control_ir_msg{};
@@ -71,7 +74,7 @@ float position_correction_y = -position_center_distance;
 // ===== 控制状态变量 =====
 RobotMode_t robot_mode = MC; // 当前机器人模式，默认为MC
 RobotMode_t robot_mode_last = MC; // 当前机器人模式，默认为MC
-RobotCase_t robot_case = Normal; // 当前机器人模式，默认为Normal
+RobotCase_t robot_case = Normal_case; // 当前机器人模式，默认为Normal
 
 float rm_angle_deg;
 float v_aim;
@@ -188,7 +191,7 @@ void controlTask(void *argument) {
             // }
             switch (control_rm_cmd.swB){
                 case RC_3_POS_SW_State_t::UP : {
-                    robot_case = Normal;
+                    robot_case = Normal_case;
                     break;
                 }
                 case RC_3_POS_SW_State_t::MIDDLE :{
@@ -230,10 +233,21 @@ void controlTask(void *argument) {
                 }
             }
             robot_mode_last = robot_mode;
-            Chassis_RM_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
-
-            chassis_data_pub.Publish(robot_v_aim_cmd);
+            
         }
+        Chassis_RM_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
+
+        // 消费边沿，防止同一帧数据被重复处理
+        control_rm_cmd.swA_last = control_rm_cmd.swA;
+        control_rm_cmd.swB_last = control_rm_cmd.swB;
+        control_rm_cmd.swC_last = control_rm_cmd.swC;
+        control_rm_cmd.swD_last = control_rm_cmd.swD;
+        control_rm_cmd.swE_last = control_rm_cmd.swE;
+        control_rm_cmd.trimLeft_last = control_rm_cmd.trimLeft;
+        control_rm_cmd.trimRight_last = control_rm_cmd.trimRight;
+
+
+        chassis_data_pub.Publish(robot_v_aim_cmd);
         //test end
 
         /* 从Position订阅者中获取数据 */
@@ -241,8 +255,8 @@ void controlTask(void *argument) {
             control_position.frame_id = control_position_msg.frame_id;
             control_position.yaw = -control_position_msg.yaw;
             control_position.yaw_speed = control_position_msg.yaw_speed;
-            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw*kDegToRad) - position_correction_x ;
-            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw*kDegToRad) - position_correction_y ;
+            control_position.x = -control_position_msg.x + position_center_distance*sin(control_position.yaw*kDegToRad) - position_correction_x - position_close_x;
+            control_position.y =  control_position_msg.y - position_center_distance*cos(control_position.yaw*kDegToRad) - position_correction_y - position_close_y;
 
             state_now_cmd.linear_x_ = control_position.x;
             state_now_cmd.linear_y_ = control_position.y;

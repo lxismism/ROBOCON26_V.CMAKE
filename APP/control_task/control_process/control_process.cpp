@@ -39,7 +39,7 @@ static constexpr float kWeaponExtendStep = 0.4f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
 // ===== MF 自动逼近参数（可配） =====
-float kMF_ApproachDist  = 0.18f;   // 底盘前移距离 (m)，例如 0.07 = 7cm
+float kMF_ApproachDist  = 0.23f;   // 底盘前移距离 (m)，例如 0.07 = 7cm
 float kMF_ApproachSpeed = 0.30f;   // 前移/后退速度 (m/s)，实测后改
 
 // ===== 外部变量（定义在 control_task.cpp，此处声明引用） =====
@@ -68,6 +68,9 @@ extern pub_Position_Data control_position;
 extern float position_center_distance;
 extern float position_correction_x;
 extern float position_correction_y;
+
+extern float position_close_x;
+extern float position_close_y;
 
 
 // 控制模式状态
@@ -250,7 +253,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
     rm_cmd.omega_    = -JoyToVelocity(control_rm_cmd.joyRHori, kJoyDeadZoneRight, MAX_VELOCITY_ANGULAR);
 
     switch (robot_case) {
-        case RobotCase_t::Normal : {
+        case RobotCase_t::Normal_case : {
             Normal_control_Process();
             break;
         }
@@ -499,6 +502,8 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     static float   mf_approach_offset = 0.0f;   // 底盘逼近偏移量 (mm)，渐变值
     static int16_t mf_approach_facing = 0;      // 逼近时锁定 KFS 朝向
 
+    static bool mf_chassis_freed = false;   // 底盘已解锁出发
+
     bool MF_plan_run_Flag_Last = MF_plan_run_Flag;
     bool MF_plan_record_Flag_Last = MF_plan_record_Flag;
 
@@ -600,13 +605,17 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && mf_placing) {
             mf_placing = false;
             MF_action_Flag = false;
-            MF_plan[MF_plan_run_i].is_picking = false;
-            MF_plan_run_i++;
-            MF_xy_complete_Flag = false;
-            MF_omega_complete_Flag = false;
-            MF_omega_control_Flag = 0;
-            last_mf_action = -1;  // 重置，下个拾取点不受限制
+            last_mf_action = -1;
+            // 兜底：如果底盘解锁未触发（异常），在这里收尾
+            if (!mf_chassis_freed) {
+                MF_plan_run_i++;
+                MF_xy_complete_Flag = false;
+                MF_omega_complete_Flag = false;
+                MF_omega_control_Flag = 0;
+            }
+            mf_chassis_freed = false;
         }
+
 
 
         // === 底盘逼近偏移渐变（每帧运行，不受 MF_action_Flag 限制） ===
@@ -632,8 +641,31 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
             // 偏移叠加到底盘目标（动作执行期间 state_aim_cmd 也需要跟着变）
             if (MF_plan_run_i < MF_plan_record_i && MF_plan[MF_plan_run_i].is_valid) {
-                state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0] + MF_close_position_x;
-                state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1] + MF_close_position_y;
+                position_close_x = MF_close_position_x;
+                position_close_y = MF_close_position_y;
+            }
+        }
+
+        // === 底盘解锁检测：Step5a 云台转到0° → 底盘出发去下一个点 ===
+        if (mf_placing && !mf_chassis_freed && upbody_ctrl.IsChassisReleased()) {
+            mf_chassis_freed = true;
+            MF_plan_run_i++;
+            MF_xy_complete_Flag = false;
+            MF_omega_complete_Flag = false;
+            MF_omega_control_Flag = 0;
+            last_mf_action = -1;
+            // 清除逼近偏移
+            mf_approach_offset = 0.0f;
+            MF_close_position_x = 0.0f;
+            MF_close_position_y = 0.0f;
+            position_close_x = 0.0f;
+            position_close_y = 0.0f;
+            // 设下一个底盘目标
+            if (MF_plan_run_i < MF_plan_record_i && MF_plan[MF_plan_run_i].is_valid) {
+                state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0];
+                state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1];
+                state_target_cmd.omega_    = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
+                Traject_chassis.Set_Ref(state_target_cmd);
             }
         }
 
@@ -723,8 +755,8 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
     predict_yaw = state_now_cmd.omega_ + (control_position.yaw_speed/kDegToRad)*yaw_delay_time;
 
-    position_correction_x = position_correction_x + 0.001f * xbox_cmd.linear_x_;
-    position_correction_y = position_correction_y + 0.001f * xbox_cmd.linear_y_;
+    position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
+    position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
     Traject_chassis.Run(state_now_cmd,(RobotMode_t)MF);
     robot_v_aim_cmd = Traject_chassis.Get_output_b();
     // Aim_State_xy_Process();
@@ -823,7 +855,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         
     } else {
         state_target_cmd.linear_x_ = robot_position_Arena_withR2[Arena_x][0];
-        state_target_cmd.linear_y_ = robot_position_Arena_withR2[Arena_x][1] + Arena_close_position_y;
+        state_target_cmd.linear_y_ = robot_position_Arena_withR2[Arena_x][1];
+        position_close_y = Arena_close_position_y;
         Aim_State_xy_Process();
 
         state_target_cmd.omega_    = robot_position_Arena_withR2[Arena_x][2];
