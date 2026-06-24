@@ -89,6 +89,10 @@ struct RampState {
 
     // 底盘逼近
     bool chassis_approach_active = false;  // 当前步是否触发底盘前移逼近
+    
+    bool chassis_released = false;  // 底盘已解锁
+    bool chassis_release_pending = false;
+
 };
 
 
@@ -149,6 +153,8 @@ struct ActionConfig {
     int8_t valve_cmd_done = 0;
 
     bool enable_chassis_approach = false;  // 本步期间触发底盘逼近
+    bool release_chassis = false;  // 本步完成后通知底盘可以出发
+
 
 };
 
@@ -187,6 +193,7 @@ public:
     // ---- 查询 ----
     bool IsActive() const;
     bool IsApproachPhase() const { return ramp_.active && ramp_.chassis_approach_active; }
+    bool IsChassisReleased() const { return ramp_.chassis_released; }
     void SyncState(const RobotPose& current);
 
 
