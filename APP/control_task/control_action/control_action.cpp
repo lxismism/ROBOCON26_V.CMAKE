@@ -375,7 +375,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         ActionConfig step5a;
         step5a.target = pose_Place;
         step5a.target.pick_extend_mm   = 0.0f;
-        step5a.target.pick_lift_mm     = 440.6f;
+        step5a.target.pick_lift_mm     = 390.6f;
         step5a.target.pick_yaw_deg     = 0.0f;           // ← 转到 0°
         step5a.priorities.pick_yaw     = 0;
         step5a.step_done_mask = 0x02;                     // ← 只等 yaw
@@ -387,7 +387,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         ActionConfig step5b;
         step5b.target = pose_Place;
         step5b.target.pick_extend_mm   = 0.0f;
-        step5b.target.pick_lift_mm     = 440.6f;
+        step5b.target.pick_lift_mm     = 390.6f;
         step5b.priorities.pick_yaw     = 0;
         step5b.priorities.pick_lift    = 1;
         step5b.priorities.pick_extend  = 2;
