@@ -485,6 +485,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step5a.release_chassis = true;                    // ← 解锁底盘！
         AddStep(step5a);
 
+        
         // Step 5b: 抬升 + 伸出 + 转放置角度
         ActionConfig step5b;
         step5b.target = pose_Place;
