@@ -37,17 +37,12 @@ pub_chassis_cmd rm_cmd{};
 static TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");      
 static pub_upbody_cmd upbody_cmd_msg{};                                   
 
-<<<<<<< HEAD
-TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");                
-pub_ir_cmd ir_cmd{};
-=======
 TypedTopicPublisher<pub_ir_cmd> omni_ir_cmd_pub("omni_ir_cmd");                
 pub_ir_cmd omni_ir_cmd_push{};
 
 TypedTopicPublisher<pub_ir_cmd> whisper_ir_cmd_pub("whisper_ir_cmd");
 pub_ir_cmd whisper_ir_cmd_push{};
 
->>>>>>> origin/main
 // static TypedTopicPublisher<QR_code_cmd_t> qr_code_cmd_pub("qr_code_cmd");   
 // static QR_code_cmd_t qr_code_cmd{};
 
