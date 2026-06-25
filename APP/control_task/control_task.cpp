@@ -38,8 +38,7 @@ static TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");
 static pub_upbody_cmd upbody_cmd_msg{};                                   
 
 TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");                
-pub_ir_cmd ir_cmd{};                                               
-
+pub_ir_cmd ir_cmd{};
 // static TypedTopicPublisher<QR_code_cmd_t> qr_code_cmd_pub("qr_code_cmd");   
 // static QR_code_cmd_t qr_code_cmd{};
 
@@ -51,6 +50,7 @@ pub_Xbox_Data control_xbox_cmd_Last{};
 
 TypedTopicSubscriber<pub_RC_Data> control_rc_sub("rc", 8);
 pub_RC_Data control_rm_cmd{};
+pub_RC_Data control_rm_cmd_last{};
 
 TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
 pub_Position_Data control_position_msg{};
@@ -86,8 +86,7 @@ bool Normal_control_mode = true;
 
 int8_t MC_y = 0;
 float MC_close_position_x = 0.0f;
-bool MC_headless_xy_mode = false;
-bool MC_headless_omega_mode = false;
+bool MC_headless_mode = false;
 const float MC_position_correction_y = 0.03f;
 
 
@@ -236,15 +235,16 @@ void controlTask(void *argument) {
             
         }
         Chassis_RM_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
+        control_rm_cmd_last = control_rm_cmd;
 
-        // 消费边沿，防止同一帧数据被重复处理
-        control_rm_cmd.swA_last = control_rm_cmd.swA;
-        control_rm_cmd.swB_last = control_rm_cmd.swB;
-        control_rm_cmd.swC_last = control_rm_cmd.swC;
-        control_rm_cmd.swD_last = control_rm_cmd.swD;
-        control_rm_cmd.swE_last = control_rm_cmd.swE;
-        control_rm_cmd.trimLeft_last = control_rm_cmd.trimLeft;
-        control_rm_cmd.trimRight_last = control_rm_cmd.trimRight;
+        // // 消费边沿，防止同一帧数据被重复处理
+        // control_rm_cmd.swA_last = control_rm_cmd.swA;
+        // control_rm_cmd.swB_last = control_rm_cmd.swB;
+        // control_rm_cmd.swC_last = control_rm_cmd.swC;
+        // control_rm_cmd.swD_last = control_rm_cmd.swD;
+        // control_rm_cmd.swE_last = control_rm_cmd.swE;
+        // control_rm_cmd.trimLeft_last = control_rm_cmd.trimLeft;
+        // control_rm_cmd.trimRight_last = control_rm_cmd.trimRight;
 
 
         chassis_data_pub.Publish(robot_v_aim_cmd);
@@ -261,6 +261,7 @@ void controlTask(void *argument) {
             state_now_cmd.linear_x_ = control_position.x;
             state_now_cmd.linear_y_ = control_position.y;
             state_now_cmd.omega_ = control_position.yaw;
+            predict_yaw = state_now_cmd.omega_ + (control_position.yaw_speed/kDegToRad)*yaw_delay_time;
         }
 
         /* 从xbox数据订阅者中获取数据 */

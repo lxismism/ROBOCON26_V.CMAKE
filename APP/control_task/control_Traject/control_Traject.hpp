@@ -144,7 +144,7 @@ private:
         float_t dy_PA = now.y - start.y;
 
         //判断轨迹是否完成
-        if(L - s_now < 0.05f){
+        if(L - s_now < 0.02f){
             //如果完成就不会更新s，让后续不再进入轨迹
             s_now = L;
             Traj_complete_Flag = true;
@@ -390,7 +390,6 @@ private:
     float_t dy_ds;
     float_t dyaw_ds;
 
-    
     const float_t Acc_linear = 1.2f;
     const float_t Dec_linear = 0.9f;
     const float_t v_Max = 2.1f;
@@ -412,8 +411,8 @@ private:
     float_t dt;
     uint32_t DWT_CNT;
 
-    PID_t track_path_xy{.Kp = 4.88f,.Ki = 0.03f,.Kd = 0.75f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-    PID_t track_lateral_xy{.Kp = 6.0f,.Ki = 0.03f,.Kd = 0.75f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-    PID_t track_omega{.Kp = 4.10f,.Ki = 0.1f,.Kd = 0.7f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
+    PID_t track_path_xy{.Kp = 4.88f,.Ki = 0.03f,.Kd = 0.55f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+    PID_t track_lateral_xy{.Kp = 3.0f,.Ki = 0.03f,.Kd = 0.35f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+    PID_t track_omega{.Kp = 2.60f,.Ki = 1.0f,.Kd = 0.3f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
 
 };

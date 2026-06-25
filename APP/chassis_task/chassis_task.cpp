@@ -161,13 +161,13 @@ const float robot_position_Arena_withR2[3][3] = {//用于在九宫格自动控�
 
 const float robot_position_MC[4][3] = {//用于在武馆自动控制车辆移动
   //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
-    {0.6f*field_side, 2.2187f - MC_position_correction_y, 90.0f*field_side},
+    {0.5f*field_side, 2.2187f - MC_position_correction_y, 90.0f*field_side},
 
-    {0.6f*field_side, 2.4187f - MC_position_correction_y, 90.0f*field_side},
+    {0.5f*field_side, 2.4187f - MC_position_correction_y, 90.0f*field_side},
 
-    {0.6f*field_side, 2.6187f - MC_position_correction_y, 90.0f*field_side},
+    {0.5f*field_side, 2.6187f - MC_position_correction_y, 90.0f*field_side},
 
-    {0.6f*field_side, 2.8187f - MC_position_correction_y, 90.0f*field_side}
+    {0.5f*field_side, 2.8187f - MC_position_correction_y, 90.0f*field_side}
 };
 
 
