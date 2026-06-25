@@ -9,9 +9,9 @@ constexpr int kMaxDataLength = 32;
 constexpr uint32_t kSendCd = 175;
 constexpr uint32_t kTrySendTimeout = 300;
 
-constexpr uint8_t CMD_RELEASE_CLAW  = 0x0A;
-constexpr uint8_t CMD_PICK_NEW      = 0x1A;
-constexpr uint8_t CMD_ENTER_MF      = 0x1B;
+constexpr uint8_t CMD_MC_RELEASE_CLAW  = 0x0A;
+constexpr uint8_t CMD_MC_PICK_NEW      = 0x1A;
+constexpr uint8_t CMD_MC_ENTER_MF      = 0x1B;
 
 struct IR_FRAME_t{
     uint16_t uid;

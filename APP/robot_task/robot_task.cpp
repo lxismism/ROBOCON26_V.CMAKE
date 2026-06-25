@@ -28,7 +28,7 @@
 /* module层接口头文件 */
 
 /* Definitions for TaskHand */
-extern osThreadId_t CAN1_Send_TaskHandle; 
+extern osThreadId_t CAN1_Send_TaskHandle;
 extern osThreadId_t CAN2_Send_TaskHandle;
 extern osThreadId_t CAN3_Send_TaskHandle;
 extern osThreadId_t uart2ProcessTaskHandle;
@@ -37,6 +37,7 @@ extern osThreadId_t uart4ProcessTaskHandle;
 extern osThreadId_t uart5ProcessTaskHandle;
 extern osThreadId_t uart1ProcessTaskHandle;
 extern osThreadId_t uart6ProcessTaskHandle;
+extern osThreadId_t uart8ProcessTaskHandle;
 extern osThreadId_t uart9ProcessTaskHandle;
 extern osThreadId_t uart10ProcessTaskHandle; 
 extern osThreadId_t Debug_TaskHandle;
@@ -47,6 +48,7 @@ extern osThreadId_t usbcdcSendTaskHandle;
 extern osThreadId_t PosCtrlTaskHandle;
 extern osThreadId_t DebugSerialTaskHandle;
 extern osThreadId_t omniIrSendTaskHandle;
+extern osThreadId_t whisperIrSendTaskHandle;
 
 
 void osTaskInit(void) {
@@ -167,6 +169,14 @@ void osTaskInit(void) {
   uart6ProcessTaskHandle =
       osThreadNew(uart6RxProcessTask, NULL, &Uart6ProcessTaskHandle_attributes);
 
+  const osThreadAttr_t Uart8ProcessTaskHandle_attributes = {
+      .name = "Uart8Process_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart8ProcessTaskHandle =
+      osThreadNew(uart8RxProcessTask, NULL, &Uart8ProcessTaskHandle_attributes);
+
   const osThreadAttr_t Uart1ProcessTaskHandle_attributes = {
       .name = "Uart1Process_TaskHandle",
       .stack_size = 128 * 4,
@@ -206,4 +216,12 @@ void osTaskInit(void) {
   };
   omniIrSendTaskHandle =
       osThreadNew(omniIrSendTask, NULL, &OmniIrSendTaskHandle_attributes);
+
+  const osThreadAttr_t WhisperIrSendTaskHandle_attributes = {
+      .name = "WhisperIRSend_TaskHandle",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  whisperIrSendTaskHandle =
+      osThreadNew(whisperIrSendTask, NULL, &WhisperIrSendTaskHandle_attributes);
 }

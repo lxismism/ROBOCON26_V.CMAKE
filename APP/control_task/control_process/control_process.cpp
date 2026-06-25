@@ -49,8 +49,8 @@ extern TypedTopicPublisher<pub_chassis_cmd> chassis_data_pub;
 extern pub_chassis_cmd xbox_cmd;
 extern pub_chassis_cmd rm_cmd;
 
-extern TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub;                
-extern pub_ir_cmd ir_cmd;
+extern TypedTopicPublisher<pub_ir_cmd> omni_ir_cmd_pub;                
+extern pub_ir_cmd omni_ir_cmd_push;
 
 // 订阅者
 extern TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub;
@@ -411,12 +411,19 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         }
     }
 
+<<<<<<< HEAD
     if (control_rm_cmd.swE != control_rm_cmd_last.swE) {
         if(control_rm_cmd.swE == RC_2_POS_SW_State_t::DOWN) {
             //在这里面配置红外发送
             ir_cmd.tx_data = CMD_RELEASE_CLAW;
             ir_cmd_pub.Publish(ir_cmd);
         }
+=======
+    if(control_xbox_cmd.btnY == 1 && control_xbox_cmd_Last.btnY == 0){
+        //在这里面配置红外发送
+        omni_ir_cmd_push.tx_data = CMD_MC_RELEASE_CLAW;
+        omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
+>>>>>>> origin/main
     }
 
     if (MC_headless_mode) {

@@ -37,8 +37,17 @@ pub_chassis_cmd rm_cmd{};
 static TypedTopicPublisher<pub_upbody_cmd> upbody_cmd_pub("upbody_cmd");      
 static pub_upbody_cmd upbody_cmd_msg{};                                   
 
+<<<<<<< HEAD
 TypedTopicPublisher<pub_ir_cmd> ir_cmd_pub("ir_cmd");                
 pub_ir_cmd ir_cmd{};
+=======
+TypedTopicPublisher<pub_ir_cmd> omni_ir_cmd_pub("omni_ir_cmd");                
+pub_ir_cmd omni_ir_cmd_push{};
+
+TypedTopicPublisher<pub_ir_cmd> whisper_ir_cmd_pub("whisper_ir_cmd");
+pub_ir_cmd whisper_ir_cmd_push{};
+
+>>>>>>> origin/main
 // static TypedTopicPublisher<QR_code_cmd_t> qr_code_cmd_pub("qr_code_cmd");   
 // static QR_code_cmd_t qr_code_cmd{};
 
@@ -162,7 +171,10 @@ void controlInit() {
     // if (!control_ir_sub.IsValid()) {
     //     return;
     // }
-    if (!ir_cmd_pub.IsValid()) {
+    if (!omni_ir_cmd_pub.IsValid()) {
+        return;
+    }
+    if (!whisper_ir_cmd_pub.IsValid()) {
         return;
     }
     // if(!qr_code_cmd_pub.IsValid()) {
@@ -286,8 +298,8 @@ void controlTask(void *argument) {
 
         // if(HAL_GetTick() - last_time >= 2000) {
         //     uint8_t test_data = 0x2B; // 示例数据
-        //     ir_cmd.tx_data = test_data;
-        //     ir_cmd_pub.Publish(ir_cmd);
+        //     omni_ir_cmd_push.tx_data = test_data;
+        //     omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
         //     last_time = HAL_GetTick();
         // }
 

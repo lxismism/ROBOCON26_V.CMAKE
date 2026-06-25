@@ -38,6 +38,7 @@ void uart4RxProcessTask(void *argument);
 void uart5RxProcessTask(void *argument);
 void uart1RxProcessTask(void *argument);
 void uart6RxProcessTask(void *argument);
+void uart8RxProcessTask(void *argument);
 void uart9RxProcessTask(void *argument);
 void uart10RxProcessTask(void *argument);
 void usbCdcProcessTask(void *argument);
@@ -45,6 +46,7 @@ void usbCdcSendTask(void *argument);
 void posCtrlTask(void *argument);
 void DebugSerialTask(void *argument);
 void omniIrSendTask(void *argument);
+void whisperIrSendTask(void *argument);
 
 #ifdef __cplusplus
 }
