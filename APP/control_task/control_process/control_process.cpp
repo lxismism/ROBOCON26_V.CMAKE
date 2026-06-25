@@ -599,19 +599,33 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         // === 上身动作每帧推进（无论 MF_action_Flag 状态，有动作就必须跑） ===
         upbody_ctrl.Update(0.005f, upbody_pub);
 
-        // === 动作完成检测：全部步执行完毕 → 收尾 ===
-        if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && mf_placing) {
-            mf_placing = false;
-            MF_action_Flag = false;
-            last_mf_action = -1;
-            // 兜底：如果底盘解锁未触发（异常），在这里收尾
-            if (!mf_chassis_freed) {
-                MF_plan_run_i++;
-                MF_xy_complete_Flag = false;
-                MF_omega_complete_Flag = false;
-                MF_omega_control_Flag = 0;
+        // === 完成 / 解锁检测（同一把锁，两阶段） ===
+        if (mf_placing) {
+            bool chassis_ready = upbody_ctrl.IsChassisReleased();
+            bool all_done = !upbody_ctrl.IsActive() && !upbody_ctrl.HasPending();
+
+            if (chassis_ready || all_done) {
+                if (!mf_chassis_freed) {
+                    // 阶段1：推进路径索引 + 底盘出发
+                    mf_chassis_freed = true;
+                    MF_action_Flag = false;
+                    MF_plan_run_i++;
+                    MF_xy_complete_Flag = false;
+                    MF_omega_complete_Flag = false;
+                    MF_omega_control_Flag = 0;
+                    last_mf_action = -1;
+                    mf_approach_offset = 0.0f;
+                    MF_close_position_x = 0.0f;
+                    MF_close_position_y = 0.0f;
+                    position_close_x = 0.0f;
+                    position_close_y = 0.0f;
+                }
+                if (all_done) {
+                    // 阶段2：上身全完成 → 收尾
+                    mf_placing = false;
+                    mf_chassis_freed = false;
+                }
             }
-            mf_chassis_freed = false;
         }
 
 
@@ -644,28 +658,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
             }
         }
 
-        // === 底盘解锁检测：Step5a 云台转到0° → 底盘出发去下一个点 ===
-        if (mf_placing && !mf_chassis_freed && upbody_ctrl.IsChassisReleased()) {
-            mf_chassis_freed = true;
-            MF_plan_run_i++;
-            MF_xy_complete_Flag = false;
-            MF_omega_complete_Flag = false;
-            MF_omega_control_Flag = 0;
-            last_mf_action = -1;
-            // 清除逼近偏移
-            mf_approach_offset = 0.0f;
-            MF_close_position_x = 0.0f;
-            MF_close_position_y = 0.0f;
-            position_close_x = 0.0f;
-            position_close_y = 0.0f;
-            // 设下一个底盘目标
-            if (MF_plan_run_i < MF_plan_record_i && MF_plan[MF_plan_run_i].is_valid) {
-                state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0];
-                state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1];
-                state_target_cmd.omega_    = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                Traject_chassis.Set_Ref(state_target_cmd);
-            }
-        }
+
 
         if(MF_action_Flag == false){
 
