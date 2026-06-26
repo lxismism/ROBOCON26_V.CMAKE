@@ -87,9 +87,11 @@ void WeaponHand::update() {
         last_retry_tick = HAL_GetTick();
       }
     } else {
-      // 电机在线，正常发位置速度指令
-      float target = wrist_flipped_ ? kWristDownAngle_rad : kWristUpAngle_rad;
-      wrist_motor_->posWithSpeedControl(target, kWristFlipSpeed_radps);
+        // 电机在线，正常发位置速度指令
+        // 绝对角度模式优先（由动作系统写入），否则用手动翻转开关
+        float target = wrist_target_rad_;
+        wrist_motor_->posWithSpeedControl(target, kWristFlipSpeed_radps);
+
     }
   }
 
@@ -105,11 +107,13 @@ void WeaponHand::clawToggle() {
                     (cur == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET);
 }
 
-// ======== 新增：腕部达妙翻转切换 ========
+// ======== 腕部达妙翻转切换 ========
 void WeaponHand::wristFlip() {
   if (wrist_motor_ == nullptr) return;
   wrist_flipped_ = !wrist_flipped_;
+  wrist_target_rad_ = wrist_flipped_ ? kWristDownAngle_rad : kWristUpAngle_rad;
 }
+
 
 
 float WeaponHand::clampTarget(float target, float current,
