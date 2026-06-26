@@ -42,6 +42,12 @@ typedef enum {
 }RobotMode_t;
 
 typedef enum {
+    KFS,
+    Weapon,
+    WithR2,
+}ArenaMode_t;
+
+typedef enum {
     Normal_case = 1,
     Special = 2,
     Debug = 3,
