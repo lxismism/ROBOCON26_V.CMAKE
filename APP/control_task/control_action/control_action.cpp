@@ -355,7 +355,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step2.priorities.pick_extend = 0;
         step2.step_done_mask = 0x04;
         step2.enable_chassis_approach = true;
-        step2.dwell_ms = 200;                    // ← 加：伸到头等200ms吸稳
+        step2.dwell_ms = 300;                    // ← 加：伸到头等200ms吸稳
         AddStep(step2);
 
         // Step 3: 电梯升到安全高度
@@ -421,7 +421,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7.priorities.pick_lift    = 0;
         step7.step_done_mask = 0x01;
         step7.skip_safety = true;
-        step7.dwell_ms = 250;                    // ← 加：关泵后等250ms破真空
+        step7.dwell_ms = 350;                    // ← 加：关泵后等250ms破真空
         if (close_pump_at_end) {
             step7.pump_cmd_done  = -1;  // 关泵
             step7.valve_cmd_done = -1;  // 关阀
@@ -447,7 +447,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step2.priorities.pick_extend = 0;
         step2.step_done_mask = 0x04;
         step2.enable_chassis_approach = true;
-        step2.dwell_ms = 200;                    // ← 加：伸到头等200ms吸稳
+        step2.dwell_ms = 300;                    // ← 加：伸到头等200ms吸稳
         AddStep(step2);
 
         // Step 3: 电梯升到安全高度
@@ -485,6 +485,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step5a.release_chassis = true;                    // ← 解锁底盘！
         AddStep(step5a);
 
+
         // Step 5b: 抬升 + 伸出 + 转放置角度
         ActionConfig step5b;
         step5b.target = pose_Place;
@@ -513,7 +514,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7.priorities.pick_lift    = 0;
         step7.step_done_mask = 0x01;
         step7.skip_safety = true;
-        step7.dwell_ms = 250;                    // ← 加：关泵后等200ms破真空
+        step7.dwell_ms = 350;                    // ← 加：关泵后等200ms破真空
         if (close_pump_at_end) {
             step7.pump_cmd_done  = -1;  // 关泵
             step7.valve_cmd_done = -1;  // 关阀
@@ -569,7 +570,7 @@ void ActionController::GetKFS(const RobotPose& pose) {
         AddStep(step1);
     }
 
-    // 主步骤：yaw 转 → lift 降 → extend 伸
+    // 主步骤：yaw 转 → lift 降 → extend 伸 → 步首自动开泵
     ActionConfig config;
     config.target = pose;
     config.priorities.pick_yaw    = 0;
@@ -577,7 +578,10 @@ void ActionController::GetKFS(const RobotPose& pose) {
     config.speeds.pick_yaw        = 300.0f;
     config.priorities.pick_lift   = 1;
     config.priorities.pick_extend = 2;
+    config.pump_cmd  = 1;   // 自动开泵
+    config.valve_cmd = 1;   // 自动开阀
     AddStep(config);
+
 
     // 上抬 70mm 避开螺丝
     ActionConfig lift_up;

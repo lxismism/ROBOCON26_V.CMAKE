@@ -12,7 +12,6 @@
  * @versioninfo :
  */
 #include "debug_task.h"
-
 #include "task.h"
 
 osThreadId_t Debug_TaskHandle;
@@ -30,6 +29,17 @@ extern osThreadId_t uart3ProcessTaskHandle;
 extern osThreadId_t uart4ProcessTaskHandle;
 extern osThreadId_t usbcdcProcessTaskHandle;
 
+extern osThreadId_t uart5ProcessTaskHandle;       // ← 新增
+extern osThreadId_t uart1ProcessTaskHandle;       // ← 新增
+extern osThreadId_t uart6ProcessTaskHandle;       // ← 新增
+extern osThreadId_t uart8ProcessTaskHandle;       // ← 新增
+extern osThreadId_t uart9ProcessTaskHandle;       // ← 新增
+extern osThreadId_t uart10ProcessTaskHandle;      // ← 新增
+extern osThreadId_t usbcdcSendTaskHandle;         // ← 新增
+extern osThreadId_t DebugSerialTaskHandle;        // ← 新增
+extern osThreadId_t omniIrSendTaskHandle;         // ← 新增
+extern osThreadId_t whisperIrSendTaskHandle;      // ← 新增
+
 static uint32_t CAN1_Send_m = 0;
 static uint32_t CAN2_Send_m = 0;
 static uint32_t CAN3_Send_m = 0;
@@ -42,6 +52,17 @@ static uint32_t Uart2Process_m = 0;
 static uint32_t Uart3Process_m = 0;
 static uint32_t Uart4Process_m = 0;
 static uint32_t UsbcdcProcess_m = 0;
+
+static uint32_t Uart5Process_m = 0;               // ← 新增
+static uint32_t Uart1Process_m = 0;               // ← 新增
+static uint32_t Uart6Process_m = 0;               // ← 新增
+static uint32_t Uart8Process_m = 0;               // ← 新增
+static uint32_t Uart9Process_m = 0;               // ← 新增
+static uint32_t Uart10Process_m = 0;              // ← 新增
+static uint32_t UsbcdcSend_m = 0;                 // ← 新增
+static uint32_t DebugSerial_m = 0;                // ← 新增
+static uint32_t OmniIrSend_m = 0;                 // ← 新增
+static uint32_t WhisperIrSend_m = 0;              // ← 新增
 
 
 void debugTask(void *argument) {
@@ -63,6 +84,17 @@ void debugTask(void *argument) {
     Uart4Process_m = osThreadGetStackSpace(uart4ProcessTaskHandle);
     UsbcdcProcess_m = osThreadGetStackSpace(usbcdcProcessTaskHandle);
 
-    vTaskDelayUntil(&currentTime, 100); // 每100ms更新一次
+    Uart5Process_m  = osThreadGetStackSpace(uart5ProcessTaskHandle);    // ←
+    Uart1Process_m  = osThreadGetStackSpace(uart1ProcessTaskHandle);    // ←
+    Uart6Process_m  = osThreadGetStackSpace(uart6ProcessTaskHandle);    // ←
+    Uart8Process_m  = osThreadGetStackSpace(uart8ProcessTaskHandle);    // ←
+    Uart9Process_m  = osThreadGetStackSpace(uart9ProcessTaskHandle);    // ←
+    Uart10Process_m = osThreadGetStackSpace(uart10ProcessTaskHandle);   // ←
+    UsbcdcSend_m    = osThreadGetStackSpace(usbcdcSendTaskHandle);      // ←
+    DebugSerial_m   = osThreadGetStackSpace(DebugSerialTaskHandle);     // ←
+    OmniIrSend_m    = osThreadGetStackSpace(omniIrSendTaskHandle);      // ←
+    WhisperIrSend_m = osThreadGetStackSpace(whisperIrSendTaskHandle);   // ←
+
+    vTaskDelayUntil(&currentTime, 100);
   }
 }

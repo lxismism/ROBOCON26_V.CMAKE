@@ -42,6 +42,12 @@ typedef enum {
 }RobotMode_t;
 
 typedef enum {
+    KFS,
+    Weapon,
+    WithR2,
+}ArenaMode_t;
+
+typedef enum {
     Normal_case = 1,
     Special = 2,
     Debug = 3,
@@ -75,21 +81,21 @@ typedef struct {
 } pub_Xbox_Data;
 
 typedef struct {
-    //摇杆
-  uint16_t joyLHori;
-  uint16_t joyLVert;
-  uint16_t joyRHori;
-  uint16_t joyRVert;
+  //摇杆，值域172-1810 建议映射值：min200 max1780 mid~=985 死区+-100
+  uint16_t joyLHori;  //左小
+  uint16_t joyLVert;  //下小
+  uint16_t joyRHori;  //左小
+  uint16_t joyRVert;  //下小
 
-  RC_2_POS_SW_State_t swA;
+  RC_2_POS_SW_State_t swA;        //阴刻有SA的两端开关
   RC_2_POS_SW_State_t swA_last;
-  RC_3_POS_SW_State_t swB;
+  RC_3_POS_SW_State_t swB;        //阴刻有SB的三段开关
   RC_3_POS_SW_State_t swB_last;
-  RC_3_POS_SW_State_t swC;
+  RC_3_POS_SW_State_t swC;        //阴刻有SC的三段开关
   RC_3_POS_SW_State_t swC_last;
-  RC_2_POS_SW_State_t swD;
+  RC_2_POS_SW_State_t swD;        //阴刻有SD的两段开关
   RC_2_POS_SW_State_t swD_last;
-  RC_2_POS_SW_State_t swE;
+  RC_2_POS_SW_State_t swE;        //阴刻有SE的按钮
   RC_2_POS_SW_State_t swE_last;
 
   RC_Trim_State_t trimLeft;        //左微调按钮
@@ -97,14 +103,14 @@ typedef struct {
   RC_Trim_State_t trimRight;       //右微调按钮
   RC_Trim_State_t trimRight_last;
 
-  //电位器
-  uint16_t pot;
+  //电位器 往左推小，值域172-1810 实际可能取不到端点
+  uint16_t pot;                   //阴刻有S1的拨盘
 
-  //左微调按钮控制的光标
+  //左微调按钮控制的光标，-9~+9
   int8_t x_cnt;
   int8_t y_cnt;
 
-  //右微调按钮控制的光标
+  //拨盘电位器控制的光标，最左0，中间1，最右2
   int8_t cursor;
 } pub_RC_Data;
 

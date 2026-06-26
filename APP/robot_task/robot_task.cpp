@@ -95,7 +95,7 @@ void osTaskInit(void) {
 
   const osThreadAttr_t ControlTaskHandle_attributes = {
       .name = "Control_TaskHandle",
-      .stack_size = 256 * 4,
+      .stack_size = 512 * 4,
       .priority = (osPriority_t)osPriorityBelowNormal7,
   };
   ControlTaskHandle =
@@ -157,7 +157,7 @@ void osTaskInit(void) {
       //uart10用于IR模块
   const osThreadAttr_t Uart10ProcessTaskHandle_attributes = {
       .name = "Uart10Process_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 256 * 4,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   uart10ProcessTaskHandle =
@@ -165,7 +165,7 @@ void osTaskInit(void) {
 
   const osThreadAttr_t Uart9ProcessTaskHandle_attributes = {
       .name = "Uart9Process_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 256 * 4,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   uart9ProcessTaskHandle =
@@ -173,7 +173,7 @@ void osTaskInit(void) {
 
   const osThreadAttr_t Uart6ProcessTaskHandle_attributes = {
       .name = "Uart6Process_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 256 * 4,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   uart6ProcessTaskHandle =
@@ -181,7 +181,7 @@ void osTaskInit(void) {
 
   const osThreadAttr_t Uart8ProcessTaskHandle_attributes = {
       .name = "Uart8Process_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 256 * 4,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   uart8ProcessTaskHandle =
@@ -189,7 +189,7 @@ void osTaskInit(void) {
 
   const osThreadAttr_t Uart1ProcessTaskHandle_attributes = {
       .name = "Uart1Process_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 256 * 4,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   uart1ProcessTaskHandle =
@@ -221,7 +221,7 @@ void osTaskInit(void) {
 
   const osThreadAttr_t OmniIrSendTaskHandle_attributes = {
       .name = "OmniIRSend_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 256 * 4,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   omniIrSendTaskHandle =
@@ -229,7 +229,7 @@ void osTaskInit(void) {
 
   const osThreadAttr_t WhisperIrSendTaskHandle_attributes = {
       .name = "WhisperIRSend_TaskHandle",
-      .stack_size = 128 * 4,
+      .stack_size = 256 * 4,
       .priority = (osPriority_t)osPriorityNormal1,
   };
   whisperIrSendTaskHandle =

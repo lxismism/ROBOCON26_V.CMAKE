@@ -136,7 +136,7 @@ bool rmPocket::onFrameComplete(const CRSF_broadcast_frame_t &frame) {
 
         rc_state_.x_cnt = cntTrans(ch[5]);
         rc_state_.y_cnt = cntTrans(ch[6]);
-        rc_state_.cursor = cntTrans(ch[7]);
+        rc_state_.cursor = (ch[7] > 1500 ? 2 : (ch[7] < 500 ? 0 : 1));
 
         rc_state_.swB = (fuzzyEqual35(ch[8], 172) ? RC_3_POS_SW_State_t::UP : (fuzzyEqual35(ch[8], 992) ? RC_3_POS_SW_State_t::MIDDLE : RC_3_POS_SW_State_t::DOWN));
         rc_state_.swC = (fuzzyEqual35(ch[9], 172) ? RC_3_POS_SW_State_t::UP : (fuzzyEqual35(ch[9], 992) ? RC_3_POS_SW_State_t::MIDDLE : RC_3_POS_SW_State_t::DOWN));

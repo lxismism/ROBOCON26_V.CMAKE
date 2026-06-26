@@ -29,17 +29,17 @@ public:
     // =====================================================
     //  轨迹运行函数
     // =====================================================
-    void Run(pub_chassis_cmd Now,RobotMode_t mode) {
+    void Run(pub_chassis_cmd Now) {
         now.x = Now.linear_x_;
         now.y = Now.linear_y_;
         now.yaw = Now.omega_;
 
         dt = DWT_GetDeltaT(&DWT_CNT);
 
-        Update_s(mode);
+        Update_s(Traj_Mode);
 
         Update_TarjSpeed();
-        Update_s_ref(mode);
+        Update_s_ref(Traj_Mode);
 
         if(Traj_complete_Flag == true){
             Update_TrackSpeed(Traj_s);
@@ -50,13 +50,13 @@ public:
 
         output_w.vx = Traj_wff.vx + track_w.vx;
         output_w.vy = Traj_wff.vy + track_w.vy;
-        output_w.w = Traj_wff.w + track_w.w;
+        output_w.w  = Traj_wff.w  + track_w.w;
 
         watch_1 = Traj_wff.w;
         watch_2 = track_w.w;
-        watch_3 = v_output - (s_now - s_last) / dt;
-        watch_4 = now.yaw;
-        watch_5 = Traj_s.yaw;
+        watch_3 = ref.x;
+        watch_4 = ref.y;
+        watch_5 = ref.yaw;
         
         s_last = s_now;
 
@@ -83,27 +83,36 @@ public:
     // =====================================================
     //  设置目标值
     // =====================================================
-    void Set_Ref(pub_chassis_cmd Ref){
+    void Set_Ref(pub_chassis_cmd Ref,RobotMode_t mode){
         if(fabsf(Ref.linear_x_ - ref.x) > 0.0015f || fabsf(Ref.linear_y_ - ref.y) > 0.0015f ||fabsf(Ref.omega_ - ref.yaw) > 0.001f){
             ref.x = Ref.linear_x_;
             ref.y = Ref.linear_y_;
             ref.yaw = Ref.omega_;
             Traj_complete_Flag = false;
             PointTrack_complete_Flag = false;
-            TrajGenerate();
+            TrajGenerate(mode);
         }
     }
 
 
-private:
 
     // =====================================================
     //  轨迹生成函数
     // =====================================================
-    void TrajGenerate() {
+    void TrajGenerate(RobotMode_t mode) {
 
         start = ref_last;
         ref_last = ref;
+
+        if(mode == RobotMode_t::MF){
+            if(fabsf(start.x) > 2.1f-0.1f && fabsf(start.x) < 8.1f+0.1f){
+                Traj_Mode = MF;
+            }else {
+                Traj_Mode = Normal;
+            }
+        }else {
+            Traj_Mode = Normal;
+        }
 
         s_ref = 0.0f;
         s_now = 0.0f;
@@ -144,7 +153,7 @@ private:
         float_t dy_PA = now.y - start.y;
 
         //判断轨迹是否完成
-        if(L - s_now < 0.05f){
+        if(L - s_now < 0.02f){
             //如果完成就不会更新s，让后续不再进入轨迹
             s_now = L;
             Traj_complete_Flag = true;
@@ -320,12 +329,12 @@ private:
         float y = Traj_s_tmp.y;
         float yaw = Traj_s_tmp.yaw;
 
-        if(fabsf(x - 2.1f*field_side) < 0.1f){
+        if(fabsf(x - 5.1f*field_side) < 0.1f || fabs(x) <= 2.1f){
             if(y >= 0.1f && y < 0.9f)       {yaw = (-90.0f*field_side)*(sinf(M_PI_2*((2*y-1.0f)/0.8f)) + 1.0f)/2.0f;}
             else if(y >= 0.9f && y < 4.1f)  {yaw = -90.0f*field_side;}
             else if(y >= 4.1f && y <= 4.9f) {yaw = Warp_ToRange(180.0f - (-90.0f*field_side),-180.0f,180.0f)*(sinf(M_PI_2*((2*y-9.0f)/0.8f)) + 1.0f)/2.0f + (-90.0f*field_side);}
 
-        }else if(fabsf(x - 8.1f*field_side) < 0.1f){
+        }else if(fabsf(x - 8.1f*field_side) < 0.1f || fabs(x) >= 8.1f){
             if(y >= 0.1f && y < 0.9f)       {yaw = (90.0f*field_side)*(sinf(M_PI_2*((2*y-1.0f)/0.8f)) + 1.0f)/2.0f;}
             else if(y >= 0.9f && y < 4.1f)  {yaw = 90.0f*field_side;}
             else if(y >= 4.1f && y <= 4.9f) {yaw = Warp_ToRange(180.0f - (90.0f*field_side),-180.0f,180.0f)*(sinf(M_PI_2*((2*y-9.0f)/0.8f)) + 1.0f)/2.0f + (90.0f*field_side);}
@@ -333,8 +342,6 @@ private:
         }else if(x > 2.1f*field_side && x < 8.1f*field_side){
             if(fabsf(y - 0.1f) < 0.05f)      {yaw = 0.0f;}
             else if(fabsf(y - 4.9f) < 0.1f) {yaw = 180.0f;}
-        }else {
-            yaw = start.yaw + s_tmp*(ref.yaw - start.yaw)/L;
         }
         return Warp_ToRange(yaw, -180.0f, 180.0f);
     }
@@ -367,6 +374,8 @@ private:
     float_t s_now;
     float_t s_last;
 
+    RobotMode_t Traj_Mode = Normal;
+
     float_t L;
 
     chassis_position Traj_s_ref{};
@@ -390,7 +399,6 @@ private:
     float_t dy_ds;
     float_t dyaw_ds;
 
-    
     const float_t Acc_linear = 1.2f;
     const float_t Dec_linear = 0.9f;
     const float_t v_Max = 2.1f;
@@ -412,8 +420,10 @@ private:
     float_t dt;
     uint32_t DWT_CNT;
 
-    PID_t track_path_xy{.Kp = 4.88f,.Ki = 0.03f,.Kd = 0.75f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-    PID_t track_lateral_xy{.Kp = 6.0f,.Ki = 0.03f,.Kd = 0.75f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-    PID_t track_omega{.Kp = 4.10f,.Ki = 0.1f,.Kd = 0.7f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
+    PID_t track_path_xy{.Kp = 4.88f,.Ki = 0.03f,.Kd = 0.55f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+    PID_t track_lateral_xy{.Kp = 3.0f,.Ki = 0.03f,.Kd = 0.35f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+    PID_t track_omega{.Kp = 2.60f,.Ki = 1.0f,.Kd = 0.3f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
 
+    
+private:
 };

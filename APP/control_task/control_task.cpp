@@ -54,6 +54,7 @@ pub_Xbox_Data control_xbox_cmd_Last{};
 
 TypedTopicSubscriber<pub_RC_Data> control_rc_sub("rc", 8);
 pub_RC_Data control_rm_cmd{};
+pub_RC_Data control_rm_cmd_last{};
 
 TypedTopicSubscriber<pub_Position_Data> control_position_sub("position", 8);
 pub_Position_Data control_position_msg{};
@@ -89,10 +90,7 @@ bool Normal_control_mode = true;
 
 int8_t MC_y = 0;
 float MC_close_position_x = 0.0f;
-bool MC_headless_xy_mode = false;
-bool MC_headless_omega_mode = false;
-const float MC_position_correction_y = 0.03f;
-
+bool MC_headless_mode = false;
 
 uint8_t MF_x = 0;
 uint8_t MF_y = 0;
@@ -113,9 +111,6 @@ MF_plan_t MF_plan_zero = {0,0,0,0};
 int8_t Arena_x = 0;
 float Arena_close_position_y = 0.0f;
 float Arena_close_position_y_Max = 0.64f;
-
-const FieldSide_t field_side = Left;
-const float robot_center_to_gimbal_x = 0.4f;
 
 float Acc_path_SpeedUp = 2.9f; //加速度，单位m/s^2
 float Acc_path_SpeedDown = 1.8f; //加速度，单位m/s^2
@@ -237,22 +232,15 @@ void controlTask(void *argument) {
                         Reset_position();
                         break;
                     }
+                    default:
+                        break;
                 }
             }
             robot_mode_last = robot_mode;
             
         }
         Chassis_RM_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
-
-        // 消费边沿，防止同一帧数据被重复处理
-        control_rm_cmd.swA_last = control_rm_cmd.swA;
-        control_rm_cmd.swB_last = control_rm_cmd.swB;
-        control_rm_cmd.swC_last = control_rm_cmd.swC;
-        control_rm_cmd.swD_last = control_rm_cmd.swD;
-        control_rm_cmd.swE_last = control_rm_cmd.swE;
-        control_rm_cmd.trimLeft_last = control_rm_cmd.trimLeft;
-        control_rm_cmd.trimRight_last = control_rm_cmd.trimRight;
-
+        control_rm_cmd_last = control_rm_cmd;
 
         chassis_data_pub.Publish(robot_v_aim_cmd);
         //test end
@@ -268,47 +256,8 @@ void controlTask(void *argument) {
             state_now_cmd.linear_x_ = control_position.x;
             state_now_cmd.linear_y_ = control_position.y;
             state_now_cmd.omega_ = control_position.yaw;
+            predict_yaw = state_now_cmd.omega_ + (control_position.yaw_speed/kDegToRad)*yaw_delay_time;
         }
-
-        /* 从xbox数据订阅者中获取数据 */
-        // if (control_xbox_sub.TryGet(&control_xbox_cmd)) {
-            // if(control_xbox_cmd.btnSelect == 1 && control_xbox_cmd_Last.btnSelect == 0) {
-            //     robot_mode = MC;
-            //     Reset_position();
-            // }else if(control_xbox_cmd.btnShare == 1 && control_xbox_cmd_Last.btnShare == 0) {
-            //     robot_mode = MF;
-            //     Reset_position();
-            // }else if(control_xbox_cmd.btnStart == 1 && control_xbox_cmd_Last.btnStart == 0){
-            //     robot_mode = Arena;
-            //     Reset_position();
-            // }
-            // Chassis_Xbox_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
-    
-
-            // // 保留本次xbox数据
-            // control_xbox_cmd_Last = control_xbox_cmd;
-            // chassis_data_pub.Publish(robot_v_aim_cmd);
-        // }
-
-        // if(HAL_GetTick() - last_time >= 2000) {
-        //     uint8_t test_data = 0x2B; // 示例数据
-        //     omni_ir_cmd_push.tx_data = test_data;
-        //     omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
-        //     last_time = HAL_GetTick();
-        // }
-
-
-        //if(qr_code_data_sub.TryGet(&control_qr_code_data)) {
-          //二维码输入数据处理放这
-          //测试
-          //示例：接收到0x01二维码数据后，发布显示0x01二维码命令
-          // if(control_qr_code_data.QR_type == 0x01)
-          // {
-          //   qr_code_cmd.QR_type = 0x01;            //<-
-          //   qr_code_cmd_pub.Publish(qr_code_cmd);  //<-发布显示0x01二维码命令核心代码
-          // }
-        //}
-
 
         vTaskDelayUntil(&currentTime, 5);
     }
