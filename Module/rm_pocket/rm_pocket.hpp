@@ -90,7 +90,7 @@ class rmPocket {
         int8_t x_cnt;
         int8_t y_cnt;
 
-        //右微调按钮控制的光标，-9~+9
+        //拨盘电位器控制的光标，最左0，中间1，最右2
         int8_t cursor;
 
     };
