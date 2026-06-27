@@ -422,30 +422,31 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     }
 
     if (MC_headless_mode) {
-        // xy 手控模式：摇杆 → 速度，直接进入速度环 PID
-        rm_angle_deg = atan2(rm_cmd.linear_y_, rm_cmd.linear_x_) / kDegToRad;
-        v_aim = sqrt(rm_cmd.linear_x_ * rm_cmd.linear_x_ + rm_cmd.linear_y_ * rm_cmd.linear_y_);
+        // // xy 手控模式：摇杆 → 速度，直接进入速度环 PID
+        // rm_angle_deg = atan2(rm_cmd.linear_y_, rm_cmd.linear_x_) / kDegToRad;
+        // v_aim = sqrt(rm_cmd.linear_x_ * rm_cmd.linear_x_ + rm_cmd.linear_y_ * rm_cmd.linear_y_);
 
-        robot_v_aim_cmd.linear_x_ = v_aim * cos((rm_angle_deg - control_position.yaw) * kDegToRad);
-        robot_v_aim_cmd.linear_y_ = v_aim * sin((rm_angle_deg - control_position.yaw) * kDegToRad);
+        // robot_v_aim_cmd.linear_x_ = v_aim * cos((rm_angle_deg - control_position.yaw) * kDegToRad);
+        // robot_v_aim_cmd.linear_y_ = v_aim * sin((rm_angle_deg - control_position.yaw) * kDegToRad);
 
-        state_target_cmd.linear_x_ = state_now_cmd.linear_x_;
-        state_target_cmd.linear_y_ = state_now_cmd.linear_y_;
+        // state_target_cmd.linear_x_ = state_now_cmd.linear_x_;
+        // state_target_cmd.linear_y_ = state_now_cmd.linear_y_;
 
-        state_target_cmd.omega_ = 0.0f;
-        Aim_State_omega_Process();
+        // state_target_cmd.omega_ = 0.0f;
+        // Aim_State_omega_Process();
+        state_target_cmd.linear_x_ = 0.95f*field_side;
+        state_target_cmd.linear_y_ = 2.8f;
+        state_target_cmd.omega_    = 0.0f;
     } else {
         state_target_cmd.linear_x_ = robot_position_MC[MC_y][0];
         state_target_cmd.linear_y_ = robot_position_MC[MC_y][1];
-        state_target_cmd.omega_  = robot_position_MC[MC_y][2];
-
-        Traject_chassis.Set_Ref(state_target_cmd,Normal);
-        position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
-        position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
-        Traject_chassis.Run(state_now_cmd);
-        robot_v_aim_cmd = Traject_chassis.Get_output_b();
-
+        state_target_cmd.omega_    = robot_position_MC[MC_y][2];
     }
+    Traject_chassis.Set_Ref(state_target_cmd,Normal);
+    position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
+    position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
+    Traject_chassis.Run(state_now_cmd);
+    robot_v_aim_cmd = Traject_chassis.Get_output_b();
 
         // ---- 武器手控制 ----
     upbody_msg = {};
@@ -537,13 +538,13 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         if (MF_y == 0 || MF_y == 4) {
             if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
                 if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-                    if (MF_x < 5 ) {
+                    if (MF_x - field_side < 5 && MF_x - field_side > 0) {
                         MF_x = MF_x - field_side;
                     }
                 }
             } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
                 if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-                    if (MF_x > 0 ) {
+                    if (MF_x - field_side > 0 && MF_x - field_side < 5) {
                         MF_x = MF_x + field_side;
                     }
                 }
@@ -762,13 +763,13 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 
     if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-            if (Arena_x < 2) {
+            if (Arena_x - field_side <= 2 && Arena_x - field_side >= 0) {
                 Arena_x = Arena_x - field_side;
             }
         }
     } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-            if (Arena_x > 0) {
+            if (Arena_x + field_side >= 0 && Arena_x + field_side <= 2) {
                 Arena_x = Arena_x + field_side;
             }
         }
@@ -831,10 +832,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     if (Arena_mode == KFS) {
         state_target_cmd.linear_x_ = robot_position_Arena[Arena_x][0];
         state_target_cmd.linear_y_ = robot_position_Arena[Arena_x][1] + Arena_close_position_y;
-        Aim_State_xy_Process();
 
         state_target_cmd.omega_    = robot_position_Arena[Arena_x][2];
-        Aim_State_omega_Process();
 
         /*上层机构执行*/
         if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && last_arena_x != Arena_x) {
@@ -848,7 +847,6 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             }
             last_arena_x = Arena_x;
         }
-
 
         // 每帧推进渐变
         upbody_ctrl.Update(0.005f, upbody_pub);
@@ -869,10 +867,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         state_target_cmd.linear_x_ = robot_position_Arena_withR2[Arena_x][0];
         state_target_cmd.linear_y_ = robot_position_Arena_withR2[Arena_x][1];
         position_close_y = Arena_close_position_y;
-        Aim_State_xy_Process();
 
         state_target_cmd.omega_    = robot_position_Arena_withR2[Arena_x][2];
-        Aim_State_omega_Process();
 
         /*上层机构执行*/
         // 进入合体模式或切换格子时，默认设为当前楼层姿态
@@ -898,10 +894,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         state_target_cmd.linear_x_ = robot_position_Arena_useWeapon[Arena_x][0];
         state_target_cmd.linear_y_ = robot_position_Arena_useWeapon[Arena_x][1];
         position_close_y = Arena_close_position_y;
-        Aim_State_xy_Process();
 
         state_target_cmd.omega_    = robot_position_Arena_useWeapon[Arena_x][2];
-        Aim_State_omega_Process();
 
 	    // 右摇杆上下切换武器第一/第二层
 	    static bool weapon_floor = false;       // false=第一层, true=第二层
@@ -926,6 +920,11 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 	    // 每帧推进渐变
 	    upbody_ctrl.Update(0.005f, upbody_pub);
 	}
+    Traject_chassis.Set_Ref(state_target_cmd,Normal);
+    position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
+    position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
+    Traject_chassis.Run(state_now_cmd);
+    robot_v_aim_cmd = Traject_chassis.Get_output_b();
 }
 
 
