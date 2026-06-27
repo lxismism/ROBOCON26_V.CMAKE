@@ -26,6 +26,7 @@
 #include "tracking.h"
 #include <cmath>
 #include <cstdint>
+#include "control_Traject.hpp"
 
 osThreadId_t ControlTaskHandle;
 
@@ -139,6 +140,7 @@ PID_t lateral{.Kp = 5.1f,.Ki = 0.00f,.Kd = 0.3f,.MaxOut = 0.95*MAX_VELOCITY_LINE
 PID_t path{.Kp = 4.68f,.Ki = 0.03f,.Kd = 0.75f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
 PID_t omega{.Kp = 2.10f,.Ki = 0.22f,.Kd = 0.08f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
 
+extern TrajectChassis Traject_chassis;
 
 void controlInit() {
     if (!chassis_data_pub.IsValid()) {
@@ -204,36 +206,26 @@ void controlTask(void *argument) {
                     break;
                 }
             }
-            switch (control_rm_cmd.swC){
-                case RC_3_POS_SW_State_t::UP : {
-                    robot_mode = MC;
-                    break;
-                }
-                case RC_3_POS_SW_State_t::MIDDLE : {
-                    robot_mode = MF;
-                    break;
-                }
-                case RC_3_POS_SW_State_t::DOWN : {
-                    robot_mode = Arena;
-                    break;
-                }
-            }
-            if(robot_mode != robot_mode_last){
-                switch (robot_mode){
-                    case MC:{
+            if(control_rm_cmd.swC != control_rm_cmd_last.swC){
+                switch (control_rm_cmd.swC){
+                    case RC_3_POS_SW_State_t::UP : {
+                        robot_mode = MC;
+                        Traject_chassis.Set_Ref(pub_chassis_cmd{0.0f,0.0f,0.0f}, Normal);
                         Reset_position();
                         break;
                     }
-                    case MF:{
+                    case RC_3_POS_SW_State_t::MIDDLE : {
+                        robot_mode = MF;
+                        Traject_chassis.Set_Ref(state_now_cmd, MF);
                         break;
                     }
-                    case Arena:{
+                    case RC_3_POS_SW_State_t::DOWN : {
+                        robot_mode = Arena;
+                        Traject_chassis.Set_Ref(pub_chassis_cmd{0.0f,0.0f,0.0f}, Normal);
                         Reset_position();
                         break;
                     }
-                    default:
-                        break;
-                }
+                }    
             }
             robot_mode_last = robot_mode;
             

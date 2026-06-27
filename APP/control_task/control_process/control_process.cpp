@@ -602,19 +602,33 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         // === 上身动作每帧推进（无论 MF_action_Flag 状态，有动作就必须跑） ===
         upbody_ctrl.Update(0.005f, upbody_pub);
 
-        // === 动作完成检测：全部步执行完毕 → 收尾 ===
-        if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && mf_placing) {
-            mf_placing = false;
-            MF_action_Flag = false;
-            last_mf_action = -1;
-            // 兜底：如果底盘解锁未触发（异常），在这里收尾
-            if (!mf_chassis_freed) {
-                MF_plan_run_i++;
-                MF_xy_complete_Flag = false;
-                MF_omega_complete_Flag = false;
-                MF_omega_control_Flag = 0;
+        // === 完成 / 解锁检测（同一把锁，两阶段） ===
+        if (mf_placing) {
+            bool chassis_ready = upbody_ctrl.IsChassisReleased();
+            bool all_done = !upbody_ctrl.IsActive() && !upbody_ctrl.HasPending();
+
+            if (chassis_ready || all_done) {
+                if (!mf_chassis_freed) {
+                    // 阶段1：推进路径索引 + 底盘出发
+                    mf_chassis_freed = true;
+                    MF_action_Flag = false;
+                    MF_plan_run_i++;
+                    MF_xy_complete_Flag = false;
+                    MF_omega_complete_Flag = false;
+                    MF_omega_control_Flag = 0;
+                    last_mf_action = -1;
+                    mf_approach_offset = 0.0f;
+                    MF_close_position_x = 0.0f;
+                    MF_close_position_y = 0.0f;
+                    position_close_x = 0.0f;
+                    position_close_y = 0.0f;
+                }
+                if (all_done) {
+                    // 阶段2：上身全完成 → 收尾
+                    mf_placing = false;
+                    mf_chassis_freed = false;
+                }
             }
-            mf_chassis_freed = false;
         }
 
 
@@ -647,28 +661,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
             }
         }
 
-        // === 底盘解锁检测：Step5a 云台转到0° → 底盘出发去下一个点 ===
-        if (mf_placing && !mf_chassis_freed && upbody_ctrl.IsChassisReleased()) {
-            mf_chassis_freed = true;
-            MF_plan_run_i++;
-            MF_xy_complete_Flag = false;
-            MF_omega_complete_Flag = false;
-            MF_omega_control_Flag = 0;
-            last_mf_action = -1;
-            // 清除逼近偏移
-            mf_approach_offset = 0.0f;
-            MF_close_position_x = 0.0f;
-            MF_close_position_y = 0.0f;
-            position_close_x = 0.0f;
-            position_close_y = 0.0f;
-            // // 设下一个底盘目标
-            // if (MF_plan_run_i < MF_plan_record_i && MF_plan[MF_plan_run_i].is_valid) {
-            //     state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0];
-            //     state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1];
-            //     state_target_cmd.omega_    = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-            //     Traject_chassis.Set_Ref(state_target_cmd,MF);
-            // }
-        }
+
 
         if(MF_action_Flag == false){
 
@@ -736,7 +729,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                     }
                 }
 
-            }else {
+            } else if (!mf_placing) {
                 MF_plan_record_i = 0;
                 MF_plan_run_i = 0;
                 MF_plan_run_Flag = false;
@@ -794,25 +787,37 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             Arena_close_position_y = 0.0f;
         }
     }
-    // ===== 九宫格子模式切换 =====
-    static bool arena_r2_mode  = false;  // false=KFS放置模式, true=R2合体模式
-    static bool arena_r2_floor = false;  // false=R2一楼, true=R2二楼
 
-    if (control_rm_cmd.trimRight == RC_Trim_State_t::UP) {
-        if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
-            Arena_mode = WithR2;
-            if (arena_r2_mode) {
-                arena_r2_floor = false;   // 进入合体模式默认一楼
-            }
-            last_arena_x = -1;            // 强制刷新上身姿态
-        }
+    // swD 下降沿 → 关泵/阀（底盘退后，破除真空）
+    static RC_2_POS_SW_State_t last_swD_arena = RC_2_POS_SW_State_t::UP;
+    if (control_rm_cmd.swD == RC_2_POS_SW_State_t::UP
+        && last_swD_arena == RC_2_POS_SW_State_t::DOWN) {
+        pub_upbody_cmd pump_off = {};
+        pump_off.active = true;
+        pump_off.pump_cmd  = -1;
+        pump_off.valve_cmd = -1;
+        upbody_pub.Publish(pump_off);
+    }
+    last_swD_arena = control_rm_cmd.swD;
+
+
+    // ===== 九宫格子模式切换 =====
+	    static bool arena_r2_floor = false;   // false=R2一楼, true=R2二楼
+
+	    if (control_rm_cmd.trimRight == RC_Trim_State_t::UP) {
+	        if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
+	            Arena_mode = WithR2;
+	            arena_r2_floor = false;   // 进入合体模式默认一楼
+	            last_arena_x = -1;        // 强制刷新上身姿态
+	        }
+
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
             Arena_mode = KFS;
             // if (arena_r2_mode) {
             //     arena_r2_floor = false;   // 进入合体模式默认一楼
             // }
-            // last_arena_x = -1;            // 强制刷新上身姿态
+            last_arena_x = -1;            // 强制刷新上身姿态
         }
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::DOWN) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
@@ -820,7 +825,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             // if (arena_r2_mode) {
             //     arena_r2_floor = false;   // 进入合体模式默认一楼
             // }
-            // last_arena_x = -1;            // 强制刷新上身姿态
+            last_arena_x = -1;            // 强制刷新上身姿态
         }
     }
     
@@ -845,15 +850,6 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 
         // 每帧推进渐变
         upbody_ctrl.Update(0.005f, upbody_pub);
-
-        // // 真空泵/阀（始终可用）
-        // if (control_rm_cmd.swA != control_rm_cmd_last.swA) {
-        //     pub_upbody_cmd toggle_msg = {};
-        //     toggle_msg.active = true;
-        //      .pump_toggle  = true;
-        //     toggle_msg.valve_toggle = true;
-        //     upbody_pub.Publish(toggle_msg);
-        // }
 
         // 获取KFS（渐变空闲时响应，先近后远）
         static bool get_toggle = false;  // false=Get2(近), true=Get1(远)
@@ -901,15 +897,29 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 
         state_target_cmd.omega_    = robot_position_Arena_useWeapon[Arena_x][2];
 
-        // 右摇杆上下切换切换武器第一第二层
-        if (ABS(control_rm_cmd.joyRVert - kJoyCenter) > 700) {
-            if ((control_rm_cmd.joyRVert - kJoyCenter) > 0) {
-                //接口，武器抬到第二层
-            } else {
-                //武器抬到第一层，默认是第一层
-            }
-        }
-    }
+	    // 右摇杆上下切换武器第一/第二层
+	    static bool weapon_floor = false;       // false=第一层, true=第二层
+	    static bool last_weapon_floor = false;
+	    if (ABS(control_rm_cmd.joyRVert - kJoyCenter) > 700) {
+	        if ((control_rm_cmd.joyRVert - kJoyCenter) > 0) {
+	            weapon_floor = true;            // 武器抬到第二层
+	        } else {
+	            weapon_floor = false;           // 武器抬到第一层
+	        }
+	    }
+	    // 模式进入 / 格子切换 / 楼层切换 → 触发PokeWeapon
+		    if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending()
+		        && (last_arena_x != Arena_x || weapon_floor != last_weapon_floor)) {
+		        upbody_ctrl.PokeWeapon(weapon_floor ? kPose_Poke2 : kPose_Poke1,
+		                               weapon_floor ? 1 : 0);
+		        last_arena_x = Arena_x;
+		        last_weapon_floor = weapon_floor;
+		    }
+
+
+	    // 每帧推进渐变
+	    upbody_ctrl.Update(0.005f, upbody_pub);
+	}
     Traject_chassis.Set_Ref(state_target_cmd,Normal);
     position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
     position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;

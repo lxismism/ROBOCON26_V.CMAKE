@@ -2,6 +2,7 @@
 
 #include "UartPort.hpp"
 #include "main.h"
+#include "stm32h7xx_hal_conf.h"
 #include <cstdint>
 
 constexpr int kMaxMap = 5;
@@ -12,6 +13,11 @@ constexpr uint32_t kTrySendTimeout = 300;
 constexpr uint8_t CMD_MC_RELEASE_CLAW  = 0x0A;
 constexpr uint8_t CMD_MC_PICK_NEW      = 0x1A;
 constexpr uint8_t CMD_MC_ENTER_MF      = 0x1B;
+constexpr uint8_t CMD_ENTER_ARENA   = 0x2A;
+constexpr uint8_t CMD_AUTO_PUT_MIDDLE   = 0x3A;
+constexpr uint8_t CMD_JOINT = 0x4A;
+constexpr uint8_t CMD_HOLD_KFS = 0x5A;
+constexpr uint8_t CMD_RELEASE_KFS = 0x5B;
 
 struct IR_FRAME_t{
     uint16_t uid;
