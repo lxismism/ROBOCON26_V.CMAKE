@@ -22,6 +22,7 @@ extern osThreadId_t CAN2_Send_TaskHandle;
 extern osThreadId_t CAN3_Send_TaskHandle;
 extern osThreadId_t ChassisTaskHandle;
 extern osThreadId_t ControlTaskHandle;
+extern osThreadId_t DisplayTaskHandle;
 extern osThreadId_t PosCtrlTaskHandle;
 extern osThreadId_t uart2ProcessTaskHandle;
 extern osThreadId_t uart3ProcessTaskHandle;
@@ -45,6 +46,7 @@ static uint32_t CAN3_Send_m = 0;
 static uint32_t Debug_m = 0;
 static uint32_t Chassis_m = 0;
 static uint32_t Control_m = 0;
+static uint32_t Display_m = 0;
 static uint32_t PosCtrl_m = 0;
 static uint32_t Uart2Process_m = 0;
 static uint32_t Uart3Process_m = 0;
@@ -68,16 +70,18 @@ void debugTask(void *argument) {
   TickType_t currentTime = xTaskGetTickCount();
 
   for (;;) {
-    CAN1_Send_m     = osThreadGetStackSpace(CAN1_Send_TaskHandle);
-    CAN2_Send_m     = osThreadGetStackSpace(CAN2_Send_TaskHandle);
-    CAN3_Send_m     = osThreadGetStackSpace(CAN3_Send_TaskHandle);
-    Debug_m         = osThreadGetStackSpace(Debug_TaskHandle);
-    Chassis_m       = osThreadGetStackSpace(ChassisTaskHandle);
-    Control_m       = osThreadGetStackSpace(ControlTaskHandle);
-    PosCtrl_m       = osThreadGetStackSpace(PosCtrlTaskHandle);
-    Uart2Process_m  = osThreadGetStackSpace(uart2ProcessTaskHandle);
-    Uart3Process_m  = osThreadGetStackSpace(uart3ProcessTaskHandle);
-    Uart4Process_m  = osThreadGetStackSpace(uart4ProcessTaskHandle);
+    // 更新各任务剩余栈空间（单位：byte）
+    CAN1_Send_m = osThreadGetStackSpace(CAN1_Send_TaskHandle);
+    CAN2_Send_m = osThreadGetStackSpace(CAN2_Send_TaskHandle);
+    CAN3_Send_m = osThreadGetStackSpace(CAN3_Send_TaskHandle);
+    Debug_m = osThreadGetStackSpace(Debug_TaskHandle);
+    Chassis_m = osThreadGetStackSpace(ChassisTaskHandle);
+    Control_m = osThreadGetStackSpace(ControlTaskHandle);
+    Display_m = osThreadGetStackSpace(DisplayTaskHandle);
+    PosCtrl_m = osThreadGetStackSpace(PosCtrlTaskHandle);
+    Uart2Process_m = osThreadGetStackSpace(uart2ProcessTaskHandle);
+    Uart3Process_m = osThreadGetStackSpace(uart3ProcessTaskHandle);
+    Uart4Process_m = osThreadGetStackSpace(uart4ProcessTaskHandle);
     UsbcdcProcess_m = osThreadGetStackSpace(usbcdcProcessTaskHandle);
 
     Uart5Process_m  = osThreadGetStackSpace(uart5ProcessTaskHandle);    // ←

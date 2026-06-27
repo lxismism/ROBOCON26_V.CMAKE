@@ -253,6 +253,12 @@ pub_upbody_cmd upbody_cmd_msg{};
 // pub_ir_data ir_data{};
 // TickType_t last_data_received_time = 0; // 上次接收到数据的时间
 
+TypedTopicPublisher<pub_motor_status> motor_status_pub("motor_status");
+pub_motor_status motor_status_data{};
+
+TypedTopicPublisher<pub_omni_ir_status> omni_ir_status_pub("omni_ir_status");
+pub_omni_ir_status omni_ir_status_data{};
+
 TypedTopicSubscriber<pub_ir_cmd> omni_ir_cmd_sub("omni_ir_cmd", 8);
 pub_ir_cmd omni_ir_cmd_pop{};
 
@@ -695,6 +701,19 @@ void DebugSerialTask(void *argument) {
     title[9] =  picker_lift_motor.isOffline() ? 'X' : 'O';
     title[10] = weapon_lift_motor.isOffline() ? 'X' : 'O';
 
+    motor_status_data.chassis_motor1 = chassis_motor1.isOffline();
+    motor_status_data.chassis_motor2 = chassis_motor2.isOffline();
+    motor_status_data.chassis_motor3 = chassis_motor3.isOffline();
+    motor_status_data.chassis_motor4 = chassis_motor4.isOffline();
+    motor_status_data.picker_yaw_motor = picker_yaw_motor.isOffline();
+    motor_status_data.picker_extend_motor = picker_extend_motor.isOffline();
+    motor_status_data.weapon_extend_motor = weapon_extend_motor.isOffline();
+    motor_status_data.lift_left_motor = lift_left_motor.isOffline();
+    motor_status_data.lift_right_motor = lift_right_motor.isOffline();
+    motor_status_data.picker_lift_motor = picker_lift_motor.isOffline();
+    motor_status_data.weapon_lift_motor = weapon_lift_motor.isOffline();
+    motor_status_pub.Publish(motor_status_data);
+
     // int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%03d,%d.%03d,%d.%02d\n",
     //                                           static_cast<int>(pid_LU.Ref), (static_cast<int>(abs(pid_LU.Ref * 100)))%100,
     //                                           static_cast<int>(pid_LU.Measure), (static_cast<int>(abs(pid_LU.Measure * 100)))%100,
@@ -900,7 +919,11 @@ void omniIrSendTask(void *argument) {
   {
     if(omni_ir_cmd_sub.TryGet(&omni_ir_cmd_pop)) {
       //根据接收到的指令发送红外数据
+      omni_ir_status_data.isSending = true;
+      omni_ir_status_pub.Publish(omni_ir_status_data);
       omni_ir.sendData(biggest_used_uid, omni_ir_cmd_pop.tx_data);
+      omni_ir_status_data.isSending = false;
+      omni_ir_status_pub.Publish(omni_ir_status_data);
       osMutexAcquire(ir_uid_mutex, osWaitForever);
       biggest_used_uid = getNewUid(biggest_used_uid);
       osMutexRelease(ir_uid_mutex);

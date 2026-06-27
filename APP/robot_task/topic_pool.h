@@ -16,7 +16,6 @@
 #pragma once
 #include "fdcan.h"
 #include "rm_pocket.hpp"
-#include "portmacro.h"
 #include "usart.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -121,6 +120,23 @@ typedef struct {
   float roll_rad;  // 滚转角
 } pub_imu_data;
 
+typedef struct {
+  bool chassis_motor1;
+  bool chassis_motor2;
+  bool chassis_motor3;
+  bool chassis_motor4;
+  bool picker_yaw_motor;
+  bool picker_extend_motor;
+  bool weapon_extend_motor;
+  bool lift_left_motor;
+  bool lift_right_motor;
+  bool picker_lift_motor;
+  bool weapon_lift_motor;
+} pub_motor_status;
+
+typedef struct {
+  bool isSending;
+} pub_omni_ir_status;
 
 // 发布底盘运动指令
 typedef struct {

@@ -186,6 +186,7 @@ void controlTask(void *argument) {
 
     controlInit();
     // uint32_t last_time = HAL_GetTick();
+
     for (;;) {
         //test begin
         if(control_rc_sub.TryGet(&control_rm_cmd)) {

@@ -32,12 +32,12 @@
 
 // 最大topic数量
 #ifndef TOPICS_MAX_TOPICS
-#define TOPICS_MAX_TOPICS 10U
+#define TOPICS_MAX_TOPICS 12U
 #endif
 
 // 某个topics上能挂载订阅者的最大数目
 #ifndef TOPICS_MAX_SUBS_PER_TOPIC
-#define TOPICS_MAX_SUBS_PER_TOPIC 4U
+#define TOPICS_MAX_SUBS_PER_TOPIC 2U
 #endif
 
 typedef struct publish_data_t {
