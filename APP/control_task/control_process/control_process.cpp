@@ -769,7 +769,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         }
     } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-            if (Arena_x - field_side >= 0 && Arena_x - field_side <= 2) {
+            if (Arena_x + field_side >= 0 && Arena_x + field_side <= 2) {
                 Arena_x = Arena_x + field_side;
             }
         }
