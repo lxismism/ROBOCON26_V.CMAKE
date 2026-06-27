@@ -43,7 +43,6 @@ struct ActionSpeeds {
     float weapon_lift   = 180.0f;   // 武器手抬升 mm/s
     float weapon_extend = 180.0f;   // 武器手伸缩 mm/s
     float lift          = 40.0f;    // 电梯 mm/s
-    float wrist         = 3.0f;     // 腕部达妙翻转 rad/s（达妙内置速度已够好，此值作保底）
 };
 
 
@@ -55,7 +54,6 @@ struct ActionPriorities {
     int weapon_lift   = -1;
     int weapon_extend = -1;
     int lift          = -1;
-    int wrist         = -1;
 
 };
 
@@ -84,11 +82,6 @@ struct RampState {
     // 电梯
     float cur_lift_mm = 0.0f;
     float end_lift_mm = 0.0f;
-
-    // 腕部达妙
-    float cur_wrist_angle_rad = 0.0f;
-    float end_wrist_angle_rad = 0.0f;
-
 
     int8_t pending_pump_cmd = 0;
     int8_t pending_valve_cmd = 0;
@@ -121,7 +114,6 @@ struct RobotPose {
     float weapon_extend_mm;
     float lift_mm;
     int8_t name = -1;
-    float wrist_angle_rad = 1.57079f;   // 腕部达妙角度（rad），0=朝上
 };
 
 
@@ -146,11 +138,11 @@ inline constexpr RobotPose kPose_Pick[3] = {
 inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 inline constexpr RobotPose kPose_Grid9_Bot3  = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 
-inline constexpr RobotPose kPose_Get1   = {98.1f, -332.0f, 201.6f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 190.0f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get1   = {98.1f, -322.0f, 201.6f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get2   = {98.1f, -139.0f, 201.6f, 347.0f, 0.0f, 140.0f};
 
-inline constexpr RobotPose kPose_Poke1  = {430.80f, 778.0f, 0.0f, 347.0f, 200.0f, 0.0f, -1, 0.0f};       // 腕部0°朝上，戳第一层
-inline constexpr RobotPose kPose_Poke2  = {430.80f, 778.0f, 0.0f, 347.0f, 200.0f, 0.0f, -1, 1.0472f};    // 腕部60°下翻，戳第二层
+inline constexpr RobotPose kPose_Poke1  = {430.80f, 778.0f, 0.0f, 347.0f, 200.0f, 0.0f, -1};       // 腕部0°朝上，戳第一层
+inline constexpr RobotPose kPose_Poke2  = {430.80f, 778.0f, 0.0f, 347.0f, 200.0f, 0.0f, -1};    // 腕部60°下翻，戳第二层
 
 
 inline constexpr RobotPose kPose_R2_First_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
@@ -196,7 +188,8 @@ public:
     //Arena
     void GetKFS  (const RobotPose& pose);
     void GrabKFS_Arena(const RobotPose& pose);
-    void PokeWeapon(const RobotPose& pose);   // 九宫格武器子模式：摆到戳的姿态
+    void PokeWeapon(const RobotPose& pose, int wrist_preset);   // 九宫格武器子模式：摆到戳的姿态
+    
     void R2MergePose(const RobotPose& pose);
 
 //-------------------------------------

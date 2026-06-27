@@ -186,7 +186,6 @@ typedef struct {
   float weapon_lift_target_mm;
   float weapon_extend_target_mm;
   float lift_target_mm;
-  float wrist_target_rad;    // 腕部达妙绝对角度（rad），set_absolute_pose=true 时生效
 
 
 } pub_upbody_cmd;

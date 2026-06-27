@@ -9,6 +9,9 @@
  */
 
 #include "control_action.hpp"
+#include "weapon_hand.hpp"
+
+extern WeaponHand weapon_hand;
 
 // ===== 辅助工具 =====
 
@@ -94,7 +97,6 @@ void ActionController::Start_(const ActionConfig& config) {
     ramp_.end_weapon_lift_mm   = config.target.weapon_lift_mm;
     ramp_.end_weapon_extend_mm = config.target.weapon_extend_mm;
     ramp_.end_lift_mm          = config.target.lift_mm;
-    ramp_.end_wrist_angle_rad  = config.target.wrist_angle_rad;
 
 
     ramp_.speeds          = config.speeds;
@@ -141,62 +143,52 @@ void ActionController::Step_(float dt) {
     weapon_extend_done = (fabsf(ramp_.cur_weapon_extend_mm - ramp_.end_weapon_extend_mm) <= 0.01f);
     lift_done          = (fabsf(ramp_.cur_lift_mm          - ramp_.end_lift_mm)          <= 0.01f);
 
-    bool wrist_done    = (fabsf(ramp_.cur_wrist_angle_rad  - ramp_.end_wrist_angle_rad)  <= 0.01f);    
-
-    bool done[7] = {
+    bool done[6] = {
         pick_lift_done, pick_yaw_done, pick_extend_done,
-        weapon_lift_done, weapon_extend_done, lift_done,
-        wrist_done
+        weapon_lift_done, weapon_extend_done, lift_done
     };
-    int prios[7] = {
+    int prios[6] = {
         ramp_.priorities.pick_lift, ramp_.priorities.pick_yaw,
         ramp_.priorities.pick_extend,
         ramp_.priorities.weapon_lift, ramp_.priorities.weapon_extend,
-        ramp_.priorities.lift,
-        ramp_.priorities.wrist
-    };
+        ramp_.priorities.lift
+        };
 
 
     // ---- 吸取手抬升 ----
-    if (!pick_lift_done && !AxisBlocked(prios[0], done, prios, 7)) {
+    if (!pick_lift_done && !AxisBlocked(prios[0], done, prios, 6)) {
         RampOneAxis(ramp_.cur_pick_lift_mm, ramp_.end_pick_lift_mm,
                     ramp_.speeds.pick_lift * dt, 0.01f, pick_lift_done);
     }
 
     // ---- 吸取手云台 ----
-    if (!pick_yaw_done && !AxisBlocked(prios[1], done, prios, 7)) {
+    if (!pick_yaw_done && !AxisBlocked(prios[1], done, prios, 6)) {
         RampOneAxis(ramp_.cur_pick_yaw_deg, ramp_.end_pick_yaw_deg,
                     ramp_.speeds.pick_yaw * dt, 0.1f, pick_yaw_done);
     }
 
     // ---- 吸取手伸缩 ----
-    if (!pick_extend_done && !AxisBlocked(prios[2], done, prios, 7)) {
+    if (!pick_extend_done && !AxisBlocked(prios[2], done, prios, 6)) {
         RampOneAxis(ramp_.cur_pick_extend_mm, ramp_.end_pick_extend_mm,
                     ramp_.speeds.pick_extend * dt, 0.01f, pick_extend_done);
     }
 
     // ---- 武器手抬升 ----
-    if (!weapon_lift_done && !AxisBlocked(prios[3], done, prios, 7)) {
+    if (!weapon_lift_done && !AxisBlocked(prios[3], done, prios, 6)) {
         RampOneAxis(ramp_.cur_weapon_lift_mm, ramp_.end_weapon_lift_mm,
                     ramp_.speeds.weapon_lift * dt, 0.01f, weapon_lift_done);
     }
 
     // ---- 武器手伸缩 ----
-    if (!weapon_extend_done && !AxisBlocked(prios[4], done, prios, 7)) {
+    if (!weapon_extend_done && !AxisBlocked(prios[4], done, prios, 6)) {
         RampOneAxis(ramp_.cur_weapon_extend_mm, ramp_.end_weapon_extend_mm,
                     ramp_.speeds.weapon_extend * dt, 0.01f, weapon_extend_done);
     }
 
     // ---- 电梯 ----
-    if (!lift_done && !AxisBlocked(prios[5], done, prios, 7)) {
+    if (!lift_done && !AxisBlocked(prios[5], done, prios, 6)) {
         RampOneAxis(ramp_.cur_lift_mm, ramp_.end_lift_mm,
                     ramp_.speeds.lift * dt, 0.01f, lift_done);
-    }
-
-    // ---- 腕部达妙 ----
-    if (!wrist_done && !AxisBlocked(prios[6], done, prios, 7)) {
-        RampOneAxis(ramp_.cur_wrist_angle_rad, ramp_.end_wrist_angle_rad,
-                    ramp_.speeds.wrist * dt, 0.01f, wrist_done);
     }
 
 
@@ -209,7 +201,6 @@ void ActionController::Step_(float dt) {
     if (ramp_.step_done_mask & 0x08) all_done &= weapon_lift_done;
     if (ramp_.step_done_mask & 0x10) all_done &= weapon_extend_done;
     if (ramp_.step_done_mask & 0x20) all_done &= lift_done;
-    if (ramp_.step_done_mask & 0x40) all_done &= wrist_done;
 
 
     if (all_done && ramp_.chassis_release_pending) {
@@ -235,7 +226,6 @@ void ActionController::ToMsg_(pub_upbody_cmd& msg) const {
     msg.weapon_lift_target_mm   = ramp_.cur_weapon_lift_mm;
     msg.weapon_extend_target_mm = ramp_.cur_weapon_extend_mm;
     msg.lift_target_mm          = ramp_.cur_lift_mm;
-    msg.wrist_target_rad        = ramp_.cur_wrist_angle_rad;
 
 }
 
@@ -254,7 +244,6 @@ void ActionController::SyncState(const RobotPose& current) {
     ramp_.cur_weapon_lift_mm   = current.weapon_lift_mm;
     ramp_.cur_weapon_extend_mm = current.weapon_extend_mm;
     ramp_.cur_lift_mm          = current.lift_mm;
-    ramp_.cur_wrist_angle_rad  = current.wrist_angle_rad;
 }
 
 // ---- 步队列 ----
@@ -534,7 +523,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7.priorities.pick_lift    = 0;
         step7.step_done_mask = 0x01;
         step7.skip_safety = true;
-        step7.dwell_ms = 350;                    // ← 加：关泵后等200ms破真空
+        step7.dwell_ms = 450;                    // ← 加：关泵后等200ms破真空
         if (close_pump_at_end) {
             step7.pump_cmd_done  = -1;  // 关泵
             step7.valve_cmd_done = -1;  // 关阀
@@ -648,13 +637,19 @@ void ActionController::R2MergePose(const RobotPose& pose) {
     Start_(config);
 }
 
-void ActionController::PokeWeapon(const RobotPose& pose) {
+void ActionController::PokeWeapon(const RobotPose& pose, int wrist_preset) {
+    // wrist 不走渐变，直接设目标（和武馆模式 wristFlip 逻辑一致）
+    switch (wrist_preset) {
+        case 0: weapon_hand.wrist_target_rad_ = 0.087266f; break;   // 第一层：5°
+        case 1: weapon_hand.wrist_target_rad_ = 1.0472f;   break;   // 第二层：~65°
+        case 2: weapon_hand.wrist_target_rad_ = 1.57079f;  break;   // 90°
+        default: break;
+    }
+    // 其他轴正常走渐变
     ActionConfig config;
     config.target = pose;
     config.speeds.weapon_extend = 180.0f;
-    config.speeds.wrist         = 3.0f;
     config.priorities.weapon_extend = -1;
-    config.priorities.wrist         = -1;
     Start_(config);
 }
 

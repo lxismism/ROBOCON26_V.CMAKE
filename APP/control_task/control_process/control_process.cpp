@@ -270,7 +270,6 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                 current.weapon_lift_mm   = weapon_hand.lift_target_deg_   * WeaponHand::kLiftMmPerDeg;
                 current.weapon_extend_mm = weapon_hand.extend_target_deg_ * WeaponHand::kExtendMmPerDeg;
                 current.lift_mm          = lift.target_deg_ * Lift::kMmPerDeg;
-                current.wrist_angle_rad  = weapon_hand.wrist_target_rad_;
                 upbody_ctrl.SyncState(current);
                 prev_robot_mode = robot_mode;
             }
@@ -917,21 +916,12 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 	    // 模式进入 / 格子切换 / 楼层切换 → 触发PokeWeapon
 		    if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending()
 		        && (last_arena_x != Arena_x || weapon_floor != last_weapon_floor)) {
-		        // 先同步当前状态，防止 wrist 从错误起点开始渐变
-		        RobotPose current;
-		        current.pick_lift_mm     = pick_hand.lift_target_deg_   * PickHand::kLiftMmPerDeg;
-		        current.pick_yaw_deg     = pick_hand.yaw_target_deg_;
-		        current.pick_extend_mm   = pick_hand.extend_target_deg_ * PickHand::kExtendMmPerDeg;
-		        current.weapon_lift_mm   = weapon_hand.lift_target_deg_   * WeaponHand::kLiftMmPerDeg;
-		        current.weapon_extend_mm = weapon_hand.extend_target_deg_ * WeaponHand::kExtendMmPerDeg;
-		        current.lift_mm          = lift.target_deg_ * Lift::kMmPerDeg;
-		        current.wrist_angle_rad  = weapon_hand.wrist_target_rad_;
-		        upbody_ctrl.SyncState(current);
-		        upbody_ctrl.PokeWeapon(weapon_floor ? kPose_Poke2 : kPose_Poke1);
-
+		        upbody_ctrl.PokeWeapon(weapon_floor ? kPose_Poke2 : kPose_Poke1,
+		                               weapon_floor ? 1 : 0);
 		        last_arena_x = Arena_x;
 		        last_weapon_floor = weapon_floor;
 		    }
+
 
 	    // 每帧推进渐变
 	    upbody_ctrl.Update(0.005f, upbody_pub);
