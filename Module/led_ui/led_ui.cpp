@@ -9,12 +9,6 @@ uint8_t data;
 
 const static MF_Tale mf_map[3][4] = {
 {
-    {Ws2812::Color::Green, 0x00},
-    {Ws2812::Color::DarkGreen, 0x00},
-    {Ws2812::Color::Green, 0x00},
-    {Ws2812::Color::DarkGreen, 0x00}
-},
-{
     {Ws2812::Color::DarkGreen, 0x00},
     {Ws2812::Color::Green, 0x00},
     {Ws2812::Color::Yellow, 0x00},
@@ -25,6 +19,12 @@ const static MF_Tale mf_map[3][4] = {
     {Ws2812::Color::Yellow, 0x00},
     {Ws2812::Color::Green, 0x00},
     {Ws2812::Color::DarkGreen, 0x00}
+},
+{
+    {Ws2812::Color::DarkGreen, 0x00},
+    {Ws2812::Color::Green, 0x00},
+    {Ws2812::Color::DarkGreen, 0x00},
+    {Ws2812::Color::Green, 0x00}
 }
 };
 
@@ -128,5 +128,34 @@ void LedUi::drawMF() {
             }
             draw_cursor_y += 3;
         }
+    }
+}
+
+void LedUi::clearMFandCursor() {
+    for(uint8_t i = 1; i<15; i++) {
+        for(uint8_t j = 3; j<14; j++) {
+            led_matrix_.SetPixel(i,j,Ws2812::Color::Black);
+        }
+    }
+}
+
+void LedUi::drawCursor(uint8_t x, uint8_t y) {
+    switch (field_side_) {
+        case FieldSide_t::Left:{
+            // if(x == 0 && y == 0) {led_matrix_.SetPixel(14,13,Ws2812::Color::Blue);break;}
+            // if(x == 0 && y == 4) {led_matrix_.SetPixel(14,3,Ws2812::Color::Blue);break;}
+            // if(x == 5 && y == 0) {led_matrix_.SetPixel(1,13,Ws2812::Color::Blue);break;}
+            // if(x == 5 && y == 4) {led_matrix_.SetPixel(1,3,Ws2812::Color::Blue);break;}
+            uint8_t draw_x = 15 - 3*x;
+            uint8_t draw_y = 14 - 3*y;
+            if(x == 0) draw_x = 14;
+            if(x == 5) draw_x = 1;
+            if(y == 0) draw_y = 13;
+            if(y == 4) draw_y = 3;
+            led_matrix_.SetPixel(draw_x, draw_y, Ws2812::Color::Blue);
+            break;
+        }
+        case FieldSide_t::right:
+            break;
     }
 }
