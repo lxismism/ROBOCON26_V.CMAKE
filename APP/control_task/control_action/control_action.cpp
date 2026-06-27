@@ -370,7 +370,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         // Step 3: 电梯升到安全高度
         ActionConfig step3;
         step3.target = pose_Place;
-        step3.target.pick_lift_mm     = 390.6f;
+        step3.target.pick_lift_mm     = 440.6f;
         step3.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
         step3.target.pick_extend_mm   = pose_Grab.pick_extend_mm;
         step3.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
@@ -383,7 +383,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         ActionConfig step4;
         step4.target = pose_Place;
         step4.target.pick_extend_mm   = 0.0f;
-        step4.target.pick_lift_mm     = 390.6f;
+        step4.target.pick_lift_mm     = 440.6f;
         step4.target.pick_yaw_deg     = pose_Grab.pick_yaw_deg;
         step4.priorities.pick_extend  = 0;
         step4.step_done_mask = 0x04;
@@ -394,7 +394,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         ActionConfig step5a;
         step5a.target = pose_Place;
         step5a.target.pick_extend_mm   = 0.0f;
-        step5a.target.pick_lift_mm     = 390.6f;
+        step5a.target.pick_lift_mm     = 440.6f;
         step5a.target.pick_yaw_deg     = 0.0f;           // ← 转到 0°
         step5a.priorities.pick_yaw     = 0;
         step5a.step_done_mask = 0x02;                     // ← 只等 yaw
@@ -406,7 +406,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         ActionConfig step5b;
         step5b.target = pose_Place;
         step5b.target.pick_extend_mm   = 0.0f;
-        step5b.target.pick_lift_mm     = 390.6f;
+        step5b.target.pick_lift_mm     = 440.6f;
         step5b.priorities.pick_yaw     = 0;
         step5b.priorities.pick_lift    = 1;
         step5b.priorities.pick_extend  = 2;
@@ -430,7 +430,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7.priorities.pick_lift    = 0;
         step7.step_done_mask = 0x01;
         step7.skip_safety = true;
-        step7.dwell_ms = 350;                    // ← 加：关泵后等250ms破真空
+        step7.dwell_ms = 450;                    // ← 加：关泵后等250ms破真空
         if (close_pump_at_end) {
             step7.pump_cmd_done  = -1;  // 关泵
             step7.valve_cmd_done = -1;  // 关阀
