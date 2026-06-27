@@ -434,8 +434,8 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
         // state_target_cmd.omega_ = 0.0f;
         // Aim_State_omega_Process();
-        state_target_cmd.linear_x_ = 1.1f*field_side;
-        state_target_cmd.linear_y_ = 3.0f;
+        state_target_cmd.linear_x_ = 0.95f*field_side;
+        state_target_cmd.linear_y_ = 2.8f;
         state_target_cmd.omega_    = 0.0f;
     } else {
         state_target_cmd.linear_x_ = robot_position_MC[MC_y][0];
