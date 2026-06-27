@@ -537,13 +537,13 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         if (MF_y == 0 || MF_y == 4) {
             if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
                 if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-                    if (MF_x < 5 && MF_x > 0) {
+                    if (MF_x < 5 ) {
                         MF_x = MF_x - field_side;
                     }
                 }
             } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
                 if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-                    if (MF_x > 0 && MF_x < 5) {
+                    if (MF_x > 0 ) {
                         MF_x = MF_x + field_side;
                     }
                 }
@@ -762,13 +762,13 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 
     if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-            if (Arena_x < 2 && Arena_x > 0) {
+            if (Arena_x < 2) {
                 Arena_x = Arena_x - field_side;
             }
         }
     } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-            if (Arena_x > 0 && Arena_x < 2) {
+            if (Arena_x > 0) {
                 Arena_x = Arena_x + field_side;
             }
         }
@@ -801,24 +801,22 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 
 
     // ===== 九宫格子模式切换 =====
-    static bool arena_r2_mode  = false;  // false=KFS放置模式, true=R2合体模式
-    static bool arena_r2_floor = false;  // false=R2一楼, true=R2二楼
+	    static bool arena_r2_floor = false;   // false=R2一楼, true=R2二楼
 
-    if (control_rm_cmd.trimRight == RC_Trim_State_t::UP) {
-        if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
-            Arena_mode = WithR2;
-            if (arena_r2_mode) {
-                arena_r2_floor = false;   // 进入合体模式默认一楼
-            }
-            last_arena_x = -1;            // 强制刷新上身姿态
-        }
+	    if (control_rm_cmd.trimRight == RC_Trim_State_t::UP) {
+	        if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
+	            Arena_mode = WithR2;
+	            arena_r2_floor = false;   // 进入合体模式默认一楼
+	            last_arena_x = -1;        // 强制刷新上身姿态
+	        }
+
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
             Arena_mode = KFS;
             // if (arena_r2_mode) {
             //     arena_r2_floor = false;   // 进入合体模式默认一楼
             // }
-            // last_arena_x = -1;            // 强制刷新上身姿态
+            last_arena_x = -1;            // 强制刷新上身姿态
         }
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::DOWN) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
@@ -826,7 +824,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             // if (arena_r2_mode) {
             //     arena_r2_floor = false;   // 进入合体模式默认一楼
             // }
-            // last_arena_x = -1;            // 强制刷新上身姿态
+            last_arena_x = -1;            // 强制刷新上身姿态
         }
     }
     
@@ -905,15 +903,29 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         state_target_cmd.omega_    = robot_position_Arena_useWeapon[Arena_x][2];
         Aim_State_omega_Process();
 
-        // 右摇杆上下切换切换武器第一第二层
-        if (ABS(control_rm_cmd.joyRVert - kJoyCenter) > 700) {
-            if ((control_rm_cmd.joyRVert - kJoyCenter) > 0) {
-                //接口，武器抬到第二层
-            } else {
-                //武器抬到第一层，默认是第一层
-            }
-        }
-    }
+	    // 右摇杆上下切换武器第一/第二层
+	    static bool weapon_floor = false;       // false=第一层, true=第二层
+	    static bool last_weapon_floor = false;
+	    if (ABS(control_rm_cmd.joyRVert - kJoyCenter) > 700) {
+	        if ((control_rm_cmd.joyRVert - kJoyCenter) > 0) {
+	            weapon_floor = true;            // 武器抬到第二层
+	        } else {
+	            weapon_floor = false;           // 武器抬到第一层
+	        }
+	    }
+	    // 模式进入 / 格子切换 / 楼层切换 → 触发PokeWeapon
+		    if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending()
+		        && (last_arena_x != Arena_x || weapon_floor != last_weapon_floor)) {
+		        upbody_ctrl.PokeWeapon(weapon_floor ? kPose_Poke2 : kPose_Poke1,
+		                               weapon_floor ? 1 : 0);
+		        last_arena_x = Arena_x;
+		        last_weapon_floor = weapon_floor;
+		    }
+
+
+	    // 每帧推进渐变
+	    upbody_ctrl.Update(0.005f, upbody_pub);
+	}
 }
 
 

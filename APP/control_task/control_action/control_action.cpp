@@ -9,6 +9,9 @@
  */
 
 #include "control_action.hpp"
+#include "weapon_hand.hpp"
+
+extern WeaponHand weapon_hand;
 
 // ===== 辅助工具 =====
 
@@ -95,6 +98,7 @@ void ActionController::Start_(const ActionConfig& config) {
     ramp_.end_weapon_extend_mm = config.target.weapon_extend_mm;
     ramp_.end_lift_mm          = config.target.lift_mm;
 
+
     ramp_.speeds          = config.speeds;
     ramp_.priorities      = config.priorities;
     ramp_.step_done_mask  = config.step_done_mask;
@@ -148,7 +152,8 @@ void ActionController::Step_(float dt) {
         ramp_.priorities.pick_extend,
         ramp_.priorities.weapon_lift, ramp_.priorities.weapon_extend,
         ramp_.priorities.lift
-    };
+        };
+
 
     // ---- 吸取手抬升 ----
     if (!pick_lift_done && !AxisBlocked(prios[0], done, prios, 6)) {
@@ -186,6 +191,8 @@ void ActionController::Step_(float dt) {
                     ramp_.speeds.lift * dt, 0.01f, lift_done);
     }
 
+
+
     // ---- 全部完成 ----
     bool all_done = true;
     if (ramp_.step_done_mask & 0x01) all_done &= pick_lift_done;
@@ -194,6 +201,7 @@ void ActionController::Step_(float dt) {
     if (ramp_.step_done_mask & 0x08) all_done &= weapon_lift_done;
     if (ramp_.step_done_mask & 0x10) all_done &= weapon_extend_done;
     if (ramp_.step_done_mask & 0x20) all_done &= lift_done;
+
 
     if (all_done && ramp_.chassis_release_pending) {
         ramp_.chassis_released = true;
@@ -218,6 +226,7 @@ void ActionController::ToMsg_(pub_upbody_cmd& msg) const {
     msg.weapon_lift_target_mm   = ramp_.cur_weapon_lift_mm;
     msg.weapon_extend_target_mm = ramp_.cur_weapon_extend_mm;
     msg.lift_target_mm          = ramp_.cur_lift_mm;
+
 }
 
 // ====================================================================
@@ -514,7 +523,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7.priorities.pick_lift    = 0;
         step7.step_done_mask = 0x01;
         step7.skip_safety = true;
-        step7.dwell_ms = 350;                    // ← 加：关泵后等200ms破真空
+        step7.dwell_ms = 450;                    // ← 加：关泵后等200ms破真空
         if (close_pump_at_end) {
             step7.pump_cmd_done  = -1;  // 关泵
             step7.valve_cmd_done = -1;  // 关阀
@@ -586,7 +595,7 @@ void ActionController::GetKFS(const RobotPose& pose) {
     // 上抬 70mm 避开螺丝
     ActionConfig lift_up;
     lift_up.target = pose;
-    lift_up.target.pick_lift_mm     = pose.pick_lift_mm + 70.0f;  // ← pose，不是 ramp_.cur
+    lift_up.target.pick_lift_mm     = pose.pick_lift_mm + 140.0f;  // ← pose，不是 ramp_.cur
     lift_up.target.pick_yaw_deg     = pose.pick_yaw_deg;
     lift_up.target.pick_extend_mm   = pose.pick_extend_mm;
     lift_up.target.weapon_lift_mm   = pose.weapon_lift_mm;
@@ -627,3 +636,20 @@ void ActionController::R2MergePose(const RobotPose& pose) {
     config.step_done_mask = 0x20;  // 仅关注电梯到位
     Start_(config);
 }
+
+void ActionController::PokeWeapon(const RobotPose& pose, int wrist_preset) {
+    // wrist 不走渐变，直接设目标（和武馆模式 wristFlip 逻辑一致）
+    switch (wrist_preset) {
+        case 0: weapon_hand.wrist_target_rad_ = 0.087266f; break;   // 第一层：5°
+        case 1: weapon_hand.wrist_target_rad_ = 1.0472f;   break;   // 第二层：~65°
+        case 2: weapon_hand.wrist_target_rad_ = 1.57079f;  break;   // 90°
+        default: break;
+    }
+    // 其他轴正常走渐变
+    ActionConfig config;
+    config.target = pose;
+    config.speeds.weapon_extend = 180.0f;
+    config.priorities.weapon_extend = -1;
+    Start_(config);
+}
+

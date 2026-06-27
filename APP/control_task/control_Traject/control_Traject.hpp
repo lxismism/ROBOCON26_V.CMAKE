@@ -47,7 +47,6 @@ public:
             Update_TrackSpeed(Traj_s_ref);
         }
         
-
         output_w.vx = Traj_wff.vx + track_w.vx;
         output_w.vy = Traj_wff.vy + track_w.vy;
         output_w.w  = Traj_wff.w  + track_w.w;
