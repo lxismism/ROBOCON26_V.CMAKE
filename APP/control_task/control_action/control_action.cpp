@@ -641,7 +641,7 @@ void ActionController::PokeWeapon(const RobotPose& pose, int wrist_preset) {
     // wrist 不走渐变，直接设目标（和武馆模式 wristFlip 逻辑一致）
     switch (wrist_preset) {
         case 0: weapon_hand.wrist_target_rad_ = 0.087266f; break;   // 第一层：5°
-        case 1: weapon_hand.wrist_target_rad_ = 1.0472f;   break;   // 第二层：~65°
+        case 1: weapon_hand.wrist_target_rad_ = 0.9472f;   break;   // 第二层：~65°
         case 2: weapon_hand.wrist_target_rad_ = 1.57079f;  break;   // 90°
         default: break;
     }
