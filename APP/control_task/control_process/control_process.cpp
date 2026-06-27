@@ -678,7 +678,9 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                     && !upbody_ctrl.HasPending()
                     && !mf_placing) {
                     upbody_ctrl.Moving(kPose_Moving_In_MF);
+                    weapon_hand.wrist_target_rad_ = 1.4835298f;   // 85°，竖杆防碰撞
                     last_moving_pose_i = MF_plan_run_i;
+
                 }
                 
                 if(Traject_chassis.PointTrack_complete_Flag == true){
