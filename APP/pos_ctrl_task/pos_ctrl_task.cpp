@@ -74,6 +74,7 @@ void posCtrlTask(void *argument) {
             weapon_hand.extend_target_deg_ = upbody_msg.weapon_extend_target_mm / WeaponHand::kExtendMmPerDeg;
 
             lift.target_deg_               = upbody_msg.lift_target_mm          / Lift::kMmPerDeg;
+
         }
 
 
