@@ -4,6 +4,7 @@
 #include "tim.h"
 
 #include <cstring>
+#include <stdint.h>
 
 Ws2812 *Ws2812::instances_[Ws2812::kMaxInstances] = {nullptr, nullptr};
 DMA_BUFFER_ATTR uint16_t Ws2812::dma_buffer_[Ws2812::kDmaBufferLength] = {};
@@ -127,8 +128,8 @@ Ws2812::Rgb Ws2812::Preset(Color color) {
 }
 
 uint16_t Ws2812::LedIndex(uint16_t x, uint16_t y) {
-  // 灯珠按行优先连接：第一行从左到右，第二行继续从左到右。
-  return static_cast<uint16_t>(y * kWidth + x);
+  //重新映射，从模块下方出线。
+  return static_cast<uint16_t>((15-y) * kWidth + (15-x));
 }
 
 uint16_t Ws2812::DutyForBit(bool bit_is_one) {
