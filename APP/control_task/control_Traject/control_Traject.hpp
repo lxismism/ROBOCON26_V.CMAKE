@@ -24,7 +24,8 @@ public:
     float_t watch_5;
 
     bool Traj_complete_Flag;
-    bool PointTrack_complete_Flag;
+    bool PointTrack_linear_complete_Flag;
+    bool PointTrack_omega_complete_Flag; 
 
     // =====================================================
     //  轨迹运行函数
@@ -37,16 +38,16 @@ public:
         dt = DWT_GetDeltaT(&DWT_CNT);
 
         Update_s(Traj_Mode);
-
-        Update_TarjSpeed();
         Update_s_ref(Traj_Mode);
-
-        if(Traj_complete_Flag == true){
-            Update_TrackSpeed(Traj_s);
-        }else {
-            Update_TrackSpeed(Traj_s_ref);
-        }
+        Update_TarjSpeed();
         
+        if(Traj_complete_Flag == true){
+            Update_TrackSpeed_linear(Traj_s);
+        }else {
+            Update_TrackSpeed_linear(Traj_s_ref);
+        }
+        Update_TrackSpeed_omega(Traj_s_ref);
+
         output_w.vx = Traj_wff.vx + track_w.vx;
         output_w.vy = Traj_wff.vy + track_w.vy;
         output_w.w  = Traj_wff.w  + track_w.w;
@@ -88,7 +89,8 @@ public:
             ref.y = Ref.linear_y_;
             ref.yaw = Ref.omega_;
             Traj_complete_Flag = false;
-            PointTrack_complete_Flag = false;
+            PointTrack_omega_complete_Flag = false;
+            PointTrack_linear_complete_Flag = false;
             TrajGenerate(mode);
         }
     }
@@ -193,7 +195,7 @@ public:
         //防止除零错误
         if(s_now - s_last > 0.001f){
             dx_ds   = (Traj_s.x - Traj_s_last.x)/(s_now - s_last);
-            // dy_ds   = (Traj_s.y - Traj_s_last.y)/(s_now - s_last);
+            dy_ds   = (Traj_s.y - Traj_s_last.y)/(s_now - s_last);
             // dyaw_ds = Warp_ToRange(Traj_s.yaw - Traj_s_last.yaw,-180.0f,180.0f)/(s_now - s_last);
         }
         return s_now;
@@ -246,12 +248,8 @@ public:
     // =====================================================
     void Update_TarjSpeed(){
 
-        // v_Acc = sqrt(2.0f*Acc*s_now);
         v_Acc = v_output + Acc_linear*dt;
         v_Dec = sqrt(2.0f*Dec_linear*(L - s_now));
-
-        // w_Acc = fabsf(Traj_wff.w) + Acc_omega*dt;
-        // w_Dec = fabsf(Traj_wff.w) - Dec_omega*dt;
 
         if(v_Max < v_Acc && v_Max < v_Dec){
             v_output = v_Max;
@@ -265,12 +263,6 @@ public:
             v_output = w_Max/(fabsf(dyaw_ds)*kDegToRad);
         }
 
-        // if(v_output*(fabsf(dyaw_ds)*kDegToRad) > w_Acc){
-        //     v_output = w_Acc/(fabsf(dyaw_ds)*kDegToRad);
-        // }else if(v_output*(fabsf(dyaw_ds)*kDegToRad) < w_Dec){
-        //     v_output = w_Dec/(fabsf(dyaw_ds)*kDegToRad);
-        // }
-
         Traj_wff.vx = dx_ds*v_output;
         Traj_wff.vy = dy_ds*v_output;
         Traj_wff.w  = dyaw_ds*kDegToRad*v_output;
@@ -278,47 +270,51 @@ public:
     }
 
     // =====================================================
-    //  点跟踪速度更新函数
+    //  点跟踪平移速度更新函数
     // =====================================================
-    void Update_TrackSpeed(chassis_position Ref_tmp){
+    void Update_TrackSpeed_linear(chassis_position Ref_tmp){
         float_t e_x = Ref_tmp.x - now.x;
         float_t e_y = Ref_tmp.y - now.y;
         float_t e_xy = sqrt(e_x*e_x + e_y*e_y);
-        float_t e_yaw = Warp_ToRange(Ref_tmp.yaw - now.yaw,-180.0f,180.0f);
-        
         float_t e_path = tx*e_x + ty*e_y;
         float_t e_lateral = nx*e_x + ny*e_y;
-
         if(Traj_complete_Flag == true){
-            if(e_xy < 0.03f && fabsf(e_yaw) < 0.5f){
+            if(e_xy < 0.03f){
                 static uint8_t count = 0 ;
                 if(count >= 10){
-                    PointTrack_complete_Flag = true;
+                    PointTrack_linear_complete_Flag = true;
                     count = 0;
                 }else {
                     count ++;
                 }
             }
         }
-
         float_t path_output = PID_Calculate(&track_path_xy, 0.0f, e_path);
         float_t lateral_output = PID_Calculate(&track_lateral_xy, 0.0f, e_lateral);
-        float_t track_omega_pid_output = kDegToRad * PID_Calculate(&track_omega, 0.0f, e_yaw);
-
         track_w.vx = path_output*tx + lateral_output*nx;
         track_w.vy = path_output*ty + lateral_output*ny;
-        track_w.w = track_omega_pid_output;
-
-        // if(e_xy > 0.005f){
-        //     track_w.vx = track_xy_pid_output * (e_x/e_xy);
-        //     track_w.vy = track_xy_pid_output * (e_y/e_xy);
-        // }else {
-        //     track_w.vx = 0.0f;
-        //     track_w.vy = 0.0f; 
-        // }
-
-        
     }
+
+    // =====================================================
+    //  点跟踪角速度更新函数
+    // =====================================================
+    void Update_TrackSpeed_omega(chassis_position Ref_tmp){
+        float_t e_yaw = Warp_ToRange(Ref_tmp.yaw - now.yaw,-180.0f,180.0f);
+        if(Traj_complete_Flag == true){
+            if(fabsf(e_yaw) < 0.5f){
+                static uint8_t count = 0 ;
+                if(count >= 10){
+                    PointTrack_omega_complete_Flag = true;
+                    count = 0;
+                }else {
+                    count ++;
+                }
+            }
+        }
+        float_t track_omega_pid_output = kDegToRad * PID_Calculate(&track_omega, 0.0f, e_yaw);
+        track_w.w = track_omega_pid_output;
+    }
+
 
     // =====================================================
     //  MF_yaw（s）函数
@@ -338,7 +334,7 @@ public:
             else if(y >= 0.9f && y < 4.1f)  {yaw = 90.0f*field_side;}
             else if(y >= 4.1f && y <= 4.9f) {yaw = Warp_ToRange(180.0f - (90.0f*field_side),-180.0f,180.0f)*(sinf(M_PI_2*((2*y-9.0f)/0.8f)) + 1.0f)/2.0f + (90.0f*field_side);}
 
-        }else if(x > 2.1f*field_side && x < 8.1f*field_side){
+        }else if(fabsf(x) > 2.1f && fabsf(x) < 8.1f){
             if(fabsf(y - 0.1f) < 0.05f)      {yaw = 0.0f;}
             else if(fabsf(y - 4.9f) < 0.1f) {yaw = 180.0f;}
         }
@@ -419,7 +415,7 @@ public:
     float_t dt;
     uint32_t DWT_CNT;
 
-    PID_t track_path_xy{.Kp = 4.88f,.Ki = 0.03f,.Kd = 0.55f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
+    PID_t track_path_xy{.Kp = 4.88f,.Ki = 0.01f,.Kd = 0.55f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
     PID_t track_lateral_xy{.Kp = 3.0f,.Ki = 0.03f,.Kd = 0.35f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
     PID_t track_omega{.Kp = 5.30f,.Ki = 0.1f,.Kd = 0.55f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
 

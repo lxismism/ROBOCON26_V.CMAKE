@@ -210,18 +210,18 @@ void controlTask(void *argument) {
                 switch (control_rm_cmd.swC){
                     case RC_3_POS_SW_State_t::UP : {
                         robot_mode = MC;
-                        Traject_chassis.Set_Ref(pub_chassis_cmd{0.0f,0.0f,0.0f}, Normal);
+                        // Traject_chassis.Set_Ref(pub_chassis_cmd{0.0f,0.0f,0.0f}, Normal);
                         Reset_position();
                         break;
                     }
                     case RC_3_POS_SW_State_t::MIDDLE : {
                         robot_mode = MF;
-                        Traject_chassis.Set_Ref(state_now_cmd, MF);
+                        // Traject_chassis.Set_Ref(state_now_cmd, MF);
                         break;
                     }
                     case RC_3_POS_SW_State_t::DOWN : {
                         robot_mode = Arena;
-                        Traject_chassis.Set_Ref(pub_chassis_cmd{0.0f,0.0f,0.0f}, Normal);
+                        // Traject_chassis.Set_Ref(pub_chassis_cmd{0.0f,0.0f,0.0f}, Normal);
                         Reset_position();
                         break;
                     }
