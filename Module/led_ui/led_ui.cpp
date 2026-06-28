@@ -1,5 +1,7 @@
 #include "led_ui.hpp"
+#include "topic_pool.h"
 #include "ws2812.hpp"
+#include <cstdint>
 #include <stdint.h>
 
 struct MF_Tale {
@@ -129,6 +131,18 @@ void LedUi::drawMF() {
             draw_cursor_y += 3;
         }
     }
+
+    if(field_side_ == FieldSide_t::right) {
+        uint8_t draw_cursor_y = 4;
+        for(uint8_t i = 0; i < 3; i++) {
+            uint8_t  draw_cursor_x = 13;
+            for(auto &mf: mf_map[i]) {
+                drawMFTale(draw_cursor_x, draw_cursor_y, mf);
+                draw_cursor_x -= 3;
+            }
+            draw_cursor_y += 3;
+        }
+    }
 }
 
 void LedUi::clearMFandCursor() {
@@ -155,7 +169,17 @@ void LedUi::drawCursor(uint8_t x, uint8_t y) {
             led_matrix_.SetPixel(draw_x, draw_y, Ws2812::Color::Red);
             break;
         }
-        case FieldSide_t::right:
+        case FieldSide_t::right: {
+            uint8_t draw_x = 15 - 3 * ( 5 - x);
+            uint8_t draw_y = 15 - 3 * (4 - y);
+
+            if(x == 0) draw_x = 1;
+            if(x == 5) draw_x = 14;
+            if(y == 0) draw_y = 3;
+            if(y == 4) draw_y = 13;
+            led_matrix_.SetPixel(draw_x, draw_y, Ws2812::Color::Red);
+        
             break;
+        }
     }
 }

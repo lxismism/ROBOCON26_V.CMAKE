@@ -28,6 +28,7 @@ constexpr Ws2812::Color kTestColors[] = {
 
 void displayTask(void *argument) {
   (void)argument;
+  extern FieldSide_t field_side;
   extern RobotMode_t robot_mode;
   extern RobotCase_t robot_case;
   extern uint8_t MF_x;
@@ -38,7 +39,7 @@ void displayTask(void *argument) {
   }
 
   led_ui.setBright(10);
-  led_ui.setFieldSide(FieldSide_t::Left);
+  led_ui.setFieldSide(field_side);
 
   for (;;) {
     
