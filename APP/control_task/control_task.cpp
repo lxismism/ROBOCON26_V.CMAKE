@@ -185,6 +185,7 @@ void controlTask(void *argument) {
     PID_Init(&omega);
 
     controlInit();
+    Reset_position();
     // uint32_t last_time = HAL_GetTick();
 
     for (;;) {
