@@ -116,6 +116,19 @@ struct RobotPose {
     int8_t name = -1;
 };
 
+enum Name : int8_t{
+    Pose_Place0                  =   0 ,
+    Pose_Place1                  =   1 ,
+    Pose_Place2                  =   2 ,
+
+    Pose_pick0                   =   3 ,
+    Pose_pick1                   =   4 ,
+    Pose_pick2                   =   5 ,
+
+    Pose_Grid9_Bot12             =   6 ,
+    Pose_Grid9_Bot3              =   7 ,
+
+};
 
 inline constexpr RobotPose kPose_KFS_Low  = {0.0f,   392.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 inline constexpr RobotPose kPose_KFS_Mid  = {159.2f, 392.0f, 0.0f, 347.0f, 0.0f, 0.0f};
@@ -125,18 +138,18 @@ inline constexpr RobotPose kPose_Moving_In_MF = {352.6f, 0.0f, 0.0f, 347.0f, 0.0
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};
 
 inline constexpr RobotPose kPose_Place[3]   = {
-    {78.1f, -312.0f, 150.59f, 347.0f, 0.0f, 100.0f,0},
-    {78.1f, -139.0f, 140.0f, 347.0f, 0.0f, 100.0f,1},
-    {370.0f, -220.5f, 0.0f, 347.0f, 0.0f, 0.0f,2}
+    {78.1f, -312.0f, 150.59f, 347.0f, 0.0f, 100.0f,Pose_Place0},
+    {78.1f, -139.0f, 140.0f, 347.0f, 0.0f, 100.0f,Pose_Place1},
+    {370.0f, -220.5f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place2}
 };
 inline constexpr RobotPose kPose_Pick[3] = {
-    {0.0f  , 392.0f, 231.6f, 347.0f, 0.0f, 0.0f},
-    {179.2f, 392.0f, 231.6f, 347.0f, 0.0f, 0.0f},
-    {390.6f, 392.0f, 231.6f, 347.0f, 0.0f, 0.0f}
+    {0.0f  , 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick0},
+    {179.2f, 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick1},
+    {390.6f, 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick2}
 };
 
-inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f};
-inline constexpr RobotPose kPose_Grid9_Bot3  = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
+inline constexpr RobotPose kPose_Grid9_Bot12 = {320.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot12};
+inline constexpr RobotPose kPose_Grid9_Bot3  = {320.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot3};
 
 inline constexpr RobotPose kPose_Get1   = {98.1f, -312.0f, 201.6f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Get2   = {98.1f, -139.0f, 201.6f, 347.0f, 0.0f, 140.0f};
@@ -147,6 +160,9 @@ inline constexpr RobotPose kPose_Poke2  = {430.80f, 778.0f, 0.0f, 347.0f, 200.0f
 
 inline constexpr RobotPose kPose_R2_First_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 inline constexpr RobotPose kPose_R2_Second_Floor = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 257.3f};
+
+extern RobotPose kPose_Now;   // 当前上身姿态
+
 
 // ===== 一步动作的完整配置 =====
 struct ActionConfig {

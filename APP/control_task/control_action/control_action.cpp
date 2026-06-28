@@ -13,6 +13,8 @@
 #include "pick_hand.hpp"
 #include "lift.hpp"
 
+RobotPose kPose_Now;
+
 
 extern WeaponHand weapon_hand;
 extern PickHand pick_hand;
@@ -413,6 +415,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step5b.target = pose_Place;
         step5b.target.pick_extend_mm   = 0.0f;
         step5b.target.pick_lift_mm     = 440.6f;
+        step5b.speeds.pick_yaw         = 250;
         step5b.priorities.pick_yaw     = 0;
         step5b.priorities.pick_lift    = 1;
         step5b.priorities.pick_extend  = 2;
@@ -448,7 +451,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7b.target.pick_lift_mm = pose_Place.pick_lift_mm;
         step7b.step_done_mask = 0x01;
         step7b.skip_safety = true;
-        step7b.dwell_ms = 350;
+        step7b.dwell_ms = 450;
         AddStep(step7b);
 
 
@@ -550,13 +553,15 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7b.target.pick_lift_mm = pose_Place.pick_lift_mm;
         step7b.step_done_mask = 0x01;
         step7b.skip_safety = true;
-        step7b.dwell_ms = 350;
+        step7b.dwell_ms = 450;
         AddStep(step7b);
 
 
     }
 
+    kPose_Now = pose_Place;   // 记录放置姿态（最后一个KFS对应name=2）
     RunSteps();
+
 }
 
 
@@ -569,10 +574,12 @@ void ActionController::Moving(const RobotPose& pose) {
 
 //Arena动作
 void ActionController::GrabKFS_Arena(const RobotPose& pose) {
-    // Step 1: 先抬到最高，冻结 yaw 和 extend 不动
+    // 如果当前姿态不是从高层取的（name != Pose_Place2），先抬到中层安全高度
+    float safe_lift = (kPose_Now.name == Pose_Place2) ? 442.6f : 320.80f;
+
     ActionConfig step1;
     step1.target = pose;
-    step1.target.pick_lift_mm     = 442.6f;
+    step1.target.pick_lift_mm     = safe_lift;
     step1.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
     step1.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
     step1.target.weapon_lift_mm   = ramp_.cur_weapon_lift_mm;
@@ -581,14 +588,16 @@ void ActionController::GrabKFS_Arena(const RobotPose& pose) {
     step1.step_done_mask = 0x01;
     AddStep(step1);
 
-    // Step 2: 云台转到位 → 再降高度
     ActionConfig step2;
     step2.target = pose;
-    step2.priorities.pick_yaw  = 0;   // 先转云台
-    step2.priorities.pick_lift = 1;   // 再降高度
+    step2.priorities.pick_yaw  = 0;
+    step2.priorities.pick_lift = 1;
     AddStep(step2);
     RunSteps();
+
+    kPose_Now = pose;   // 记录当前姿态
 }
+
 
 
 void ActionController::GetKFS(const RobotPose& pose) {
@@ -644,6 +653,7 @@ void ActionController::GetKFS(const RobotPose& pose) {
     retract.step_done_mask = 0x04;
     AddStep(retract);
 
+    kPose_Now = pose;    
     RunSteps();
 }
 
