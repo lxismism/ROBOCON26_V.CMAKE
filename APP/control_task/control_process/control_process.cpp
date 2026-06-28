@@ -622,13 +622,13 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         if (MF_y == 0 || MF_y == 4) {
             if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
                 if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-                    if (MF_x - field_side < 5 && MF_x - field_side > 0) {
+                    if (MF_x - field_side <= 5 && MF_x - field_side >= 0) {
                         MF_x = MF_x - field_side;
                     }
                 }
             } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
                 if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-                    if (MF_x - field_side > 0 && MF_x - field_side < 5) {
+                    if (MF_x + field_side >= 0 && MF_x + field_side <= 5) {
                         MF_x = MF_x + field_side;
                     }
                 }
