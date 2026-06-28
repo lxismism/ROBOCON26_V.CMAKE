@@ -10,8 +10,14 @@
 
 #include "control_action.hpp"
 #include "weapon_hand.hpp"
+#include "pick_hand.hpp"
+#include "lift.hpp"
+
 
 extern WeaponHand weapon_hand;
+extern PickHand pick_hand;
+extern Lift lift;
+
 
 // ===== 辅助工具 =====
 
@@ -430,7 +436,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7.priorities.pick_lift    = 0;
         step7.step_done_mask = 0x01;
         step7.skip_safety = true;
-        step7.dwell_ms = 450;                    // ← 加：关泵后等250ms破真空
+        step7.dwell_ms = 650;                    // ← 加：关泵后等650ms破真空
         if (close_pump_at_end) {
             step7.pump_cmd_done  = -1;  // 关泵
             step7.valve_cmd_done = -1;  // 关阀
@@ -523,7 +529,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7.priorities.pick_lift    = 0;
         step7.step_done_mask = 0x01;
         step7.skip_safety = true;
-        step7.dwell_ms = 450;                    // ← 加：关泵后等200ms破真空
+        step7.dwell_ms = 650;                    // ← 加：关泵后等650ms破真空
         if (close_pump_at_end) {
             step7.pump_cmd_done  = -1;  // 关泵
             step7.valve_cmd_done = -1;  // 关阀
@@ -651,5 +657,31 @@ void ActionController::PokeWeapon(const RobotPose& pose, int wrist_preset) {
     config.speeds.weapon_extend = 180.0f;
     config.priorities.weapon_extend = -1;
     Start_(config);
+}
+
+void ActionController::PrepareWeapon() {
+    // 先同步所有轴当前值，防突变
+    RobotPose current;
+    current.pick_lift_mm     = pick_hand.lift_target_deg_   * PickHand::kLiftMmPerDeg;
+    current.pick_yaw_deg     = pick_hand.yaw_target_deg_;
+    current.pick_extend_mm   = pick_hand.extend_target_deg_ * PickHand::kExtendMmPerDeg;
+    current.weapon_lift_mm   = weapon_hand.lift_target_deg_   * WeaponHand::kLiftMmPerDeg;
+    current.weapon_extend_mm = weapon_hand.extend_target_deg_ * WeaponHand::kExtendMmPerDeg;
+    current.lift_mm          = lift.target_deg_ * Lift::kMmPerDeg;
+    SyncState(current);
+
+    // 目标：只改 weapon_lift 和 weapon_extend，其余保持 SyncState 后的值
+    ActionConfig config;
+    config.target.pick_lift_mm     = ramp_.cur_pick_lift_mm;
+    config.target.pick_yaw_deg     = ramp_.cur_pick_yaw_deg;
+    config.target.pick_extend_mm   = ramp_.cur_pick_extend_mm;
+    config.target.weapon_lift_mm   = 349.2186275f;
+    config.target.weapon_extend_mm = 0.0f;
+    config.target.lift_mm          = ramp_.cur_lift_mm;
+    config.step_done_mask = 0x18;   // 只等 weapon_lift + weapon_extend
+    Start_(config);
+
+    // 达妙不走渐变
+    weapon_hand.wrist_target_rad_ = 0.087266f;
 }
 

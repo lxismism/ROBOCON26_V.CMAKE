@@ -52,7 +52,7 @@ public:
   float yaw_min_deg_{-786.0f};
   float yaw_max_deg_{786.0f};
   float extend_min_mm_{0.0f};
-  float extend_max_mm_{211.6f};             // 伸缩行程，不涉及离地高度
+  float extend_max_mm_{221.6f};             // 伸缩行程，不涉及离地高度
 
 
 
