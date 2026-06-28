@@ -444,8 +444,22 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     robot_v_aim_cmd = Traject_chassis.Get_output_b();
 
         // ---- 武器手控制 ----
+    // 上身：动作优先推进，空闲时手操
+    static bool mc_prepare_wrist_pending = false;
+    upbody_ctrl.Update(0.005f, upbody_pub);
+
+    // PrepareWeapon 完成后翻转达妙
+    if (!upbody_ctrl.IsActive() && mc_prepare_wrist_pending) {
+        weapon_hand.wrist_target_rad_ = 0.087266f;
+        mc_prepare_wrist_pending = false;
+    }
+
+    if (upbody_ctrl.IsActive()) return;
+
+
     upbody_msg = {};
     upbody_msg.active = true;
+
 
     // // 持续型：btnLB 缩 / btnRB 伸
     // if (control_xbox_cmd.btnLB)
@@ -453,6 +467,8 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     // if (control_xbox_cmd.btnRB)
     //     upbody_msg.weapon_extend_delta = kWeaponExtendStep;
 
+
+    
     // 持续型：右摇杆水平推武器手伸缩（霍尔值线性映射速度，2倍速）
     {
         int32_t rhori_diff = (int32_t)control_rm_cmd.joyRHori - (int32_t)kJoyCenter;

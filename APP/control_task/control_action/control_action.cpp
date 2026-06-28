@@ -681,7 +681,5 @@ void ActionController::PrepareWeapon() {
     config.step_done_mask = 0x18;   // 只等 weapon_lift + weapon_extend
     Start_(config);
 
-    // 达妙不走渐变
-    weapon_hand.wrist_target_rad_ = 0.087266f;
 }
 
