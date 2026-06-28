@@ -461,6 +461,7 @@ void Normal_control_Process() {
 //  武馆半自动网格定位
 // =====================================================
 void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
+    static bool mc_prepare_wrist_pending = false;
 
     if (control_rm_cmd.trimLeft == RC_Trim_State_t::UP) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
@@ -478,6 +479,7 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
             MC_headless_mode = true;
             upbody_ctrl.PrepareWeapon();
+            mc_prepare_wrist_pending = true;
 
         }
 
@@ -508,7 +510,6 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
         // ---- 武器手控制 ----
     // 上身：动作优先推进，空闲时手操
-    static bool mc_prepare_wrist_pending = false;
     upbody_ctrl.Update(0.005f, upbody_pub);
 
     // PrepareWeapon 完成后翻转达妙
