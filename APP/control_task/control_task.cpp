@@ -185,7 +185,9 @@ void controlTask(void *argument) {
     PID_Init(&omega);
 
     controlInit();
+    Reset_position();
     // uint32_t last_time = HAL_GetTick();
+
     for (;;) {
         //test begin
         if(control_rc_sub.TryGet(&control_rm_cmd)) {

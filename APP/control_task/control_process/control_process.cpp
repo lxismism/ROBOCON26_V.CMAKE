@@ -254,6 +254,75 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
     rm_cmd.linear_y_ = JoyToVelocity(control_rm_cmd.joyLVert, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
     rm_cmd.omega_    = -JoyToVelocity(control_rm_cmd.joyRHori, kJoyDeadZoneRight, MAX_VELOCITY_ANGULAR);
 
+    if (control_rm_cmd.swE != control_rm_cmd_last.swE) {
+        if(control_rm_cmd.swE == RC_2_POS_SW_State_t::DOWN) {
+            //在这里面配置红外发送
+            switch (robot_mode) { 
+                case MC : {
+                    //在这里面配置红外发送
+                    switch (control_rm_cmd.cursor){
+                        case 0 : {
+                            omni_ir_cmd_push.tx_data = CMD_MC_RELEASE_CLAW;
+                            break;
+                        }
+                        case 1 : {
+                            omni_ir_cmd_push.tx_data = CMD_MC_PICK_NEW;
+                            break;
+                        }
+                        case 2 : {
+                            omni_ir_cmd_push.tx_data = CMD_MC_ENTER_MF;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case Arena : {
+                    static uint8_t Arena_ir_count = 0;
+                    switch (Arena_ir_count){
+                        case 0 : {
+                            omni_ir_cmd_push.tx_data = CMD_ENTER_ARENA;
+                            Arena_ir_count ++;
+                            break;
+                        }
+                        case 1 : {
+                            switch (control_rm_cmd.cursor){
+                                case 0 : {
+                                    omni_ir_cmd_push.tx_data = CMD_AUTO_PUT_MIDDLE;
+                                    break;
+                                }
+                                default:
+                                    break;
+                            }
+                            Arena_ir_count ++;
+                        }
+                        case 2 : {
+                            switch (control_rm_cmd.cursor){
+                                case 0 : {
+                                    omni_ir_cmd_push.tx_data = CMD_JOINT;
+                                    break;
+                                }
+                                case 1 : {
+                                    omni_ir_cmd_push.tx_data = CMD_RELEASE_KFS;
+                                    break;
+                                }
+                                case 2 : {
+                                    omni_ir_cmd_push.tx_data = CMD_HOLD_KFS;
+                                    break;
+                                }
+                                default:
+                                    break;
+                            }
+                        }
+                    }
+                }
+                default:
+                    break;
+            }
+            omni_ir_cmd_pub.Publish(omni_ir_cmd_push);   
+        }
+    }
+    
+
     switch (robot_case) {
         case RobotCase_t::Normal_case : {
             Normal_control_Process();
@@ -419,13 +488,7 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         }
     }
 
-    if (control_rm_cmd.swE != control_rm_cmd_last.swE) {
-        if(control_rm_cmd.swE == RC_2_POS_SW_State_t::DOWN) {
-            //在这里面配置红外发送
-            omni_ir_cmd_push.tx_data = CMD_MC_RELEASE_CLAW;
-            omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
-        }
-    }
+    
 
     if (MC_headless_mode) {
 
@@ -871,8 +934,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         // 获取KFS（渐变空闲时响应，先近后远）
         static bool get_toggle = false;  // false=Get2(近), true=Get1(远)
         if (!upbody_ctrl.IsActive()) {
-            if (control_rm_cmd.swE != control_rm_cmd_last.swE) {
-                if(control_rm_cmd.swE == RC_2_POS_SW_State_t::DOWN){
+            if (control_rm_cmd.swA != control_rm_cmd_last.swA) {
+                if(control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN){
                     upbody_ctrl.GetKFS(get_toggle ? kPose_Get1 : kPose_Get2);
                     get_toggle = !get_toggle;
                     last_arena_x = -1;    

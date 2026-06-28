@@ -24,6 +24,7 @@
 #include "com_config.h"
 #include "control_task.h"
 #include "debug_task.h"
+#include "display_task.h"
 
 /* module层接口头文件 */
 
@@ -43,6 +44,7 @@ extern osThreadId_t uart10ProcessTaskHandle;
 extern osThreadId_t Debug_TaskHandle;
 extern osThreadId_t ChassisTaskHandle;
 extern osThreadId_t ControlTaskHandle;
+extern osThreadId_t DisplayTaskHandle;
 extern osThreadId_t usbcdcProcessTaskHandle;
 extern osThreadId_t usbcdcSendTaskHandle;
 extern osThreadId_t PosCtrlTaskHandle;
@@ -98,6 +100,14 @@ void osTaskInit(void) {
   };
   ControlTaskHandle =
       osThreadNew(controlTask, NULL, &ControlTaskHandle_attributes);
+
+  const osThreadAttr_t DisplayTaskHandle_attributes = {
+      .name = "Display_TaskHandle",
+      .stack_size = 256 * 4,
+      .priority = (osPriority_t)osPriorityLow,
+  };
+  DisplayTaskHandle =
+      osThreadNew(displayTask, NULL, &DisplayTaskHandle_attributes);
 
       //3508电机位置环控制任务
   const osThreadAttr_t PosCtrlTaskHandle_attributes = {
