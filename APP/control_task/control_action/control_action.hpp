@@ -42,7 +42,7 @@ struct ActionSpeeds {
     float pick_extend   = 280.0f;   // 吸取手伸缩 mm/s
     float weapon_lift   = 180.0f;   // 武器手抬升 mm/s
     float weapon_extend = 180.0f;   // 武器手伸缩 mm/s
-    float lift          = 40.0f;    // 电梯 mm/s
+    float lift          = 70.0f;    // 电梯 mm/s
 };
 
 
@@ -125,21 +125,21 @@ inline constexpr RobotPose kPose_Moving_In_MF = {352.6f, 0.0f, 0.0f, 347.0f, 0.0
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};
 
 inline constexpr RobotPose kPose_Place[3]   = {
-    {78.1f, -302.0f, 150.59f, 347.0f, 0.0f, 100.0f,0},
-    {78.1f, -159.0f, 140.0f, 347.0f, 0.0f, 100.0f,1},
+    {78.1f, -292.0f, 150.59f, 347.0f, 0.0f, 100.0f,0},
+    {78.1f, -130.0f, 140.0f, 347.0f, 0.0f, 100.0f,1},
     {370.0f, -230.5f, 0.0f, 347.0f, 0.0f, 0.0f,2}
 };
 inline constexpr RobotPose kPose_Pick[3] = {
-    {0.0f,   392.0f, 201.6f, 347.0f, 0.0f, 0.0f},
-    {179.2f, 392.0f, 201.6f, 347.0f, 0.0f, 0.0f},
-    {390.6f, 392.0f, 201.6f, 347.0f, 0.0f, 0.0f}
+    {0.0f,   392.0f, 221.6f, 347.0f, 0.0f, 0.0f},
+    {179.2f, 392.0f, 221.6f, 347.0f, 0.0f, 0.0f},
+    {390.6f, 392.0f, 221.6f, 347.0f, 0.0f, 0.0f}
 };
 
 inline constexpr RobotPose kPose_Grid9_Bot12 = {300.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 inline constexpr RobotPose kPose_Grid9_Bot3  = {300.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 
-inline constexpr RobotPose kPose_Get1   = {98.1f, -322.0f, 201.6f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Get2   = {98.1f, -139.0f, 201.6f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get1   = {98.1f, -322.0f, 221.6f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get2   = {98.1f, -139.0f, 211.6f, 347.0f, 0.0f, 140.0f};
 
 inline constexpr RobotPose kPose_Poke1  = {430.80f, 778.0f, 0.0f, 317.0f, 200.0f, 0.0f, -1};       // 腕部0°朝上，戳第一层
 inline constexpr RobotPose kPose_Poke2  = {430.80f, 778.0f, 0.0f, 347.0f, 200.0f, 0.0f, -1};    // 腕部60°下翻，戳第二层
@@ -189,6 +189,8 @@ public:
     void GetKFS  (const RobotPose& pose);
     void GrabKFS_Arena(const RobotPose& pose);
     void PokeWeapon(const RobotPose& pose, int wrist_preset);   // 九宫格武器子模式：摆到戳的姿态
+    void PrepareWeapon();   // 武馆模式：武器手抬升缩回竖杆，渐变过渡
+
     
     void R2MergePose(const RobotPose& pose);
 

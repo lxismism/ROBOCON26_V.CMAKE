@@ -35,7 +35,7 @@ static constexpr float kPickLiftStep = 0.4f;
 static constexpr float kPickYawStep = 1.0f;
 static constexpr float kPickExtendStep = 0.5f;
 static constexpr float kWeaponLiftStep = 0.5f;
-static constexpr float kWeaponExtendStep = 0.4f;
+static constexpr float kWeaponExtendStep = 0.8f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
 // ===== MF 自动逼近参数（可配） =====
@@ -477,7 +477,11 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     }else if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
             MC_headless_mode = true;
+            upbody_ctrl.PrepareWeapon();
+
         }
+
+
     } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
             MC_headless_mode = false;
@@ -487,8 +491,9 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     
 
     if (MC_headless_mode) {
-        state_target_cmd.linear_x_ = 0.95f*field_side;
-        state_target_cmd.linear_y_ = 2.8f;
+
+        state_target_cmd.linear_x_ = 0.90f*field_side;
+        state_target_cmd.linear_y_ = 2.67f;
         state_target_cmd.omega_    = 0.0f;
     } else {
         state_target_cmd.linear_x_ = robot_position_MC[MC_y][0];
@@ -502,8 +507,22 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     robot_v_aim_cmd = Traject_chassis.Get_output_b();
 
         // ---- 武器手控制 ----
+    // 上身：动作优先推进，空闲时手操
+    static bool mc_prepare_wrist_pending = false;
+    upbody_ctrl.Update(0.005f, upbody_pub);
+
+    // PrepareWeapon 完成后翻转达妙
+    if (!upbody_ctrl.IsActive() && mc_prepare_wrist_pending) {
+        weapon_hand.wrist_target_rad_ = 0.087266f;
+        mc_prepare_wrist_pending = false;
+    }
+
+    if (upbody_ctrl.IsActive()) return;
+
+
     upbody_msg = {};
     upbody_msg.active = true;
+
 
     // // 持续型：btnLB 缩 / btnRB 伸
     // if (control_xbox_cmd.btnLB)
@@ -511,13 +530,19 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     // if (control_xbox_cmd.btnRB)
     //     upbody_msg.weapon_extend_delta = kWeaponExtendStep;
 
-    if (ABS(control_rm_cmd.joyRHori - kJoyCenter) > 700) {
-        if ((control_rm_cmd.joyRHori - kJoyCenter) > 0) {
-            upbody_msg.weapon_extend_delta = kWeaponExtendStep;
-        } else {
-            upbody_msg.weapon_extend_delta = -kWeaponExtendStep;
+
+    
+    // 持续型：右摇杆水平推武器手伸缩（霍尔值线性映射速度，2倍速）
+    {
+        int32_t rhori_diff = (int32_t)control_rm_cmd.joyRHori - (int32_t)kJoyCenter;
+        if (ABS(rhori_diff) > (int32_t)kJoyDeadZoneRight) {
+            float ratio = (float)(ABS(rhori_diff) - (int32_t)kJoyDeadZoneRight)
+                          / (float)(kJoyCenter - kJoyDeadZoneRight)
+                          * (rhori_diff > 0 ? 1.0f : -1.0f);
+            upbody_msg.weapon_extend_delta = ratio * kWeaponExtendStep;
         }
     }
+
 
     // 持续型：右摇杆前推抬升 / 后拉下降（霍尔值线性映射速度）
     {

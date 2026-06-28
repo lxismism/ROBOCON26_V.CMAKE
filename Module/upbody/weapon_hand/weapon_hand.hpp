@@ -44,7 +44,7 @@ public:
 
   // ---------- 限位（mm） ----------
   float lift_ground_clearance_mm_{0.0f};  // 武器手底座离地高度（=电梯平台高度）
-  float lift_travel_max_mm_{347.25f};       // 1389° × 90/360
+  float lift_travel_max_mm_{377.25f};       // 1389° × 90/360
   float extend_min_mm_{0.0f};
   float extend_max_mm_{422.75f};            // 1101° × 44π/360
 
