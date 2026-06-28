@@ -288,7 +288,15 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                         case 1 : {
                             switch (control_rm_cmd.cursor){
                                 case 0 : {
-                                    omni_ir_cmd_push.tx_data = CMD_AUTO_PUT_MIDDLE;
+                                    omni_ir_cmd_push.tx_data = CMD_AUTO_PUT_MIDDLE_LEFT;
+                                    break;
+                                }
+                                case 1 : {
+                                    omni_ir_cmd_push.tx_data = CMD_AUTO_PUT_MIDDLE_MIDDLE;
+                                    break;
+                                }
+                                case 2 : {
+                                    omni_ir_cmd_push.tx_data = CMD_AUTO_PUT_MIDDLE_RIGHT;
                                     break;
                                 }
                                 default:
@@ -971,6 +979,15 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
                 arena_r2_floor = false;
             }
             upbody_ctrl.R2MergePose(arena_r2_floor ? kPose_R2_Second_Floor : kPose_R2_First_Floor);
+        }
+
+        //右摇杆左右切换云台180度和45度（）也可以是其他适宜角度
+        if(ABS(control_rm_cmd.joyRHori - kJoyCenter) > 700){
+            if ((control_rm_cmd.joyRHori - kJoyCenter) > 0) {
+                //云台转到40度
+            } else {
+                //云台转到180度
+            }
         }
 
         // 每帧推进渐变
