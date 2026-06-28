@@ -430,18 +430,27 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step6.skip_safety = true;
         AddStep(step6);
 
-        // Step 7: 吸取手抬升降到放置高度 → 到位后关泵/阀
-        ActionConfig step7;
-        step7.target = pose_Place;
-        step7.priorities.pick_lift    = 0;
-        step7.step_done_mask = 0x01;
-        step7.skip_safety = true;
-        step7.dwell_ms = 650;                    // ← 加：关泵后等650ms破真空
+        // Step 7a: 吸取手降到放置高度 → 到位立即关泵关阀
+        ActionConfig step7a;
+        step7a.target = pose_Place;
+        step7a.priorities.pick_lift    = 0;
+        step7a.step_done_mask = 0x01;
+        step7a.skip_safety = true;
         if (close_pump_at_end) {
-            step7.pump_cmd_done  = -1;  // 关泵
-            step7.valve_cmd_done = -1;  // 关阀
+            step7a.pump_cmd_done  = -1;
+            step7a.valve_cmd_done = -1;
         }
-        AddStep(step7);
+        AddStep(step7a);
+
+        // Step 7b: 等 250ms 破真空（无运动）
+        ActionConfig step7b;
+        step7b.target = pose_Place;
+        step7b.target.pick_lift_mm = pose_Place.pick_lift_mm;
+        step7b.step_done_mask = 0x01;
+        step7b.skip_safety = true;
+        step7b.dwell_ms = 350;
+        AddStep(step7b);
+
 
     } else{
         // Step 1: 云台转到位 + 抬升降到抓取高度 → 步首开泵/阀
@@ -523,18 +532,27 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step6.skip_safety = true;
         AddStep(step6);
 
-        // Step 7: 吸取手抬升降到放置高度 → 到位后关泵/阀
-        ActionConfig step7;
-        step7.target = pose_Place;
-        step7.priorities.pick_lift    = 0;
-        step7.step_done_mask = 0x01;
-        step7.skip_safety = true;
-        step7.dwell_ms = 650;                    // ← 加：关泵后等650ms破真空
+        // Step 7a: 吸取手降到放置高度 → 到位立即关泵关阀
+        ActionConfig step7a;
+        step7a.target = pose_Place;
+        step7a.priorities.pick_lift    = 0;
+        step7a.step_done_mask = 0x01;
+        step7a.skip_safety = true;
         if (close_pump_at_end) {
-            step7.pump_cmd_done  = -1;  // 关泵
-            step7.valve_cmd_done = -1;  // 关阀
+            step7a.pump_cmd_done  = -1;
+            step7a.valve_cmd_done = -1;
         }
-        AddStep(step7);
+        AddStep(step7a);
+
+        // Step 7b: 等 250ms 破真空（无运动）
+        ActionConfig step7b;
+        step7b.target = pose_Place;
+        step7b.target.pick_lift_mm = pose_Place.pick_lift_mm;
+        step7b.step_done_mask = 0x01;
+        step7b.skip_safety = true;
+        step7b.dwell_ms = 350;
+        AddStep(step7b);
+
 
     }
 

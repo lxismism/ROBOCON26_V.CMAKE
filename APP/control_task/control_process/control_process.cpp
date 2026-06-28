@@ -90,6 +90,7 @@ extern bool Normal_control_mode;
 // MC 模式相关
 extern int8_t MC_y;
 extern float MC_close_position_x;
+extern float MC_close_position_y;
 extern bool MC_headless_mode;
 // MF 模式相关
 extern uint8_t MF_x;
@@ -503,8 +504,12 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         state_target_cmd.omega_    = robot_position_MC[MC_y][2];
     }
     Traject_chassis.Set_Ref(state_target_cmd,Normal);
-    position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
-    position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
+    MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
+    MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
+    position_close_x = MC_close_position_x;
+    position_close_y = MC_close_position_y;
+    // position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
+    // position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
     Traject_chassis.Run(state_now_cmd);
     robot_v_aim_cmd = Traject_chassis.Get_output_b();
 

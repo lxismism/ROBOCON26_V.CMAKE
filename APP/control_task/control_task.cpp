@@ -91,6 +91,7 @@ bool Normal_control_mode = true;
 
 int8_t MC_y = 0;
 float MC_close_position_x = 0.0f;
+float MC_close_position_y = 0.0f;
 bool MC_headless_mode = false;
 
 uint8_t MF_x = 0;
