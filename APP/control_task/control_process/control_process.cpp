@@ -264,16 +264,23 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                     switch (control_rm_cmd.cursor){
                         case 0 : {
                             omni_ir_cmd_push.tx_data = CMD_MC_RELEASE_CLAW;
+                            omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
                             break;
                         }
                         case 1 : {
                             omni_ir_cmd_push.tx_data = CMD_MC_PICK_NEW;
+                            omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
                             break;
                         }
-                        case 2 : {
-                            omni_ir_cmd_push.tx_data = CMD_MC_ENTER_MF;
+                        default:
                             break;
-                        }
+                    }
+                    break;
+                }
+                case MF : {
+                    if(control_rm_cmd.cursor == 2){
+                        omni_ir_cmd_push.tx_data = CMD_MC_ENTER_MF;
+                        omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
                     }
                     break;
                 }
@@ -282,6 +289,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                     switch (Arena_ir_count){
                         case 0 : {
                             omni_ir_cmd_push.tx_data = CMD_ENTER_ARENA;
+                            omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
                             Arena_ir_count ++;
                             break;
                         }
@@ -289,14 +297,17 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                             switch (control_rm_cmd.cursor){
                                 case 0 : {
                                     omni_ir_cmd_push.tx_data = CMD_AUTO_PUT_MIDDLE_LEFT;
+                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
                                     break;
                                 }
                                 case 1 : {
                                     omni_ir_cmd_push.tx_data = CMD_AUTO_PUT_MIDDLE_MIDDLE;
+                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
                                     break;
                                 }
                                 case 2 : {
                                     omni_ir_cmd_push.tx_data = CMD_AUTO_PUT_MIDDLE_RIGHT;
+                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
                                     break;
                                 }
                                 default:
@@ -308,14 +319,17 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                             switch (control_rm_cmd.cursor){
                                 case 0 : {
                                     omni_ir_cmd_push.tx_data = CMD_JOINT;
+                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
                                     break;
                                 }
                                 case 1 : {
                                     omni_ir_cmd_push.tx_data = CMD_RELEASE_KFS;
+                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
                                     break;
                                 }
                                 case 2 : {
                                     omni_ir_cmd_push.tx_data = CMD_HOLD_KFS;
+                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
                                     break;
                                 }
                                 default:
@@ -327,7 +341,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                 default:
                     break;
             }
-            omni_ir_cmd_pub.Publish(omni_ir_cmd_push);   
+            // omni_ir_cmd_pub.Publish(omni_ir_cmd_push);   
         }
     }
     
