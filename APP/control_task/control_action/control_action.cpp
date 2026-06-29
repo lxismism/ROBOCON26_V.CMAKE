@@ -387,6 +387,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         // Step 2: 伸缩伸出够到KFS → 底盘同步前移逼近
         ActionConfig step2;
         step2.target = pose_Grab;
+        step2.speeds.pick_extend = 180.0f;
         step2.priorities.pick_extend = 0;
         step2.step_done_mask = 0x04;
         step2.enable_chassis_approach = true;
@@ -469,7 +470,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7b.target.pick_lift_mm = pose_Place.pick_lift_mm;
         step7b.step_done_mask = 0x01;
         step7b.skip_safety = true;
-        step7b.dwell_ms = 450;
+        step7b.dwell_ms = 850;
         AddStep(step7b);
 
 
@@ -489,6 +490,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         // Step 2: 伸缩伸出够到KFS → 底盘同步前移逼近
         ActionConfig step2;
         step2.target = pose_Grab;
+        step2.speeds.pick_extend = 180.0f;
         step2.priorities.pick_extend = 0;
         step2.step_done_mask = 0x04;
         step2.enable_chassis_approach = true;
@@ -571,7 +573,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step7b.target.pick_lift_mm = pose_Place.pick_lift_mm;
         step7b.step_done_mask = 0x01;
         step7b.skip_safety = true;
-        step7b.dwell_ms = 450;
+        step7b.dwell_ms = 850;
         AddStep(step7b);
 
 

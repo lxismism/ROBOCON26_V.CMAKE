@@ -793,8 +793,9 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
                 }
                 
-                if(Traject_chassis.PointTrack_omega_complete_Flag == true && Traject_chassis.PointTrack_linear_complete_Flag == true){
-                    if(MF_plan[MF_plan_run_i].is_picking == true){
+                // if(Traject_chassis.PointTrack_omega_complete_Flag == true && Traject_chassis.PointTrack_linear_complete_Flag == true){
+                if(true){
+                     if(MF_plan[MF_plan_run_i].is_picking == true){
                         // 根据 MF_pick_count 选择放置姿态序列
                         static const RobotPose kPlace_1[] = {kPose_Place[2]};
                         static const RobotPose kPlace_2[] = {kPose_Place[1], kPose_Place1_2};
