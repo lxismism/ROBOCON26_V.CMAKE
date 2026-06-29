@@ -320,7 +320,7 @@ void ActionController::YawTo(float yaw_deg) {
 
     ActionConfig config;
     config.target = current;
-    config.target.pick_yaw_deg = yaw_deg;
+    config.target.pick_yaw_deg = yaw_deg / PickHand::kYawDegPerMotorDeg;
     config.step_done_mask = 0x02;   // 只等 yaw
     Start_(config);
 }
@@ -592,7 +592,7 @@ void ActionController::Moving(const RobotPose& pose) {
 
 //Arena动作
 void ActionController::GrabKFS_Arena(const RobotPose& pose) {
-    // 如果当前姿态不是从高层取的（name != Pose_Place2），先抬到中层安全高度
+    // 如果当前姿态是从高层取的（name == Pose_Place2），先抬到安全高度
     float safe_lift = (kPose_Now.name == Pose_Place2 || kPose_Now.name == Pose_Place1_2 ) ? 442.6f : 320.80f;
 
     ActionConfig step1;
@@ -606,11 +606,32 @@ void ActionController::GrabKFS_Arena(const RobotPose& pose) {
     step1.step_done_mask = 0x01;
     AddStep(step1);
 
-    ActionConfig step2;
-    step2.target = pose;
-    step2.priorities.pick_yaw  = 0;
-    step2.priorities.pick_lift = 1;
-    AddStep(step2);
+    // Step 2a: 缩吸取手
+    ActionConfig step2a;
+    step2a.target = pose;
+    step2a.target.pick_yaw_deg   = ramp_.cur_pick_yaw_deg;
+    step2a.target.pick_lift_mm   = ramp_.cur_pick_lift_mm;
+    step2a.priorities.pick_extend = 0;
+    step2a.step_done_mask = 0x04;   // 只等 extend
+    AddStep(step2a);
+
+    // Step 2b: 转云台
+    ActionConfig step2b;
+    step2b.target = pose;
+    step2b.target.pick_extend_mm = 0.0f;       // 已经缩回
+    step2b.target.pick_lift_mm   = safe_lift;  // 保持安全高度
+    step2b.priorities.pick_yaw = 0;
+    step2b.step_done_mask = 0x02;
+    AddStep(step2b);
+
+
+    // Step 2c: 降高度
+    ActionConfig step2c;
+    step2c.target = pose;
+    step2c.priorities.pick_lift = 0;
+    step2c.step_done_mask = 0x01;   // 只等 lift
+    AddStep(step2c);
+
     RunSteps();
 
     kPose_Now = pose;   // 记录当前姿态

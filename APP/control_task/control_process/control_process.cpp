@@ -797,7 +797,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                     if(MF_plan[MF_plan_run_i].is_picking == true){
                         // 根据 MF_pick_count 选择放置姿态序列
                         static const RobotPose kPlace_1[] = {kPose_Place[2]};
-                        static const RobotPose kPlace_2[] = {kPose_Place[0], kPose_Place1_2};
+                        static const RobotPose kPlace_2[] = {kPose_Place[1], kPose_Place1_2};
                         const RobotPose* place_poses;
                         int place_max;
                         switch (MF_pick_count) {
