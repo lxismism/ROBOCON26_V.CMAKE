@@ -795,39 +795,50 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 
                 if(Traject_chassis.PointTrack_omega_complete_Flag == true && Traject_chassis.PointTrack_linear_complete_Flag == true){
                     if(MF_plan[MF_plan_run_i].is_picking == true){
+                        // 根据 MF_pick_count 选择放置姿态序列
+                        static const RobotPose kPlace_1[] = {kPose_Place[2]};
+                        static const RobotPose kPlace_2[] = {kPose_Place[0], kPose_Place1_2};
+                        const RobotPose* place_poses;
+                        int place_max;
+                        switch (MF_pick_count) {
+                            case 1:  place_poses = kPlace_1; place_max = 1; break;
+                            case 2:  place_poses = kPlace_2; place_max = 2; break;
+                            default: place_poses = kPose_Place; place_max = 3; break;
+                        }
+
                         /*上层机构执行*/
                         switch ((int8_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][3]) {
                             case 1:
                                 if (last_mf_action != 1 && !mf_placing) {
-                                    bool close_pump = (mf_place_cycle != 2);  // 第3个KFS不关泵
-                                    upbody_ctrl.PickKFS(kPose_Pick[Low], kPose_Place[mf_place_cycle], close_pump);
+                                    bool close_pump = (mf_place_cycle != place_max - 1);  // 第3个KFS不关泵
+                                    upbody_ctrl.PickKFS(kPose_Pick[Low],  place_poses[mf_place_cycle], close_pump);   // case 1
                                     last_mf_action = 1;
                                     MF_action_Flag = true;
                                     mf_placing = true;
                                     mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                    mf_place_cycle = (mf_place_cycle + 1) % 3;
+                                    mf_place_cycle = (mf_place_cycle + 1) % place_max;
                                 }
                                 break;
                             case 2:
                                 if (last_mf_action != 2 && !mf_placing) {
-                                    bool close_pump = (mf_place_cycle != 2);
-                                    upbody_ctrl.PickKFS(kPose_Pick[Mid], kPose_Place[mf_place_cycle], close_pump);
+                                    bool close_pump = (mf_place_cycle != place_max - 1);
+                                    upbody_ctrl.PickKFS(kPose_Pick[Mid],  place_poses[mf_place_cycle], close_pump);   // case 2
                                     last_mf_action = 2;
                                     MF_action_Flag = true;
                                     mf_placing = true;
                                     mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                    mf_place_cycle = (mf_place_cycle + 1) % 3;
+                                    mf_place_cycle = (mf_place_cycle + 1) % place_max;
                                 }
                                 break;
                             case 3:
                                 if (last_mf_action != 3 && !mf_placing) {
-                                    bool close_pump = (mf_place_cycle != 2);
-                                    upbody_ctrl.PickKFS(kPose_Pick[High], kPose_Place[mf_place_cycle], close_pump);
+                                    bool close_pump = (mf_place_cycle != place_max - 1);
+                                    upbody_ctrl.PickKFS(kPose_Pick[High], place_poses[mf_place_cycle], close_pump);   // case 3
                                     last_mf_action = 3;
                                     MF_action_Flag = true;
                                     mf_placing = true;
                                     mf_approach_facing = (int16_t)robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                                    mf_place_cycle = (mf_place_cycle + 1) % 3;
+                                    mf_place_cycle = (mf_place_cycle + 1) % place_max;
                                 }
                                 break;
 
@@ -847,6 +858,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 MF_plan_run_Flag = false;
                 MF_pick_Flag = false;
                 MF_pick_count = 0;
+                mf_place_cycle = 0;
                 MF_action_Flag = false;
                 last_mf_action = -1;
                 mf_approach_offset = 0.0f;
