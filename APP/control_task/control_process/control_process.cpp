@@ -1001,13 +1001,14 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         }
 
         //右摇杆左右切换云台180度和45度（）也可以是其他适宜角度
-        if(ABS(control_rm_cmd.joyRHori - kJoyCenter) > 700){
+        if (!upbody_ctrl.IsActive() && ABS(control_rm_cmd.joyRHori - kJoyCenter) > 700) {
             if ((control_rm_cmd.joyRHori - kJoyCenter) > 0) {
-                //云台转到40度
+                upbody_ctrl.YawTo(45.0f);
             } else {
-                //云台转到180度
+                upbody_ctrl.YawTo(180.0f);
             }
         }
+
 
         // 每帧推进渐变
         upbody_ctrl.Update(0.005f, upbody_pub);

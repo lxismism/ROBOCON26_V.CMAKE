@@ -307,6 +307,24 @@ void ActionController::Update(float dt, TypedTopicPublisher<pub_upbody_cmd>& pub
 }
 
 
+//  ------------单轴动作函数-------------
+void ActionController::YawTo(float yaw_deg) {
+    RobotPose current;
+    current.pick_lift_mm     = pick_hand.lift_target_deg_   * PickHand::kLiftMmPerDeg;
+    current.pick_yaw_deg     = pick_hand.yaw_target_deg_;
+    current.pick_extend_mm   = pick_hand.extend_target_deg_ * PickHand::kExtendMmPerDeg;
+    current.weapon_lift_mm   = weapon_hand.lift_target_deg_   * WeaponHand::kLiftMmPerDeg;
+    current.weapon_extend_mm = weapon_hand.extend_target_deg_ * WeaponHand::kExtendMmPerDeg;
+    current.lift_mm          = lift.target_deg_ * Lift::kMmPerDeg;
+    SyncState(current);
+
+    ActionConfig config;
+    config.target = current;
+    config.target.pick_yaw_deg = yaw_deg;
+    config.step_done_mask = 0x02;   // 只等 yaw
+    Start_(config);
+}
+
 
 // ---- 动作函数 ----
 
@@ -575,7 +593,7 @@ void ActionController::Moving(const RobotPose& pose) {
 //Arena动作
 void ActionController::GrabKFS_Arena(const RobotPose& pose) {
     // 如果当前姿态不是从高层取的（name != Pose_Place2），先抬到中层安全高度
-    float safe_lift = (kPose_Now.name == Pose_Place2) ? 442.6f : 320.80f;
+    float safe_lift = (kPose_Now.name == Pose_Place2 || kPose_Now.name == Pose_Place1_2 ) ? 442.6f : 320.80f;
 
     ActionConfig step1;
     step1.target = pose;

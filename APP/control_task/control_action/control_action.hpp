@@ -127,6 +127,7 @@ enum Name : int8_t{
 
     Pose_Grid9_Bot12             =   6 ,
     Pose_Grid9_Bot3              =   7 ,
+    Pose_Place1_2                =   8 ,
 
 };
 
@@ -142,6 +143,9 @@ inline constexpr RobotPose kPose_Place[3]   = {
     {78.1f, -139.0f, 140.0f, 347.0f, 0.0f, 100.0f,Pose_Place1},
     {370.0f, -220.5f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place2}
 };
+inline constexpr RobotPose kPose_Place1_2  =  {370.0f, -149.0f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place1_2};
+
+
 inline constexpr RobotPose kPose_Pick[3] = {
     {0.0f  , 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick0},
     {179.2f, 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick1},
@@ -192,6 +196,11 @@ struct ActionConfig {
 // ===== 动作控制器 =====
 class ActionController {
 public:
+
+    //单轴动作函数
+    void YawTo(float yaw_deg);
+
+
     // ---- 动作函数（process 层调用） ----
     void GoHome();
 
