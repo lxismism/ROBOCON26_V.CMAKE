@@ -108,6 +108,8 @@ extern int8_t MF_omega_control_Flag;
 extern uint8_t MF_plan_record_i;
 extern uint8_t MF_plan_run_i;
 extern MF_plan_t MF_plan_zero;
+
+extern uint8_t MF_pick_count;
 // Arena模式相关
 extern int8_t Arena_x;
 extern float Arena_close_position_y;
@@ -656,7 +658,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                     MF_pick_Flag = true;
                 }
             }
-            if(MF_pick_Flag){
+            if(MF_pick_Flag && MF_pick_count < 3){
                 if(control_rm_cmd.swE != control_rm_cmd_last.swE){
                     if(control_rm_cmd.swE == RC_2_POS_SW_State_t::DOWN){
                         MF_plan[MF_plan_record_i].MF_x = MF_x;
@@ -664,7 +666,9 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                         MF_plan[MF_plan_record_i].is_picking = true;
                         MF_plan[MF_plan_record_i].is_valid = true;
                         MF_plan_record_i++;
-                        MF_pick_Flag = false;    
+                        MF_pick_Flag = false;
+
+                        MF_pick_count ++;
                     }
                 }
             }
@@ -828,6 +832,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 MF_plan_run_i = 0;
                 MF_plan_run_Flag = false;
                 MF_pick_Flag = false;
+                MF_pick_count = 0;
                 MF_action_Flag = false;
                 last_mf_action = -1;
                 mf_approach_offset = 0.0f;
