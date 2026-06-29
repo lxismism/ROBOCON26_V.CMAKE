@@ -152,8 +152,8 @@ inline constexpr RobotPose kPose_Pick[3] = {
     {412.6f, 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick2}
 };
 
-inline constexpr RobotPose kPose_Grid9_Bot12 = {320.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot12};
-inline constexpr RobotPose kPose_Grid9_Bot3  = {320.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot3};
+inline constexpr RobotPose kPose_Grid9_Bot12 = {462.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot12};
+inline constexpr RobotPose kPose_Grid9_Bot3  = {462.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot3};
 
 inline constexpr RobotPose kPose_Get1   = {98.1f, -312.0f, 201.6f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Get2   = {98.1f, -139.0f, 201.6f, 347.0f, 0.0f, 140.0f};

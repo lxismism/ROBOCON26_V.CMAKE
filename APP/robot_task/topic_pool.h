@@ -44,6 +44,7 @@ typedef enum {
     KFS,
     Weapon,
     WithR2,
+    Challenge,
 }ArenaMode_t;
 
 typedef enum {

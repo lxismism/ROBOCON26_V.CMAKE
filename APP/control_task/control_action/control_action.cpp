@@ -342,10 +342,30 @@ void ActionController::GoHome() {
 
 //MF动作
 void ActionController::GrabKFS(const RobotPose& pose) {
-    ActionConfig config;
-    config.target = pose;
-    Start_(config);
+    ActionConfig step1;
+    step1.target = pose;
+    step1.priorities.pick_yaw = 0;
+    step1.priorities.pick_lift = 1;
+    step1.priorities.pick_extend = 2;
+    step1.pump_cmd  = 1;   // 开泵
+    step1.valve_cmd = 1;   // 开阀
+    step1.dwell_ms = 850;
+
+    AddStep(step1);
+
+    ActionConfig step2;
+    step2.target = pose;
+    step2.target.pick_lift_mm   = 462.80f;
+    step2.target.pick_extend_mm = 0.0f;
+    step2.skip_safety = true;          
+    step2.priorities.pick_lift   = 0;
+    step2.priorities.pick_extend = 1;
+    AddStep(step2);
+
+
+    RunSteps();
 }
+
 
 void ActionController::PlaceKFS(const RobotPose& pose) {
     ActionConfig step1;

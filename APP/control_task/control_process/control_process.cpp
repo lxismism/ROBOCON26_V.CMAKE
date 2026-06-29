@@ -928,14 +928,14 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 
 
     // ===== 九宫格子模式切换 =====
-	    static bool arena_r2_floor = false;   // false=R2一楼, true=R2二楼
+    static bool arena_r2_floor = false;   // false=R2一楼, true=R2二楼
 
-	    if (control_rm_cmd.trimRight == RC_Trim_State_t::UP) {
-	        if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
-	            Arena_mode = WithR2;
-	            arena_r2_floor = false;   // 进入合体模式默认一楼
-	            last_arena_x = -1;        // 强制刷新上身姿态
-	        }
+    if (control_rm_cmd.trimRight == RC_Trim_State_t::UP) {
+        if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
+            Arena_mode = WithR2;
+            arena_r2_floor = false;   // 进入合体模式默认一楼
+            last_arena_x = -1;        // 强制刷新上身姿态
+        }
 
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
@@ -953,7 +953,18 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             // }
             last_arena_x = -1;            // 强制刷新上身姿态
         }
+    }else if (!upbody_ctrl.IsActive() && control_rm_cmd.trimRight == RC_Trim_State_t::LEFT) {
+        if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
+            Arena_mode = Challenge;
+        }
     }
+
+    // //触发时吸取地上kfs
+    // if (!upbody_ctrl.IsActive() && control_rm_cmd.trimRight == RC_Trim_State_t::LEFT) {
+    //     if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
+    //         upbody_ctrl.GrabKFS(kPose_Pick[0]);
+    //     }
+    // }
     
     if (Arena_mode == KFS) {
         state_target_cmd.linear_x_ = robot_position_Arena[Arena_x][0];
@@ -1055,7 +1066,22 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 
 	    // 每帧推进渐变
 	    upbody_ctrl.Update(0.005f, upbody_pub);
-	}
+	}else if(Arena_mode == Challenge){
+        state_target_cmd.linear_x_ = 0.35f + 0.59f;
+        state_target_cmd.linear_y_ = 3.375f;
+
+        state_target_cmd.omega_    = 90.0f;
+
+        if (control_rm_cmd.swA != control_rm_cmd_last.swA) {
+            if(control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN){
+                upbody_ctrl.GrabKFS(kPose_Pick[0]);
+            }
+        }
+
+        // 每帧推进渐变
+	    upbody_ctrl.Update(0.005f, upbody_pub);
+    }
+    
     Traject_chassis.Set_Ref(state_target_cmd,Normal);
     position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
     position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
