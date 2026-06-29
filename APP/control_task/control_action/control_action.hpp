@@ -139,7 +139,7 @@ inline constexpr RobotPose kPose_Moving_In_MF = {352.6f, 0.0f, 0.0f, 347.0f, 0.0
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};
 
 inline constexpr RobotPose kPose_Place[3]   = {
-    {78.1f, -272.0f, 150.59f, 347.0f, 0.0f, 100.0f,Pose_Place0},
+    {78.1f, -302.0f, 150.59f, 347.0f, 0.0f, 100.0f,Pose_Place0},
     {78.1f, -139.0f, 140.0f, 347.0f, 0.0f, 100.0f,Pose_Place1},
     {370.0f, -220.5f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place2}
 };
