@@ -57,7 +57,7 @@ public:
     bool wrist_flipped_{false};   // false=朝上(初始位), true=朝前(下翻90°)
     float wrist_target_rad_ = kWristUpAngle_rad;  // 绝对角度模式的目标值（rad），由动作系统写入
     static constexpr float kWristUpAngle_rad = 0.087266f;        // 朝上（零位），单位 rad
-    static constexpr float kWristDownAngle_rad = 1.4835298f;   // 朝前（下翻90° = π/2 rad）
+    static constexpr float kWristDownAngle_rad = 1.3962634f;   // 朝前（下翻90° = π/2 rad）
     static constexpr float kWristFlipSpeed_radps = 3.0f;    // 翻转速度 rad/s
 
 

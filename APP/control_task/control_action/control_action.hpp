@@ -37,12 +37,12 @@ enum Height : size_t{
 
 // ===== 动作速度配置 =====
 struct ActionSpeeds {
-    float pick_lift     = 350.0f;   // 吸取手抬升 mm/s
-    float pick_yaw      = 500.0f;   // 云台旋转 °/s
-    float pick_extend   = 280.0f;   // 吸取手伸缩 mm/s
-    float weapon_lift   = 180.0f;   // 武器手抬升 mm/s
-    float weapon_extend = 180.0f;   // 武器手伸缩 mm/s
-    float lift          = 70.0f;    // 电梯 mm/s
+    float pick_lift     = 525.0f;   // 吸取手抬升 mm/s
+    float pick_yaw      = 600.0f;   // 云台旋转 °/s
+    float pick_extend   = 420.0f;   // 吸取手伸缩 mm/s
+    float weapon_lift   = 270.0f;   // 武器手抬升 mm/s
+    float weapon_extend = 270.0f;   // 武器手伸缩 mm/s
+    float lift          = 80.0f;    // 电梯 mm/s
 };
 
 

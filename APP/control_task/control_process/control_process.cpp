@@ -34,8 +34,8 @@ static constexpr float kLiftStep = 0.2f;
 static constexpr float kPickLiftStep = 0.4f;
 static constexpr float kPickYawStep = 1.0f;
 static constexpr float kPickExtendStep = 0.5f;
-static constexpr float kWeaponLiftStep = 0.5f;
-static constexpr float kWeaponExtendStep = 0.8f;
+static constexpr float kWeaponLiftStep = 0.75f;
+static constexpr float kWeaponExtendStep = 1.2f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
 // ===== MF 自动逼近参数（可配） =====
