@@ -23,7 +23,7 @@ public:
   void setBright(uint8_t bright) {
     led_matrix_.SetBrightness(bright);
   }
-  void drawCursor(uint8_t x, uint8_t y);
+  void drawMFPos(uint8_t x, uint8_t y, Ws2812::Color color);
   void clearMFandCursor();
   
 private:
