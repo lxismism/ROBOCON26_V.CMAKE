@@ -153,7 +153,7 @@ void LedUi::clearMFandCursor() {
     }
 }
 
-void LedUi::drawCursor(uint8_t x, uint8_t y) {
+void LedUi::drawMFPos(uint8_t x, uint8_t y, Ws2812::Color color) {
     switch (field_side_) {
         case FieldSide_t::Left:{
             // if(x == 0 && y == 0) {led_matrix_.SetPixel(14,13,Ws2812::Color::Blue);break;}
@@ -166,7 +166,7 @@ void LedUi::drawCursor(uint8_t x, uint8_t y) {
             if(x == 5) draw_x = 1;
             if(y == 0) draw_y = 13;
             if(y == 4) draw_y = 3;
-            led_matrix_.SetPixel(draw_x, draw_y, Ws2812::Color::Red);
+            led_matrix_.SetPixel(draw_x, draw_y, color);
             break;
         }
         case FieldSide_t::right: {
@@ -177,7 +177,7 @@ void LedUi::drawCursor(uint8_t x, uint8_t y) {
             if(x == 5) draw_x = 14;
             if(y == 0) draw_y = 3;
             if(y == 4) draw_y = 13;
-            led_matrix_.SetPixel(draw_x, draw_y, Ws2812::Color::Red);
+            led_matrix_.SetPixel(draw_x, draw_y, color);
         
             break;
         }
