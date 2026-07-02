@@ -417,7 +417,7 @@ public:
 
     PID_t track_path_xy{.Kp = 4.88f,.Ki = 0.01f,.Kd = 0.55f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
     PID_t track_lateral_xy{.Kp = 3.0f,.Ki = 0.03f,.Kd = 0.35f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-    PID_t track_omega{.Kp = 5.30f,.Ki = 0.1f,.Kd = 0.55f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
+    PID_t track_omega{.Kp = 5.30f,.Ki = 0.3f,.Kd = 0.55f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
 
     
 private:
