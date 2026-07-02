@@ -357,10 +357,63 @@ void ActionController::GrabKFS(const RobotPose& pose) {
     step2.target = pose;
     step2.target.pick_lift_mm   = 462.80f;
     step2.target.pick_extend_mm = 0.0f;
+    step2.target.pick_yaw_deg   = -139.0f;
     step2.skip_safety = true;          
     step2.priorities.pick_lift   = 0;
     step2.priorities.pick_extend = 1;
+    step2.priorities.pick_yaw    = 2;
     AddStep(step2);
+    
+    ActionConfig step3;
+    step3.target = pose;
+    step3.target.pick_lift_mm   = 362.80f;
+    step3.target.pick_extend_mm = 100.0f;
+    step3.target.pick_yaw_deg   = -139.0f;
+    step3.skip_safety = true;          
+    AddStep(step3);    
+
+    ActionConfig step4;
+    step4.target = pose;
+    step4.target.pick_lift_mm   = 362.80f;
+    step4.target.pick_extend_mm = 100.0f;
+    step4.target.pick_yaw_deg   = -139.0f;
+    step4.skip_safety = true;          
+    step4.pump_cmd    = 0;
+    step4.valve_cmd   = 0;
+    step4.dwell_ms    = 850;
+    AddStep(step4);    
+
+    ActionConfig step5;
+    step5.target = pose;
+    step5.target.pick_lift_mm   = 280.80f;
+    step5.target.pick_extend_mm = 0.0f;
+    step5.target.pick_yaw_deg   = -139.0f;
+    step5.priorities.pick_extend= 0;
+    step5.priorities.pick_lift  = 1;
+    step5.skip_safety = true;          
+    AddStep(step5);   
+
+    ActionConfig step6;
+    step6.target = pose;
+    step6.target.pick_lift_mm   = 280.80f;
+    step6.target.pick_extend_mm = 140.0f;
+    step6.target.pick_yaw_deg   = -139.0f;
+    step6.pump_cmd              = 1;
+    step6.valve_cmd             = 1;
+    step6.dwell_ms              = 450;
+    step6.skip_safety = true;          
+    AddStep(step6);   
+
+    ActionConfig step7;
+    step7.target = pose;
+    step7.target.pick_lift_mm   = 462.80f;
+    step7.target.pick_extend_mm = 0.0f;
+    step7.target.pick_yaw_deg   = 392.0f;
+    step7.priorities.pick_lift  = 0;
+    step7.priorities.pick_extend= 1;
+    step7.priorities.pick_yaw   = 2;
+    step7.skip_safety = true;          
+    AddStep(step7);   
 
 
     RunSteps();
