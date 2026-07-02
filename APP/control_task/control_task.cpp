@@ -110,6 +110,8 @@ uint8_t MF_plan_record_i = 0;
 uint8_t MF_plan_run_i = 0;
 MF_plan_t MF_plan_zero = {0,0,0,0};
 
+uint8_t MF_pick_count = 0;
+
 int8_t Arena_x = 0;
 float Arena_close_position_y = 0.0f;
 float Arena_close_position_y_Max = 0.64f;
