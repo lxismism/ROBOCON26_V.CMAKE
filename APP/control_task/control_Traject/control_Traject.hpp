@@ -399,14 +399,14 @@ public:
     float_t dy_ds;
     float_t dyaw_ds;
 
-    const float_t Acc_linear = 1.5f;
-    const float_t Dec_linear = 1.2f;
+    const float_t Acc_linear = 1.7f;
+    const float_t Dec_linear = 1.4f;
     const float_t v_Max = 2.2f;
     float_t v_Acc;
     float_t v_Dec;
 
     const float_t Acc_omega = M_PI*0.75f;
-    const float_t w_Max = M_PI*0.7f;
+    const float_t w_Max = M_PI*0.85f;
     float_t w_Acc;
     float_t w_Dec;
 
