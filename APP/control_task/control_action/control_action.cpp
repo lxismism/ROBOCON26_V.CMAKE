@@ -366,7 +366,7 @@ void ActionController::GrabKFS(const RobotPose& pose) {
     
     ActionConfig step3;
     step3.target = pose;
-    step3.target.pick_lift_mm   = 362.80f;
+    step3.target.pick_lift_mm   = 302.80f;
     step3.target.pick_extend_mm = 100.0f;
     step3.target.pick_yaw_deg   = -139.0f;
     step3.skip_safety = true;          
@@ -374,18 +374,18 @@ void ActionController::GrabKFS(const RobotPose& pose) {
 
     ActionConfig step4;
     step4.target = pose;
-    step4.target.pick_lift_mm   = 362.80f;
+    step4.target.pick_lift_mm   = 302.80f;
     step4.target.pick_extend_mm = 100.0f;
     step4.target.pick_yaw_deg   = -139.0f;
     step4.skip_safety = true;          
-    step4.pump_cmd    = 0;
-    step4.valve_cmd   = 0;
+    step4.pump_cmd    = -1;
+    step4.valve_cmd   = -1;
     step4.dwell_ms    = 850;
     AddStep(step4);    
 
     ActionConfig step5;
     step5.target = pose;
-    step5.target.pick_lift_mm   = 280.80f;
+    step5.target.pick_lift_mm   = 200.80f;
     step5.target.pick_extend_mm = 0.0f;
     step5.target.pick_yaw_deg   = -139.0f;
     step5.priorities.pick_extend= 0;
@@ -395,7 +395,7 @@ void ActionController::GrabKFS(const RobotPose& pose) {
 
     ActionConfig step6;
     step6.target = pose;
-    step6.target.pick_lift_mm   = 280.80f;
+    step6.target.pick_lift_mm   = 200.80f;
     step6.target.pick_extend_mm = 140.0f;
     step6.target.pick_yaw_deg   = -139.0f;
     step6.pump_cmd              = 1;

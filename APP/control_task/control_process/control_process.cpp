@@ -1067,7 +1067,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 	    // 每帧推进渐变
 	    upbody_ctrl.Update(0.005f, upbody_pub);
 	}else if(Arena_mode == Challenge){
-        state_target_cmd.linear_x_ = 0.35f + 0.59f;
+        state_target_cmd.linear_x_ = (0.35f + 0.59f)*(-field_side);
         state_target_cmd.linear_y_ = 3.375f;
 
         state_target_cmd.omega_    = 90.0f;
