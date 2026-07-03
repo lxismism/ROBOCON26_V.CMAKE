@@ -6,6 +6,7 @@
 #include "led_ui.hpp"
 #include "topics.hpp"
 #include "topic_pool.h"
+#include "chassis_task.h"
 #include <cstdint>
 
 osThreadId_t DisplayTaskHandle;
@@ -32,13 +33,14 @@ void displayTask(void *argument) {
   extern RobotCase_t robot_case;
   extern uint8_t MF_x;
   extern uint8_t MF_y;
+  extern MF_plan_t MF_plan[15];
 
   if(!motor_status_sub.IsValid() || !omni_ir_status_sub.IsValid()) {
     return;
   }
 
   led_ui.setBright(10);
-  led_ui.setFieldSide(FieldSide_t::Left);
+  led_ui.setFieldSide(field_side);
 
   for (;;) {
     
@@ -48,7 +50,12 @@ void displayTask(void *argument) {
     led_ui.drawOmniIrStatus(omni_ir_status_pop);
     
     led_ui.clearMFandCursor();
-    if(robot_mode == MF && robot_case == RobotCase_t::Special) led_ui.drawCursor(MF_x, MF_y);
+    if(robot_mode == MF && robot_case == RobotCase_t::Special) {
+      led_ui.drawMFPos(MF_x, MF_y, Ws2812::Color::Red);
+      for(auto &mf: MF_plan) {
+        if(mf.is_valid) led_ui.drawMFPos(mf.MF_x, mf.MF_y, Ws2812::Color::Blue);
+      }
+    }
     led_ui.drawMF();
 
     led_ui.refresh();

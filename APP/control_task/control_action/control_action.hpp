@@ -37,12 +37,12 @@ enum Height : size_t{
 
 // ===== 动作速度配置 =====
 struct ActionSpeeds {
-    float pick_lift     = 350.0f;   // 吸取手抬升 mm/s
-    float pick_yaw      = 500.0f;   // 云台旋转 °/s
-    float pick_extend   = 280.0f;   // 吸取手伸缩 mm/s
-    float weapon_lift   = 180.0f;   // 武器手抬升 mm/s
-    float weapon_extend = 180.0f;   // 武器手伸缩 mm/s
-    float lift          = 70.0f;    // 电梯 mm/s
+    float pick_lift     = 525.0f;   // 吸取手抬升 mm/s
+    float pick_yaw      = 600.0f;   // 云台旋转 °/s
+    float pick_extend   = 420.0f;   // 吸取手伸缩 mm/s
+    float weapon_lift   = 270.0f;   // 武器手抬升 mm/s
+    float weapon_extend = 270.0f;   // 武器手伸缩 mm/s
+    float lift          = 80.0f;    // 电梯 mm/s
 };
 
 
@@ -127,6 +127,7 @@ enum Name : int8_t{
 
     Pose_Grid9_Bot12             =   6 ,
     Pose_Grid9_Bot3              =   7 ,
+    Pose_Place1_2                =   8 ,
 
 };
 
@@ -138,14 +139,17 @@ inline constexpr RobotPose kPose_Moving_In_MF = {352.6f, 0.0f, 0.0f, 347.0f, 0.0
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};
 
 inline constexpr RobotPose kPose_Place[3]   = {
-    {78.1f, -312.0f, 150.59f, 347.0f, 0.0f, 100.0f,Pose_Place0},
+    {78.1f, -302.0f, 150.59f, 347.0f, 0.0f, 100.0f,Pose_Place0},
     {78.1f, -139.0f, 140.0f, 347.0f, 0.0f, 100.0f,Pose_Place1},
     {370.0f, -220.5f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place2}
 };
+inline constexpr RobotPose kPose_Place1_2  =  {370.0f, -139.0f, 50.0f, 347.0f, 0.0f, 0.0f,Pose_Place1_2};
+
+
 inline constexpr RobotPose kPose_Pick[3] = {
     {0.0f  , 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick0},
-    {179.2f, 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick1},
-    {390.6f, 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick2}
+    {198.2f, 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick1},
+    {412.6f, 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick2}
 };
 
 inline constexpr RobotPose kPose_Grid9_Bot12 = {320.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot12};
@@ -192,6 +196,11 @@ struct ActionConfig {
 // ===== 动作控制器 =====
 class ActionController {
 public:
+
+    //单轴动作函数
+    void YawTo(float yaw_deg);
+
+
     // ---- 动作函数（process 层调用） ----
     void GoHome();
 
