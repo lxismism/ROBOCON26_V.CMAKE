@@ -54,6 +54,7 @@
 osThreadId_t CAN1_Send_TaskHandle;
 osThreadId_t CAN2_Send_TaskHandle;
 osThreadId_t CAN3_Send_TaskHandle;
+osThreadId_t uart3SendTaskHandle;
 osThreadId_t uart2ProcessTaskHandle;
 osThreadId_t uart3ProcessTaskHandle;
 osThreadId_t uart4ProcessTaskHandle;
@@ -598,11 +599,20 @@ void uart3RxProcessTask(void *argument) {
           rc_msg.cursor = rc_data.cursor;
           rc_msg.trimLeft = rc_data.trimLeft;
           rc_msg.trimRight = rc_data.trimRight;
+          
 
           rc_data_pub.Publish(rc_msg);
         }
       }
     }
+  }
+}
+//航模回传
+void uart3SendTask(void *argument) {
+  (void)argument;
+  for(;;)
+  {
+    osDelay(osWaitForever);
   }
 }
 
