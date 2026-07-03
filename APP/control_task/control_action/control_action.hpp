@@ -61,6 +61,9 @@ struct ActionPriorities {
 struct RampState {
     bool  active = false;
     uint8_t step_done_mask = 0x3F;
+    uint8_t done_stable_cnt = 0;
+    uint8_t done_stable_frames = 3;    // 默认3帧
+
 
     ActionSpeeds    speeds;
     ActionPriorities priorities;
@@ -186,7 +189,8 @@ struct ActionConfig {
 
     bool enable_chassis_approach = false;  // 本步期间触发底盘逼近
     bool release_chassis = false;
-    uint16_t dwell_ms = 0;          // 到位后驻留时间（毫秒），0=不等
+    uint16_t dwell_ms = 0;
+    uint8_t done_stable_frames = 4;    // 连续稳定帧数，默认4帧
 
 
 

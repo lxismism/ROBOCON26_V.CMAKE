@@ -127,8 +127,12 @@ void ActionController::Start_(const ActionConfig& config) {
     ramp_.chassis_approach_active = config.enable_chassis_approach;
     ramp_.chassis_release_pending = config.release_chassis;
 
-    ramp_.dwell_ms = config.dwell_ms;        
-    ramp_.dwell_timer_ms = 0;                
+    ramp_.dwell_ms = config.dwell_ms;
+    ramp_.dwell_timer_ms = 0;
+    ramp_.done_stable_frames = config.done_stable_frames;   // ← 加
+    ramp_.done_stable_cnt = 0;
+
+          
 
 
 }
@@ -216,11 +220,18 @@ void ActionController::Step_(float dt) {
     }
 
     if (all_done) {
-        ramp_.dwell_timer_ms += (uint16_t)(dt * 1000.0f);   // dt=0.005s → +5ms
-        if (ramp_.dwell_timer_ms >= ramp_.dwell_ms) {
-            ramp_.active = false;
+        ramp_.done_stable_cnt++;
+    if (ramp_.done_stable_cnt >= ramp_.done_stable_frames) {
+            ramp_.dwell_timer_ms += (uint16_t)(dt * 1000.0f);
+            if (ramp_.dwell_timer_ms >= ramp_.dwell_ms) {
+                ramp_.active = false;
+            }
         }
+    } else {
+        ramp_.done_stable_cnt = 0;          // 不稳定就清零
+        ramp_.dwell_timer_ms = 0;
     }
+
 }
 
 
