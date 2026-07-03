@@ -253,8 +253,8 @@ public:
     // =====================================================
     void Update_TarjSpeed(){
 
-        v_Acc = v_output + Acc_linear*dt;
-        v_Dec = sqrt(2.0f*Dec_linear*(L - s_now));
+        v_Acc = v_output + Traject.Acc_linear*dt;
+        v_Dec = sqrt(2.0f*Traject.Dec_linear*(L - s_now));
 
         if(v_Max < v_Acc && v_Max < v_Dec){
             v_output = v_Max;
@@ -399,14 +399,23 @@ public:
     float_t dy_ds;
     float_t dyaw_ds;
 
-    const float_t Acc_linear = 1.7f;
-    const float_t Dec_linear = 1.4f;
-    const float_t v_Max = 2.2f;
+    speed_plan Traject{
+        1.5f,
+        1.1f,
+        2.1f,
+        M_PI*0.65f,
+        M_PI*0.65f,
+        M_PI*0.6
+    };
+
+    float_t Acc_linear = 1.5f;
+    float_t Dec_linear = 1.1f;
+    float_t v_Max = 2.1f;
     float_t v_Acc;
     float_t v_Dec;
 
-    const float_t Acc_omega = M_PI*0.75f;
-    const float_t w_Max = M_PI*0.85f;
+    float_t Acc_omega = M_PI*0.65f;
+    float_t w_Max = M_PI*0.6;
     float_t w_Acc;
     float_t w_Dec;
 
