@@ -20,7 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 
-enum class DMA_USE_t {
+enum class DMA_USE {
   DMA_off,
   DMA_on
 };
@@ -49,7 +49,7 @@ public:
    * @param cb
    * @param cb_user
    */
-  UartPort(UART_HandleTypeDef *huart, DMA_USE_t dma_use, uint8_t *rx_dma_buf,
+  UartPort(UART_HandleTypeDef *huart, DMA_USE dma_use, uint8_t *rx_dma_buf,
            size_t rx_dma_buf_size, uint8_t *tx_dma_buf = nullptr,
            size_t tx_dma_buf_size = 0, RxCallback cb = nullptr,
            void *cb_user = nullptr);
@@ -105,7 +105,7 @@ public:
 private:
   static constexpr size_t kMaxMap = 10;
 
-  DMA_USE_t dma_use_{DMA_USE_t::DMA_off};
+  DMA_USE dma_use_{DMA_USE::DMA_off};
 
   // 保存一个uart实例
   UART_HandleTypeDef *huart_{nullptr};

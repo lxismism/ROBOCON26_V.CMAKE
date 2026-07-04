@@ -124,9 +124,9 @@ extern UART_HandleTypeDef huart5;
 extern UART_HandleTypeDef huart8;
 extern UART_HandleTypeDef huart10;
 
-DMA_BUFFER_ATTR static uint8_t uart3_rx_dma[64];
-DMA_BUFFER_ATTR static uint8_t uart3_tx_dma[64];
-UartPort uart3_port(&huart3, DMA_USE_t::DMA_on, uart3_rx_dma, sizeof(uart3_rx_dma), uart3_tx_dma,
+DMA_BUFFER_ATTR static uint8_t uart3_rx_dma[128];
+DMA_BUFFER_ATTR static uint8_t uart3_tx_dma[128];
+UartPort uart3_port(&huart3, DMA_USE::DMA_on, uart3_rx_dma, sizeof(uart3_rx_dma), uart3_tx_dma,
                     sizeof(uart3_tx_dma), onUart3RxCb, nullptr);
 osSemaphoreId_t uart3_rx_semphore = NULL;
 
@@ -135,7 +135,7 @@ void onUart2RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart2_rx_dma[128];
 DMA_BUFFER_ATTR static uint8_t uart2_tx_dma[64];
-UartPort uart2_port(&huart2, DMA_USE_t::DMA_on, uart2_rx_dma, sizeof(uart2_rx_dma), uart2_tx_dma,
+UartPort uart2_port(&huart2, DMA_USE::DMA_on, uart2_rx_dma, sizeof(uart2_rx_dma), uart2_tx_dma,
                     sizeof(uart2_tx_dma), onUart2RxCb, nullptr);
 osSemaphoreId_t uart2_rx_semphore = NULL;
 
@@ -144,7 +144,7 @@ void onUart4RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart4_rx_dma[128];
 DMA_BUFFER_ATTR static uint8_t uart4_tx_dma[64];
-UartPort uart4_port(&huart4, DMA_USE_t::DMA_on, uart4_rx_dma, sizeof(uart4_rx_dma), uart4_tx_dma,
+UartPort uart4_port(&huart4, DMA_USE::DMA_on, uart4_rx_dma, sizeof(uart4_rx_dma), uart4_tx_dma,
                     sizeof(uart4_tx_dma), onUart4RxCb, nullptr);
 osSemaphoreId_t uart4_rx_semphore = NULL;
 
@@ -153,14 +153,14 @@ void onUart5RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例
 
 DMA_BUFFER_ATTR static uint8_t uart5_rx_dma[64];
 DMA_BUFFER_ATTR static uint8_t uart5_tx_dma[512];
-UartPort uart5_port(&huart5, DMA_USE_t::DMA_on, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
+UartPort uart5_port(&huart5, DMA_USE::DMA_on, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
                     sizeof(uart5_tx_dma), onUart5RxCb, nullptr);
 osSemaphoreId_t uart5_rx_semphore = NULL;
 
 void onUart8RxCb(const uint8_t *data, size_t len, void *user);
 DMA_BUFFER_ATTR static uint8_t uart8_rx_dma[16];
 DMA_BUFFER_ATTR static uint8_t uart8_tx_dma[16];
-UartPort uart8_port(&huart8, DMA_USE_t::DMA_off, uart8_rx_dma, sizeof(uart8_rx_dma), uart8_tx_dma,
+UartPort uart8_port(&huart8, DMA_USE::DMA_off, uart8_rx_dma, sizeof(uart8_rx_dma), uart8_tx_dma,
                     sizeof(uart8_tx_dma), onUart8RxCb, nullptr);
 osSemaphoreId_t uart8_rx_semphore = NULL;
 
@@ -169,7 +169,7 @@ void onUart10RxCb(const uint8_t *data, size_t len, void *user); //仅用于实�
 
 DMA_BUFFER_ATTR static uint8_t uart10_rx_dma[16];
 DMA_BUFFER_ATTR static uint8_t uart10_tx_dma[16];
-UartPort uart10_port(&huart10, DMA_USE_t::DMA_off, uart10_rx_dma, sizeof(uart10_rx_dma), uart10_tx_dma,
+UartPort uart10_port(&huart10, DMA_USE::DMA_off, uart10_rx_dma, sizeof(uart10_rx_dma), uart10_tx_dma,
                      sizeof(uart10_tx_dma), onUart10RxCb, nullptr);
 osSemaphoreId_t uart10_rx_semphore = NULL;
 
@@ -178,7 +178,7 @@ void onUart1RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart1_rx_dma[16];
 DMA_BUFFER_ATTR static uint8_t uart1_tx_dma[16];
-UartPort uart1_port(&huart1, DMA_USE_t::DMA_off, uart1_rx_dma, sizeof(uart1_rx_dma), uart1_tx_dma,
+UartPort uart1_port(&huart1, DMA_USE::DMA_off, uart1_rx_dma, sizeof(uart1_rx_dma), uart1_tx_dma,
                     sizeof(uart1_tx_dma), onUart1RxCb, nullptr);
 osSemaphoreId_t uart1_rx_semphore = NULL;
 
@@ -187,7 +187,7 @@ void onUart6RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart6_rx_dma[16];
 DMA_BUFFER_ATTR static uint8_t uart6_tx_dma[16];
-UartPort uart6_port(&huart6, DMA_USE_t::DMA_off, uart6_rx_dma, sizeof(uart6_rx_dma), uart6_tx_dma,
+UartPort uart6_port(&huart6, DMA_USE::DMA_off, uart6_rx_dma, sizeof(uart6_rx_dma), uart6_tx_dma,
                     sizeof(uart6_tx_dma), onUart6RxCb, nullptr);
 osSemaphoreId_t uart6_rx_semphore = NULL;
 
@@ -196,7 +196,7 @@ void onUart9RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart9_rx_dma[16];
 DMA_BUFFER_ATTR static uint8_t uart9_tx_dma[16];
-UartPort uart9_port(&huart9, DMA_USE_t::DMA_off, uart9_rx_dma, sizeof(uart9_rx_dma), uart9_tx_dma,
+UartPort uart9_port(&huart9, DMA_USE::DMA_off, uart9_rx_dma, sizeof(uart9_rx_dma), uart9_tx_dma,
                      sizeof(uart9_tx_dma), onUart9RxCb, nullptr);
 osSemaphoreId_t uart9_rx_semphore = NULL;
 
@@ -610,9 +610,17 @@ void uart3RxProcessTask(void *argument) {
 //航模回传
 void uart3SendTask(void *argument) {
   (void)argument;
+
+  uint32_t current_time = HAL_GetTick();
+
+  uint8_t temp_crc;
+
+  uint8_t msg[16] = {CRSF_SYNC_BYTE,5,CRSF_TEMP_TYPE,CRSF_TEMP_SOURCE_ID,0x00,0x10,temp_crc};
+
   for(;;)
   {
-    osDelay(osWaitForever);
+    
+    osDelay(10);
   }
 }
 

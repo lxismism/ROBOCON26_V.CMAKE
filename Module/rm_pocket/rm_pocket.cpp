@@ -54,10 +54,7 @@ bool rmPocket::processByte(uint8_t byte) {
         case CRSF_rx_state_t::WAITING_FOR_CRC: {
             current_frame_.crc = byte;
 
-            uint8_t crc = 0;
-            crc = crc8tab[crc ^ current_frame_.type];
-            for (uint8_t i = 0; i < current_frame_.length - 2; i++)
-                crc = crc8tab[crc ^ current_frame_.payload[i]];
+            uint8_t crc = crsfCrc(current_frame_);
             
             bool is_uncode = false;
             if (current_frame_.crc == crc)
@@ -176,4 +173,12 @@ bool rmPocket::onFrameComplete(const CRSF_broadcast_frame_t &frame) {
         return true;
     }
     return false;
+}
+
+uint8_t rmPocket::crsfCrc(CRSF_broadcast_frame_t &frame) {
+    uint8_t crc = 0;
+    crc = crc8tab[crc ^ current_frame_.type];
+    for (uint8_t i = 0; i < current_frame_.length - 2; i++)
+        crc = crc8tab[crc ^ current_frame_.payload[i]];
+    return crc;
 }

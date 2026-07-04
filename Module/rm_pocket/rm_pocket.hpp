@@ -12,6 +12,9 @@ constexpr uint8_t CRSF_FRAME_LENGTH_MAX = 0x62;
 
 constexpr uint8_t CRSF_CP_TYPE = 0x16;
 
+constexpr uint8_t CRSF_TEMP_TYPE = 0x0D;
+constexpr uint8_t CRSF_TEMP_SOURCE_ID = 0x00;
+
 struct CRSF_broadcast_frame_t {
     uint8_t length;
     uint8_t type;
@@ -57,7 +60,7 @@ class rmPocket {
         WAITING_FOR_CRC
     };
 
-    public:
+public:
 
     struct RC_state_t {
 
@@ -106,7 +109,7 @@ class rmPocket {
         return rc_state_;
     }
 
-    private:
+private:
     CRSF_rx_state_t rx_state_;
     uint8_t rx_buffer_[CRSF_FRAME_LENGTH_MAX]; //数据内容缓冲
     uint8_t rx_index_;
@@ -121,5 +124,10 @@ class rmPocket {
     };
 
     bool onFrameComplete(const CRSF_broadcast_frame_t &frame);
+
+    void packMsg();
+    //电机状态，mf_plan，mf_x，mf_y, 
+
+    uint8_t crsfCrc(CRSF_broadcast_frame_t &frame);
 
 };

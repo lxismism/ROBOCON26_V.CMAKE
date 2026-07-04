@@ -19,7 +19,7 @@
 UartPort *UartPort::map_[UartPort::kMaxMap] = {nullptr, nullptr, nullptr,
                                                nullptr};
 
-UartPort::UartPort(UART_HandleTypeDef *huart, DMA_USE_t dma_use, uint8_t *rx_dma_buf,
+UartPort::UartPort(UART_HandleTypeDef *huart, DMA_USE dma_use, uint8_t *rx_dma_buf,
                    size_t rx_dma_buf_size, uint8_t *tx_dma_buf,
                    size_t tx_dma_buf_size, RxCallback cb, void *cb_user)
     : dma_use_(dma_use), huart_(huart), rx_dma_buf_(rx_dma_buf), rx_dma_buf_size_(rx_dma_buf_size),
@@ -44,7 +44,7 @@ UartPort::UartPort(UART_HandleTypeDef *huart, DMA_USE_t dma_use, uint8_t *rx_dma
 }
 
 HAL_StatusTypeDef UartPort::startRx() {
-  if(dma_use_ == DMA_USE_t::DMA_off) {
+  if(dma_use_ == DMA_USE::DMA_off) {
     return HAL_OK;
   }
   if (huart_ == nullptr || rx_dma_buf_ == nullptr || rx_dma_buf_size_ == 0) {
