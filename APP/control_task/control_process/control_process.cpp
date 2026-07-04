@@ -87,11 +87,14 @@ extern bool headless_omega_mode;
 bool headless_mode = true;
 
 extern bool Normal_control_mode;
+
+speed_data Normal_speed{1.2f,0.9f,1.5f,M_PI*0.5};
 // MC 模式相关
 extern int8_t MC_y;
 extern float MC_close_position_x;
 extern float MC_close_position_y;
 extern bool MC_headless_mode;
+speed_data MC_speed{1.2f,0.9f,1.5f,M_PI*0.5};
 // MF 模式相关
 extern uint8_t MF_x;
 extern uint8_t MF_y;
@@ -108,12 +111,14 @@ extern int8_t MF_omega_control_Flag;
 extern uint8_t MF_plan_record_i;
 extern uint8_t MF_plan_run_i;
 extern MF_plan_t MF_plan_zero;
+speed_data MF_speed{1.8f,1.2f,2.5f,M_PI*0.6};
 
 extern uint8_t MF_pick_count;
 // Arena模式相关
 extern int8_t Arena_x;
 extern float Arena_close_position_y;
 extern float Arena_close_position_y_Max;
+speed_data Arena_speed{1.8f,1.2f,1.8f,M_PI*0.3};
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
@@ -478,7 +483,7 @@ void Normal_control_Process() {
         Aim_State_omega_Process();
     }
 
-    Traject_chassis.Set_Ref(state_now_cmd,Normal);
+    Traject_chassis.Set_Ref(state_now_cmd,Normal,Normal_speed);
 }
 
 
@@ -527,13 +532,12 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         state_target_cmd.linear_y_ = robot_position_MC[MC_y][1];
         state_target_cmd.omega_    = robot_position_MC[MC_y][2];
     }
-    Traject_chassis.Set_Ref(state_target_cmd,Normal);
+
+    Traject_chassis.Set_Ref(state_target_cmd,Normal,MC_speed);
     MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
     MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
     position_close_x = MC_close_position_x;
     position_close_y = MC_close_position_y;
-    // position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
-    // position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
     Traject_chassis.Run(state_now_cmd);
     robot_v_aim_cmd = Traject_chassis.Get_output_b();
 
@@ -780,7 +784,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0];
                 state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1];
                 state_target_cmd.omega_    = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                Traject_chassis.Set_Ref(state_target_cmd,MF);
+                Traject_chassis.Set_Ref(state_target_cmd,MF,MF_speed);
  
                 // 上身保持行进姿态（每个新路径点仅触发一次）
                 if (last_moving_pose_i != MF_plan_run_i
@@ -1056,7 +1060,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 	    // 每帧推进渐变
 	    upbody_ctrl.Update(0.005f, upbody_pub);
 	}
-    Traject_chassis.Set_Ref(state_target_cmd,Normal);
+    Traject_chassis.Set_Ref(state_target_cmd,Normal,Arena_speed);
     position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
     position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
     Traject_chassis.Run(state_now_cmd);

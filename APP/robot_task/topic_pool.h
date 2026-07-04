@@ -131,6 +131,13 @@ typedef struct{
 } speed_plan;
 
 typedef struct {
+    float_t Acc_linear;
+    float_t Dec_linear;
+    float_t v_Max;
+    float_t w_Max;
+} speed_data;
+
+typedef struct {
   bool chassis_motor1;
   bool chassis_motor2;
   bool chassis_motor3;

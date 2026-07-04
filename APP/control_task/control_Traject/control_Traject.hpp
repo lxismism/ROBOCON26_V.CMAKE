@@ -83,11 +83,12 @@ public:
     // =====================================================
     //  设置目标值
     // =====================================================
-    void Set_Ref(pub_chassis_cmd Ref,RobotMode_t mode){
+    void Set_Ref(pub_chassis_cmd Ref,RobotMode_t mode,speed_data speed_In){
         if(fabsf(Ref.linear_x_ - ref.x) > 0.0015f || fabsf(Ref.linear_y_ - ref.y) > 0.0015f ||fabsf(Ref.omega_ - ref.yaw) > 0.001f){
             ref.x = Ref.linear_x_;
             ref.y = Ref.linear_y_;
             ref.yaw = Ref.omega_;
+            Traject = speed_In;
             Traj_complete_Flag = false;
             PointTrack_omega_complete_Flag = false;
             PointTrack_linear_complete_Flag = false;
@@ -256,16 +257,16 @@ public:
         v_Acc = v_output + Traject.Acc_linear*dt;
         v_Dec = sqrt(2.0f*Traject.Dec_linear*(L - s_now));
 
-        if(v_Max < v_Acc && v_Max < v_Dec){
-            v_output = v_Max;
+        if(Traject.v_Max < v_Acc && Traject.v_Max < v_Dec){
+            v_output = Traject.v_Max;
         }else if(v_Acc > v_Dec){
             v_output = v_Dec;
         }else {
             v_output = v_Acc;
         };
 
-        if(fabsf(dyaw_ds)*kDegToRad*v_output > w_Max && fabsf(dyaw_ds) > 0.01f){
-            v_output = w_Max/(fabsf(dyaw_ds)*kDegToRad);
+        if(fabsf(dyaw_ds)*kDegToRad*v_output > Traject.w_Max && fabsf(dyaw_ds) > 0.01f){
+            v_output = Traject.w_Max/(fabsf(dyaw_ds)*kDegToRad);
         }
 
         Traj_wff.vx = dx_ds*v_output;
@@ -399,23 +400,16 @@ public:
     float_t dy_ds;
     float_t dyaw_ds;
 
-    speed_plan Traject{
-        1.5f,
-        1.1f,
-        2.1f,
-        M_PI*0.65f,
-        M_PI*0.65f,
-        M_PI*0.6
-    };
+    speed_data Traject{1.2f,0.9f,2.1f,M_PI*0.6f};
 
-    float_t Acc_linear = 1.5f;
-    float_t Dec_linear = 1.1f;
-    float_t v_Max = 2.1f;
+    // float_t Acc_linear = 1.2f;
+    // float_t Dec_linear = 0.9f;
+    // float_t v_Max = 2.1f;
+    // float_t w_Max = M_PI*0.6f;
+
     float_t v_Acc;
     float_t v_Dec;
 
-    float_t Acc_omega = M_PI*0.65f;
-    float_t w_Max = M_PI*0.6;
     float_t w_Acc;
     float_t w_Dec;
 
