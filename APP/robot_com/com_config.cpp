@@ -49,6 +49,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <stdint.h>
 #include <stdio.h>
 
 osThreadId_t CAN1_Send_TaskHandle;
@@ -610,17 +611,22 @@ void uart3RxProcessTask(void *argument) {
 //航模回传
 void uart3SendTask(void *argument) {
   (void)argument;
+  uint8_t send_buffer[64] = {};
 
-  uint32_t current_time = HAL_GetTick();
-
-  uint8_t temp_crc;
-
-  uint8_t msg[16] = {CRSF_SYNC_BYTE,5,CRSF_TEMP_TYPE,CRSF_TEMP_SOURCE_ID,0x00,0x10,temp_crc};
+  CRSF_broadcast_frame_t test_frame = {
+    .length = 0x05,
+    .type = CRSF_TEMP_TYPE,
+    .payload = {0}
+  };
 
   for(;;)
   {
-    
-    osDelay(10);
+    int16_t cur_tick = static_cast<int16_t>(HAL_GetTick() & 0xFFFF);
+    test_frame.payload[1] = (cur_tick >> 8) & 0xFF;
+    test_frame.payload[2] = cur_tick & 0xFF;
+    uint8_t len = rm_pocket.packFrame(send_buffer, test_frame);
+    uart3_port.writeDma(send_buffer, len);
+    osDelay(100);
   }
 }
 

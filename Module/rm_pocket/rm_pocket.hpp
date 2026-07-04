@@ -8,7 +8,7 @@
 
 constexpr uint8_t CRSF_SYNC_BYTE = 0xC8;
 
-constexpr uint8_t CRSF_FRAME_LENGTH_MAX = 0x62;
+constexpr uint8_t CRSF_FRAME_LENGTH_MAX = 62;
 
 constexpr uint8_t CRSF_CP_TYPE = 0x16;
 
@@ -109,9 +109,11 @@ public:
         return rc_state_;
     }
 
+    uint8_t packFrame(uint8_t *tx_buf, const CRSF_broadcast_frame_t &frame);
+
 private:
     CRSF_rx_state_t rx_state_;
-    uint8_t rx_buffer_[CRSF_FRAME_LENGTH_MAX]; //数据内容缓冲
+    //uint8_t rx_buffer_[CRSF_FRAME_LENGTH_MAX]; //数据内容缓冲
     uint8_t rx_index_;
     RC_state_t rc_state_;
     CRSF_broadcast_frame_t current_frame_;
@@ -119,7 +121,7 @@ private:
     void resetState() {
         rx_state_ = CRSF_rx_state_t::WAITING_FOR_SYNC;
         rx_index_ = 0;
-        std::memset(rx_buffer_, 0, sizeof(rx_buffer_));
+        //std::memset(rx_buffer_, 0, sizeof(rx_buffer_));
         std::memset(&current_frame_, 0, sizeof(current_frame_));
     };
 
@@ -128,6 +130,6 @@ private:
     void packMsg();
     //电机状态，mf_plan，mf_x，mf_y, 
 
-    uint8_t crsfCrc(CRSF_broadcast_frame_t &frame);
+    uint8_t crsfCrc(const CRSF_broadcast_frame_t &frame);
 
 };

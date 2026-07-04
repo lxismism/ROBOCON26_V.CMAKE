@@ -175,10 +175,22 @@ bool rmPocket::onFrameComplete(const CRSF_broadcast_frame_t &frame) {
     return false;
 }
 
-uint8_t rmPocket::crsfCrc(CRSF_broadcast_frame_t &frame) {
+uint8_t rmPocket::crsfCrc(const CRSF_broadcast_frame_t &frame) {
     uint8_t crc = 0;
-    crc = crc8tab[crc ^ current_frame_.type];
-    for (uint8_t i = 0; i < current_frame_.length - 2; i++)
-        crc = crc8tab[crc ^ current_frame_.payload[i]];
+    crc = crc8tab[crc ^ frame.type];
+    for (uint8_t i = 0; i < frame.length - 2; i++)
+        crc = crc8tab[crc ^ frame.payload[i]];
     return crc;
+}
+
+uint8_t rmPocket::packFrame(uint8_t *tx_buf, const CRSF_broadcast_frame_t &frame) {
+    if(tx_buf == nullptr) {
+        return 0;
+    }
+    tx_buf[0] = CRSF_SYNC_BYTE;
+    tx_buf[1] = frame.length;
+    tx_buf[2] = frame.type;
+    std::memcpy(&tx_buf[3], frame.payload, frame.length - 2);
+    tx_buf[frame.length + 1] = crsfCrc(frame);
+    return frame.length + 2; //返回总长度
 }
