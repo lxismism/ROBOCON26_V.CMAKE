@@ -611,21 +611,35 @@ void uart3RxProcessTask(void *argument) {
 //航模回传
 void uart3SendTask(void *argument) {
   (void)argument;
+  extern uint8_t MF_x;
+  extern uint8_t MF_y;
+  extern MF_plan_t MF_plan[15];
   uint8_t send_buffer[64] = {};
 
-  CRSF_broadcast_frame_t test_frame = {
-    .length = 0x05,
+  CRSF_broadcast_frame_t temp_frame = {
+    .length = 2 + 1 + 2 * 16,
     .type = CRSF_TEMP_TYPE,
     .payload = {0}
   };
 
+  auto mf2temp = [](uint8_t x, uint8_t y, uint8_t *temp_H) -> void {
+    int16_t temp16 = 1000 + x * 100 + y * 10;
+    *temp_H = (temp16 >> 8) & 0xFF;
+    *(temp_H + 1) = temp16 & 0xFF;
+  };
+
   for(;;)
   {
-    int16_t cur_tick = static_cast<int16_t>(HAL_GetTick() & 0xFFFF);
-    test_frame.payload[1] = (cur_tick >> 8) & 0xFF;
-    test_frame.payload[2] = cur_tick & 0xFF;
-    uint8_t len = rm_pocket.packFrame(send_buffer, test_frame);
+    mf2temp(MF_x, MF_y, &temp_frame.payload[1]);
+    int i = 3;
+    for(auto &mf: MF_plan) {
+      if(mf.is_valid)
+        mf2temp(mf.MF_x, mf.MF_y, &temp_frame.payload[i]);
+      i += 2;
+    }
+    uint8_t len = rm_pocket.packFrame(send_buffer, temp_frame);
     uart3_port.writeDma(send_buffer, len);
+    std::memset(temp_frame.payload, 0, sizeof(temp_frame.payload));
     osDelay(100);
   }
 }
