@@ -118,7 +118,7 @@ extern uint8_t MF_pick_count;
 extern int8_t Arena_x;
 extern float Arena_close_position_y;
 extern float Arena_close_position_y_Max;
-speed_data Arena_speed{1.8f,1.2f,1.8f,M_PI*0.3};
+speed_data Arena_speed{1.8f,1.2f,1.8f,M_PI*0.45};
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
