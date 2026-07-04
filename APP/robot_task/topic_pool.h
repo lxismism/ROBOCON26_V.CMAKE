@@ -120,6 +120,16 @@ typedef struct {
   float roll_rad;  // 滚转角
 } pub_imu_data;
 
+typedef struct{
+  float Acc_linear;
+  float Dec_linear;
+  float v_Max;
+
+  float Acc_omega;
+  float Dec_omega;
+  float w_Max;
+} speed_plan;
+
 typedef struct {
     float_t Acc_linear;
     float_t Dec_linear;

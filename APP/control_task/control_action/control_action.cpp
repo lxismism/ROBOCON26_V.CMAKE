@@ -127,8 +127,12 @@ void ActionController::Start_(const ActionConfig& config) {
     ramp_.chassis_approach_active = config.enable_chassis_approach;
     ramp_.chassis_release_pending = config.release_chassis;
 
-    ramp_.dwell_ms = config.dwell_ms;        
-    ramp_.dwell_timer_ms = 0;                
+    ramp_.dwell_ms = config.dwell_ms;
+    ramp_.dwell_timer_ms = 0;
+    ramp_.done_stable_frames = config.done_stable_frames;   // ← 加
+    ramp_.done_stable_cnt = 0;
+
+          
 
 
 }
@@ -216,11 +220,18 @@ void ActionController::Step_(float dt) {
     }
 
     if (all_done) {
-        ramp_.dwell_timer_ms += (uint16_t)(dt * 1000.0f);   // dt=0.005s → +5ms
-        if (ramp_.dwell_timer_ms >= ramp_.dwell_ms) {
-            ramp_.active = false;
+        ramp_.done_stable_cnt++;
+    if (ramp_.done_stable_cnt >= ramp_.done_stable_frames) {
+            ramp_.dwell_timer_ms += (uint16_t)(dt * 1000.0f);
+            if (ramp_.dwell_timer_ms >= ramp_.dwell_ms) {
+                ramp_.active = false;
+            }
         }
+    } else {
+        ramp_.done_stable_cnt = 0;          // 不稳定就清零
+        ramp_.dwell_timer_ms = 0;
     }
+
 }
 
 
@@ -657,10 +668,9 @@ void ActionController::GetKFS(const RobotPose& pose) {
     ActionConfig config;
     config.target = pose;
     config.priorities.pick_yaw    = 0;
-    config.speeds.pick_extend     = 150.0f;
-    config.speeds.pick_yaw        = 300.0f;
     config.priorities.pick_lift   = 1;
     config.priorities.pick_extend = 2;
+    config.speeds.pick_extend     = 280.0f;
     config.pump_cmd  = 1;   // 自动开泵
     config.valve_cmd = 1;   // 自动开阀
     AddStep(config);
@@ -674,9 +684,6 @@ void ActionController::GetKFS(const RobotPose& pose) {
     lift_up.target.pick_extend_mm   = pose.pick_extend_mm;
     lift_up.target.weapon_lift_mm   = pose.weapon_lift_mm;
     lift_up.target.weapon_extend_mm = pose.weapon_extend_mm;
-
-    lift_up.speeds.pick_yaw         = 300.0f;
-
     lift_up.priorities.pick_lift    = 0;
     lift_up.step_done_mask = 0x01;
     AddStep(lift_up);
@@ -684,7 +691,6 @@ void ActionController::GetKFS(const RobotPose& pose) {
     // 缩回吸取手
     ActionConfig retract;
     retract.target = pose;
-    retract.speeds.pick_extend    = 150.0f;
     retract.target.pick_extend_mm   = 0.0f;
     retract.target.pick_yaw_deg     = pose.pick_yaw_deg;
     retract.target.pick_lift_mm     = pose.pick_lift_mm + 70.0f;  // 保持抬高后的位置
