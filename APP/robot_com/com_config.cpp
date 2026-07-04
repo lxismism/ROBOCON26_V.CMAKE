@@ -638,7 +638,9 @@ void uart3SendTask(void *argument) {
       i += 2;
     }
     uint8_t len = rm_pocket.packFrame(send_buffer, temp_frame);
-    uart3_port.writeDma(send_buffer, len);
+    //uart3_port.writeDma(send_buffer, len);
+    uint8_t test[] = {0xC8, 0x0A, 0x08, 0x00, 0x78, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x6A};
+    uart3_port.writeDma(test, sizeof(test));
     std::memset(temp_frame.payload, 0, sizeof(temp_frame.payload));
     osDelay(100);
   }
