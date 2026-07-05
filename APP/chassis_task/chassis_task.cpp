@@ -25,6 +25,7 @@
 const FieldSide_t field_side = Left;
 const float robot_center_to_gimbal = 0.4f;
 const float MC_position_correction_y = 0.03f;
+const float robot_R2_center_to_R1_center = 0.0465f;
 const float robot_center_to_Weapon = 0.4187f;
 
 // 任务句柄
@@ -107,7 +108,7 @@ const float robot_position_MF[6][5][4] = {//用于在梅林半自动控制车辆
         {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
         {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
         {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {3.3f*field_side - robot_center_to_gimbal, 4.9f, 180.0f, 2.0f}
+        {3.3f*field_side - robot_center_to_gimbal, 4.9f, 180.0f, 2.0f}  
     },
     {
         {4.5f*field_side + robot_center_to_gimbal, 0.1f, 0.0f, 1.0f},
@@ -142,29 +143,29 @@ const float robot_position_MF[6][5][4] = {//用于在梅林半自动控制车辆
 
 const float robot_position_Arena[3][3] = {//用于在九宫格自动控制车辆移动
   //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
-    {-0.227f*field_side - field_side*robot_center_to_gimbal, 4.399f - 0.5f, -90.0f*( field_side + 1)/2},
+    {-0.230f*field_side - field_side*robot_center_to_gimbal, 4.098f, -90.0f*( field_side + 1)/2},
 
-    {-0.727f*field_side + robot_center_to_gimbal           , 4.399f - 0.5f, 0.0f},
+    {-0.770f*field_side + robot_center_to_gimbal           , 4.098f, 0.0f},
 
-    {-1.227f*field_side + field_side*robot_center_to_gimbal, 4.399f - 0.5f, -90.0f*(-field_side + 1)/2}
+    {-1.310f*field_side + field_side*robot_center_to_gimbal, 4.098f, -90.0f*(-field_side + 1)/2}
 };
 
 const float robot_position_Arena_withR2[3][3] = {//用于在九宫格自动控制车辆移动
   //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
-    {-0.227f*field_side , 4.399f - 0.5f, 0.0f},
+    {-0.230f*field_side + robot_R2_center_to_R1_center, 4.098f, 0.0f},
 
-    {-0.727f*field_side , 4.399f - 0.5f, 0.0f},
+    {-0.770f*field_side + robot_R2_center_to_R1_center, 4.098f, 0.0f},
 
-    {-1.227f*field_side , 4.399f - 0.5f, 0.0f}
+    {-1.310f*field_side + robot_R2_center_to_R1_center, 4.098f, 0.0f}
 };
 
 const float robot_position_Arena_useWeapon[3][3] = {//用于在九宫格自动控制车辆移动
   //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
-    {-0.227f*field_side - robot_center_to_Weapon*(field_side + 1)/2  , 4.399f - 0.5f, 20.0f*(-field_side + 1)/2},
+    {-0.230f*field_side - robot_center_to_Weapon*(field_side + 1)/2  , 4.098f, 20.0f*(-field_side + 1)/2},
 
-    {-0.727f*field_side - robot_center_to_Weapon , 4.399f - 0.5f, 0.0f},
+    {-0.770f*field_side - robot_center_to_Weapon , 4.098f, 0.0f},
 
-    {-1.227f*field_side - robot_center_to_Weapon*(-field_side + 1)/2 , 4.399f - 0.5f, 20.0f*(field_side + 1)/2}
+    {-1.310f*field_side - robot_center_to_Weapon*(-field_side + 1)/2 , 4.098f, 20.0f*(field_side + 1)/2}
 };
 
 const float robot_position_MC[4][3] = {//用于在武馆自动控制车辆移动

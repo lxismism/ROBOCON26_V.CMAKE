@@ -118,7 +118,7 @@ extern uint8_t MF_pick_count;
 extern int8_t Arena_x;
 extern float Arena_close_position_y;
 extern float Arena_close_position_y_Max;
-speed_data Arena_speed{1.8f,1.2f,1.8f,M_PI*0.45};
+speed_data Arena_speed{0.9f,0.7f,1.8f,M_PI*0.45};
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
@@ -900,19 +900,19 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
             if (Arena_x + field_side >= 0 && Arena_x + field_side <= 2) {
-                Arena_x = Arena_x + field_side;
+                Arena_x = Arena_x + field_side; 
             }
         }
     }
 
     if(control_rm_cmd.swD == RC_2_POS_SW_State_t::DOWN){
-        if(Arena_close_position_y < Arena_close_position_y_Max)Arena_close_position_y = Arena_close_position_y + 0.0015f;
+        if(Arena_close_position_y < Arena_close_position_y_Max)Arena_close_position_y = Arena_close_position_y + 0.0008f;
     }else{
         if(control_rm_cmd_last.swD == RC_2_POS_SW_State_t::DOWN){
             //按键下降沿
         }
         if(Arena_close_position_y > 0.0f){
-            Arena_close_position_y =  Arena_close_position_y - 0.0015;
+            Arena_close_position_y =  Arena_close_position_y - 0.0008;
         }else {
             Arena_close_position_y = 0.0f;
         }

@@ -159,6 +159,13 @@ void ActionController::Step_(float dt) {
         pick_lift_done, pick_yaw_done, pick_extend_done,
         weapon_lift_done, weapon_extend_done, lift_done
     };
+    // 每轴稳定过滤：连续 N 帧判定到位才解阻塞
+    static uint8_t axis_stable[6] = {0};
+    for (int i = 0; i < 6; i++) {
+        if (done[i]) axis_stable[i]++; else axis_stable[i] = 0;
+        done[i] = (axis_stable[i] >= ramp_.done_stable_frames);
+    }
+
     int prios[6] = {
         ramp_.priorities.pick_lift, ramp_.priorities.pick_yaw,
         ramp_.priorities.pick_extend,
