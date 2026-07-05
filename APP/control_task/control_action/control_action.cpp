@@ -148,12 +148,28 @@ void ActionController::Step_(float dt) {
     bool pick_lift_done, pick_yaw_done, pick_extend_done;
     bool weapon_lift_done, weapon_extend_done, lift_done;
 
-    pick_lift_done   = (fabsf(ramp_.cur_pick_lift_mm   - ramp_.end_pick_lift_mm)   <= 0.01f);
-    pick_yaw_done    = (fabsf(ramp_.cur_pick_yaw_deg   - ramp_.end_pick_yaw_deg)   <= 0.1f);
-    pick_extend_done = (fabsf(ramp_.cur_pick_extend_mm - ramp_.end_pick_extend_mm) <= 0.01f);
-    weapon_lift_done   = (fabsf(ramp_.cur_weapon_lift_mm   - ramp_.end_weapon_lift_mm)   <= 0.01f);
-    weapon_extend_done = (fabsf(ramp_.cur_weapon_extend_mm - ramp_.end_weapon_extend_mm) <= 0.01f);
-    lift_done          = (fabsf(ramp_.cur_lift_mm          - ramp_.end_lift_mm)          <= 0.01f);
+    // ---- 编码器实时位置（用于到位判断，不掺入轨迹） ----
+    float real_pick_lift   = -pick_hand.lift_motor_->getCurrentSumPos()
+                             * PickHand::kLiftMmPerDeg;
+    float real_pick_yaw    =  pick_hand.yaw_motor_->getCurrentSumPos();
+    float real_pick_extend = -pick_hand.extend_motor_->getCurrentSumPos()
+                             * PickHand::kExtendMmPerDeg;
+    float real_weapon_lift   = weapon_hand.lift_motor_->getCurrentSumPos()
+                               * WeaponHand::kLiftMmPerDeg;
+    float real_weapon_extend = weapon_hand.extend_motor_->getCurrentSumPos()
+                               * WeaponHand::kExtendMmPerDeg;
+    float cur_l = -lift.left_motor_->getCurrentSumPos();
+    float cur_r =  lift.right_motor_->getCurrentSumPos();
+    float real_lift = (cur_l + cur_r) * 0.5f * Lift::kMmPerDeg;
+
+    // ---- 到位判断：编码器 vs 终点 ----
+    pick_lift_done     = (fabsf(real_pick_lift     - ramp_.end_pick_lift_mm)     <= 5.1f);
+    pick_yaw_done      = (fabsf(real_pick_yaw      - ramp_.end_pick_yaw_deg)     <= 5.5f);
+    pick_extend_done   = (fabsf(real_pick_extend   - ramp_.end_pick_extend_mm)   <= 5.1f);
+    weapon_lift_done   = (fabsf(real_weapon_lift   - ramp_.end_weapon_lift_mm)   <= 5.1f);
+    weapon_extend_done = (fabsf(real_weapon_extend - ramp_.end_weapon_extend_mm) <= 5.1f);
+    lift_done          = (fabsf(real_lift          - ramp_.end_lift_mm)          <= 5.5f);
+
 
     bool done[6] = {
         pick_lift_done, pick_yaw_done, pick_extend_done,
