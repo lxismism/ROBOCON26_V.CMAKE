@@ -162,6 +162,8 @@ inline constexpr RobotPose kPose_Grid9_Bot3  = {320.80f, 778.0f, 0.0f, 347.0f, 0
 inline constexpr RobotPose kPose_Get1   = {98.1f, -305.0f, 201.6f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 201.6f, 347.0f, 0.0f, 140.0f};
 
+inline constexpr RobotPose kPose_2Get   = {98.1f, -239.0f, 201.6f, 347.0f, 0.0f, 140.0f};
+
 inline constexpr RobotPose kPose_Poke1  = {430.80f, 778.0f, 0.0f, 317.0f, 200.0f, 0.0f, -1};       // 腕部0°朝上，戳第一层
 inline constexpr RobotPose kPose_Poke2  = {430.80f, 778.0f, 0.0f, 347.0f, 200.0f, 0.0f, -1};    // 腕部60°下翻，戳第二层
 

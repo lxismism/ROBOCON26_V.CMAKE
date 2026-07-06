@@ -991,7 +991,9 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         if (!upbody_ctrl.IsActive()) {
             if (control_rm_cmd.swA != control_rm_cmd_last.swA) {
                 if(control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN){
-                    upbody_ctrl.GetKFS(get_toggle ? kPose_Get1 : kPose_Get2);
+                    const RobotPose& get_pose = (MF_pick_count == 2) ? kPose_2Get
+                                                : (get_toggle ? kPose_Get1 : kPose_Get2);
+                    upbody_ctrl.GetKFS(get_pose);
                     get_toggle = !get_toggle;
                     last_arena_x = -1;    
                 }
