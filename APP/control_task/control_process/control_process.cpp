@@ -115,14 +115,15 @@ extern int8_t MF_omega_control_Flag;
 extern uint8_t MF_plan_record_i;
 extern uint8_t MF_plan_run_i;
 extern MF_plan_t MF_plan_zero;
-speed_data MF_speed{1.8f,1.2f,2.5f,M_PI*0.6};
+speed_data MF_speed{1.6f,1.0f,2.5f,M_PI*0.55};
 
 extern uint8_t MF_pick_count;
 // Arena模式相关
 extern int8_t Arena_x;
 extern float Arena_close_position_y;
 extern float Arena_close_position_y_Max;
-speed_data Arena_speed{1.8f,1.2f,1.8f,M_PI*0.3};
+extern float Arena_close_position_step;
+speed_data Arena_speed{0.9f,0.7f,1.8f,M_PI*0.45};
 
 extern const FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
@@ -854,11 +855,11 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 }
                 
                 if(Traject_chassis.PointTrack_omega_complete_Flag == true && Traject_chassis.PointTrack_linear_complete_Flag == true){
-                // if(true){
+                //  if(true){
                      if(MF_plan[MF_plan_run_i].is_picking == true){
                         // 根据 MF_pick_count 选择放置姿态序列
                         static const RobotPose kPlace_1[] = {kPose_Place[2]};
-                        static const RobotPose kPlace_2[] = {kPose_Place[1], kPose_Place1_2};
+                        static const RobotPose kPlace_2[] = {kPose_Place1_1, kPose_Place1_2};
                         const RobotPose* place_poses;
                         int place_max;
                         switch (MF_pick_count) {
@@ -962,13 +963,13 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     }
 
     if(control_rm_cmd.swD == RC_2_POS_SW_State_t::DOWN){
-        if(Arena_close_position_y < Arena_close_position_y_Max)Arena_close_position_y = Arena_close_position_y + 0.0015f;
+        if(Arena_close_position_y < Arena_close_position_y_Max)Arena_close_position_y = Arena_close_position_y + Arena_close_position_step;
     }else{
         if(control_rm_cmd_last.swD == RC_2_POS_SW_State_t::DOWN){
             //按键下降沿
         }
         if(Arena_close_position_y > 0.0f){
-            Arena_close_position_y =  Arena_close_position_y - 0.0015;
+            Arena_close_position_y =  Arena_close_position_y - Arena_close_position_step;
         }else {
             Arena_close_position_y = 0.0f;
         }
@@ -994,7 +995,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 	        if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
 	            Arena_mode = WithR2;
 	            arena_r2_floor = false;   // 进入合体模式默认一楼
-	            last_arena_x = -1;        // 强制刷新上身姿态
+            last_arena_x = -1;
+            weapon_hand.wrist_target_rad_ = 1.4835298f;   // ← 加这行，达妙竖杆
 	        }
 
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
@@ -1003,7 +1005,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             // if (arena_r2_mode) {
             //     arena_r2_floor = false;   // 进入合体模式默认一楼
             // }
-            last_arena_x = -1;            // 强制刷新上身姿态
+            last_arena_x = -1;
+            weapon_hand.wrist_target_rad_ = 1.4835298f;   // ← 加这行，达妙竖杆
         }
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::DOWN) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
@@ -1020,6 +1023,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         state_target_cmd.linear_y_ = robot_position_Arena[Arena_x][1] + Arena_close_position_y;
 
         state_target_cmd.omega_    = robot_position_Arena[Arena_x][2];
+
+        Arena_close_position_step = 0.0015f;
 
         /*上层机构执行*/
         if (!upbody_ctrl.IsActive() && !upbody_ctrl.HasPending() && last_arena_x != Arena_x) {
@@ -1042,7 +1047,9 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         if (!upbody_ctrl.IsActive()) {
             if (control_rm_cmd.swA != control_rm_cmd_last.swA) {
                 if(control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN){
-                    upbody_ctrl.GetKFS(get_toggle ? kPose_Get1 : kPose_Get2);
+                    const RobotPose& get_pose = (MF_pick_count == 2) ? kPose_2Get
+                                                : (get_toggle ? kPose_Get1 : kPose_Get2);
+                    upbody_ctrl.GetKFS(get_pose);
                     get_toggle = !get_toggle;
                     last_arena_x = -1;    
                 }
@@ -1055,6 +1062,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         position_close_y = Arena_close_position_y;
 
         state_target_cmd.omega_    = robot_position_Arena_withR2[Arena_x][2];
+
+        Arena_close_position_step = 0.0008f;
 
         /*上层机构执行*/
         // 进入合体模式或切换格子时，默认设为当前楼层姿态
@@ -1092,6 +1101,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         position_close_y = Arena_close_position_y;
 
         state_target_cmd.omega_    = robot_position_Arena_useWeapon[Arena_x][2];
+
+        Arena_close_position_step = 0.0015f;
 
 	    // 右摇杆上下切换武器第一/第二层
 	    static bool weapon_floor = false;       // false=第一层, true=第二层

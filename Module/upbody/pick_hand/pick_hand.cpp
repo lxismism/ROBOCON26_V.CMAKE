@@ -39,7 +39,7 @@ void PickHand::init() {
 
   // ---- 伸缩电机 PID (2006) ----
   PID_Init(&extend_pid_);
-  extend_pid_.Kp = 330.0f;
+  extend_pid_.Kp = 630.0f;
   extend_pid_.Ki = 40.0f;
   extend_pid_.Kd = 15.0f;
   extend_pid_.MaxOut = 5000.0f;

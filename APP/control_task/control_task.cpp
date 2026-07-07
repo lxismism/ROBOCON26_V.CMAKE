@@ -115,11 +115,12 @@ uint8_t MF_pick_count = 0;
 
 int8_t Arena_x = 0;
 float Arena_close_position_y = 0.0f;
-float Arena_close_position_y_Max = 0.64f;
+float Arena_close_position_y_Max = 0.525f;
+float Arena_close_position_step = 0.0f;
 
 float Acc_path_SpeedUp = 2.9f; //加速度，单位m/s^2
 float Acc_path_SpeedDown = 1.8f; //加速度，单位m/s^2
-float path_plan_Max_Max = 1.9f; //规划最大速度
+float path_plan_Max_Max = 1.9f; //规划最大速度   
 
 float Acc_omega_SpeedUp = M_PI*1.2f; //加速度，单位m/s^2
 float Acc_omega_SpeedDown = M_PI*0.5f; //加速度，单位m/s^2

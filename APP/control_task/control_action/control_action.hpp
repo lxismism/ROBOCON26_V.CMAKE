@@ -146,7 +146,8 @@ inline constexpr RobotPose kPose_Place[3]   = {
     {78.1f, -129.0f, 130.0f, 347.0f, 0.0f, 100.0f,Pose_Place1},
     {370.0f, -220.5f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place2}
 };
-inline constexpr RobotPose kPose_Place1_2  =  {370.0f, -139.0f, 50.0f, 347.0f, 0.0f, 0.0f,Pose_Place1_2};
+inline constexpr RobotPose kPose_Place1_1  =  {78.1f, -239.0f, 130.0f, 347.0f, 0.0f, 100.0f,Pose_Place1};
+inline constexpr RobotPose kPose_Place1_2  =  {370.0f, -239.0f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place1_2};
 
 
 inline constexpr RobotPose kPose_Pick[3] = {
@@ -160,6 +161,8 @@ inline constexpr RobotPose kPose_Grid9_Bot3  = {320.80f, 778.0f, 0.0f, 347.0f, 0
 
 inline constexpr RobotPose kPose_Get1   = {98.1f, -305.0f, 201.6f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 201.6f, 347.0f, 0.0f, 140.0f};
+
+inline constexpr RobotPose kPose_2Get   = {98.1f, -239.0f, 201.6f, 347.0f, 0.0f, 140.0f};
 
 inline constexpr RobotPose kPose_Poke1  = {430.80f, 778.0f, 0.0f, 317.0f, 200.0f, 0.0f, -1};       // 腕部0°朝上，戳第一层
 inline constexpr RobotPose kPose_Poke2  = {430.80f, 778.0f, 0.0f, 347.0f, 200.0f, 0.0f, -1};    // 腕部60°下翻，戳第二层
