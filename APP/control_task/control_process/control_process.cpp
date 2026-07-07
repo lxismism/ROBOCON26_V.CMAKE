@@ -82,7 +82,6 @@ extern float rm_angle_deg;
 extern float v_aim;
 
 
-extern bool headless_xy_mode;
 extern bool headless_omega_mode;
 bool headless_mode = true;
 
@@ -350,7 +349,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
 
     switch (robot_case) {
         case RobotCase_t::Normal_case : {
-            Normal_control_Process();
+            Normal_control_Process(upbody_pub);
             break;
         }
         case RobotCase_t::Special : {
@@ -398,7 +397,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
 // =====================================================
 //  普通手操 / 定位模式
 // =====================================================
-void Normal_control_Process() {
+void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub) {
     
     last_mf_action = -1;
     if (control_rm_cmd.swE != control_rm_cmd_last.swE) {
@@ -407,12 +406,16 @@ void Normal_control_Process() {
         }
     }
 
-    // swA 上升沿切换 xy 模式
-    if (control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN) {
-        headless_xy_mode = false;
-    }else {
-        headless_xy_mode = true;
+    // 上身动作推进
+    upbody_ctrl.Update(0.005f, upbody_pub);
+
+    // swA 上升沿进入预装模式
+    if (!upbody_ctrl.IsActive() && control_rm_cmd.swA != control_rm_cmd_last.swA) {
+        if(control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN){
+            upbody_ctrl.PreLoad();
+        }
     }
+
 
     // swB 上升沿切换 omega 模式
     if (control_rm_cmd.swD == RC_2_POS_SW_State_t::DOWN) {
@@ -421,41 +424,16 @@ void Normal_control_Process() {
         headless_omega_mode = true;
     }
 
-    if (headless_xy_mode) {
-        // xy 手控模式：摇杆 → 速度，直接进入速度环 PID
-        rm_angle_deg = atan2(rm_cmd.linear_y_, rm_cmd.linear_x_) / kDegToRad;
-        v_aim = sqrt(rm_cmd.linear_x_ * rm_cmd.linear_x_ + rm_cmd.linear_y_ * rm_cmd.linear_y_);
+    // xy 手控模式：摇杆 → 速度，直接进入速度环 PID
+    rm_angle_deg = atan2(rm_cmd.linear_y_, rm_cmd.linear_x_) / kDegToRad;
+    v_aim = sqrt(rm_cmd.linear_x_ * rm_cmd.linear_x_ + rm_cmd.linear_y_ * rm_cmd.linear_y_);
 
-        robot_v_aim_cmd.linear_x_ = v_aim * cos((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
-        robot_v_aim_cmd.linear_y_ = v_aim * sin((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
+    robot_v_aim_cmd.linear_x_ = v_aim * cos((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
+    robot_v_aim_cmd.linear_y_ = v_aim * sin((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
 
-        state_target_cmd.linear_x_ = state_now_cmd.linear_x_;
-        state_target_cmd.linear_y_ = state_now_cmd.linear_y_;
-    } else {
-        // xy 定位模式：方向键控制目标位置，进入位置环 PID
-        // 上下控制
-        if (control_rm_cmd.trimLeft == RC_Trim_State_t::UP) {
-            if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-                state_target_cmd.linear_y_ = state_target_cmd.linear_y_ + 3.0f;
-            }
-        } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::DOWN) {
-            if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-                state_target_cmd.linear_y_ = state_target_cmd.linear_y_ - 3.0f;
-            }
-        }
-        // 左右控制
-        if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
-            if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-                state_target_cmd.linear_x_ = state_target_cmd.linear_x_ - 1.0f;
-            }
-        } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
-            if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-                state_target_cmd.linear_x_ = state_target_cmd.linear_x_ + 1.0f;
-            }
-        }
-        Aim_State_xy_Process();
-    }
-
+    state_target_cmd.linear_x_ = state_now_cmd.linear_x_;
+    state_target_cmd.linear_y_ = state_now_cmd.linear_y_;
+ 
     if (headless_omega_mode) {
         // omega 手控模式：右摇杆直接控制角速度
         robot_v_aim_cmd.omega_ = rm_cmd.omega_;
@@ -993,7 +971,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         if (!upbody_ctrl.IsActive()) {
             if (control_rm_cmd.swA != control_rm_cmd_last.swA) {
                 if(control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN){
-                    upbody_ctrl.GetKFS(get_toggle ? kPose_Get1 : kPose_Get2);
+                    upbody_ctrl.GetKFS(kPose_Get1);
                     get_toggle = !get_toggle;
                     last_arena_x = -1;    
                 }

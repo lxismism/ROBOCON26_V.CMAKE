@@ -61,6 +61,8 @@ struct ActionPriorities {
 struct RampState {
     bool  active = false;
     uint8_t step_done_mask = 0x3F;
+    uint8_t done_stable_cnt = 0;
+    uint8_t done_stable_frames = 3;
 
     ActionSpeeds    speeds;
     ActionPriorities priorities;
@@ -145,6 +147,8 @@ inline constexpr RobotPose kPose_Place[3]   = {
 };
 inline constexpr RobotPose kPose_Place1_2  =  {370.0f, -139.0f, 50.0f, 347.0f, 0.0f, 0.0f,Pose_Place1_2};
 
+inline constexpr RobotPose kPose_PreLode   = {462.80f, -239.0f, 0.0f, 347.0f, 0.0f, 0.0f};
+
 
 inline constexpr RobotPose kPose_Pick[3] = {
     {0.0f  , 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick0},
@@ -152,8 +156,8 @@ inline constexpr RobotPose kPose_Pick[3] = {
     {412.6f, 392.0f, 236.6f, 347.0f, 0.0f, 0.0f,Pose_pick2}
 };
 
-inline constexpr RobotPose kPose_Grid9_Bot12 = {462.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot12};
-inline constexpr RobotPose kPose_Grid9_Bot3  = {462.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot3};
+inline constexpr RobotPose kPose_Grid9_Bot12 = {432.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot12};
+inline constexpr RobotPose kPose_Grid9_Bot3  = {432.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot3};
 
 inline constexpr RobotPose kPose_Get1   = {98.1f, -312.0f, 201.6f, 347.0f, 0.0f, 140.0f};
 inline constexpr RobotPose kPose_Get2   = {98.1f, -139.0f, 201.6f, 347.0f, 0.0f, 140.0f};
@@ -186,7 +190,8 @@ struct ActionConfig {
 
     bool enable_chassis_approach = false;  // 本步期间触发底盘逼近
     bool release_chassis = false;
-    uint16_t dwell_ms = 0;          // 到位后驻留时间（毫秒），0=不等
+    uint16_t dwell_ms = 0;
+    uint8_t done_stable_frames = 4;
 
 
 
@@ -215,6 +220,8 @@ public:
     void GrabKFS_Arena(const RobotPose& pose);
     void PokeWeapon(const RobotPose& pose, int wrist_preset);   // 九宫格武器子模式：摆到戳的姿态
     void PrepareWeapon();   // 武馆模式：武器手抬升缩回竖杆，渐变过渡
+    void PreLoad();
+
 
     
     void R2MergePose(const RobotPose& pose);

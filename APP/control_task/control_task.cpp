@@ -84,7 +84,6 @@ RobotCase_t robot_case = Normal_case; // 当前机器人模式，默认为Normal
 float rm_angle_deg;
 float v_aim;
 
-bool headless_xy_mode = true;
 bool headless_omega_mode = true;
 
 bool Normal_control_mode = true;

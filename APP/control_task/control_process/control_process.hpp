@@ -32,8 +32,7 @@ void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd
 void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg);
 
 /** @brief 普通手操 / 定位模式（headless 双模式切换） */
-void Normal_control_Process();
-
+void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub);
 /** @brief 武馆半自动网格定位模式 */
 void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg);
 
