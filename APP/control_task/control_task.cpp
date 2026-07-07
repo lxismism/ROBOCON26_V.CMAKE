@@ -92,7 +92,8 @@ bool Normal_control_mode = true;
 int8_t MC_y = 0;
 float MC_close_position_x = 0.0f;
 float MC_close_position_y = 0.0f;
-bool MC_headless_mode = false;
+bool MC_mode = false;
+bool MC_mode_last = MC_mode;
 
 uint8_t MF_x = 0;
 uint8_t MF_y = 0;
@@ -192,6 +193,9 @@ void controlTask(void *argument) {
     // uint32_t last_time = HAL_GetTick();
 
     for (;;) {
+        // static float controlTask_dt = 0.0f;
+        // static uint32_t controlTask_DWT_CNT = 0;
+        // controlTask_dt = DWT_GetDeltaT(&controlTask_DWT_CNT);
         //test begin
         if(control_rc_sub.TryGet(&control_rm_cmd)) {
             // if(control_rc_cmd.swA == RC_2_POS_SW_State_t::UP) {
