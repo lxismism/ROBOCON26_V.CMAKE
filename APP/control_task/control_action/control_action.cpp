@@ -350,7 +350,7 @@ void ActionController::GrabKFS(const RobotPose& pose) {
     step1.priorities.pick_extend = 2;
     step1.pump_cmd  = 1;   // 开泵
     step1.valve_cmd = 1;   // 开阀
-    step1.dwell_ms = 850;
+    step1.dwell_ms = 1850;
     step1.step_done_mask  = 0x03;
     AddStep(step1);
 
@@ -364,6 +364,7 @@ void ActionController::GrabKFS(const RobotPose& pose) {
     step2.priorities.pick_lift   = 0;
     step2.priorities.pick_extend = 0;
     step2.priorities.pick_yaw    = 1;
+    step2.dwell_ms               = 1850;
     step2.step_done_mask  = 0x03;
 
     AddStep(step2);
