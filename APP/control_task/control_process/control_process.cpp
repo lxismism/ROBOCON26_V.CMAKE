@@ -52,6 +52,9 @@ extern pub_chassis_cmd rm_cmd;
 extern TypedTopicPublisher<pub_ir_cmd> omni_ir_cmd_pub;                
 extern pub_ir_cmd omni_ir_cmd_push;
 
+extern TypedTopicPublisher<pub_ir_cmd> whisper_ir_cmd_pub;                
+extern pub_ir_cmd whisper_ir_cmd_push;
+
 // 订阅者
 extern TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub;
 extern pub_Xbox_Data control_xbox_cmd;
@@ -93,7 +96,8 @@ speed_data Normal_speed{1.2f,0.9f,1.5f,M_PI*0.5};
 extern int8_t MC_y;
 extern float MC_close_position_x;
 extern float MC_close_position_y;
-extern bool MC_headless_mode;
+extern bool MC_mode;
+extern bool MC_mode_last;
 speed_data MC_speed{1.2f,0.9f,1.5f,M_PI*0.5};
 // MF 模式相关
 extern uint8_t MF_x;
@@ -127,6 +131,7 @@ extern PickHand pick_hand;
 extern WeaponHand weapon_hand;
 extern Lift lift;
 
+uint8_t Arena_ir_count = 0;
 ArenaMode_t Arena_mode = KFS;
 
 // 目标状态
@@ -258,20 +263,42 @@ void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd
 //  队友模式入口
 // =====================================================
 void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
+    static float Chassis_RM_Data_Process_dt = 0.0f;
+    static uint32_t Chassis_RM_Data_Process_DWT_CNT = 0;
+    Chassis_RM_Data_Process_dt = DWT_GetDeltaT(&Chassis_RM_Data_Process_DWT_CNT);
+
     rm_cmd.linear_x_ = JoyToVelocity(control_rm_cmd.joyLHori, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
     rm_cmd.linear_y_ = JoyToVelocity(control_rm_cmd.joyLVert, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
     rm_cmd.omega_    = -JoyToVelocity(control_rm_cmd.joyRHori, kJoyDeadZoneRight, MAX_VELOCITY_ANGULAR);
 
-    if (control_rm_cmd.swE != control_rm_cmd_last.swE) {
+
+    static bool ir_press_single_Flag = false;
+    static bool ir_press_double_Flag = false;
+    static float press_ir_since_last = 60.0f;
+    const  float DOUBLE_CLICK_TIME = 0.35f;
+    press_ir_since_last = press_ir_since_last + Chassis_RM_Data_Process_dt;
+    if(press_ir_since_last > 60.0f) press_ir_since_last = 60.0f;//过大计算无意义
+    if(control_rm_cmd.swE != control_rm_cmd_last.swE) {
         if(control_rm_cmd.swE == RC_2_POS_SW_State_t::DOWN) {
-            //在这里面配置红外发送
-            switch (robot_mode) { 
+            if(press_ir_since_last < DOUBLE_CLICK_TIME && ir_press_single_Flag == true){
+                ir_press_single_Flag = false;
+                ir_press_double_Flag = true;
+            }else{
+                ir_press_single_Flag = true;
+            }
+            press_ir_since_last = 0.0f;
+        }
+    }
+    if(ir_press_single_Flag == true){
+        if(press_ir_since_last >= DOUBLE_CLICK_TIME){
+            //单击功能
+            switch (robot_mode) {
                 case MC : {
                     //在这里面配置红外发送
                     switch (control_rm_cmd.cursor){
                         case 0 : {
                             omni_ir_cmd_push.tx_data = CMD_MC_RELEASE_CLAW;
-                            omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
+                            omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
                             break;
                         }
                         case 1 : {
@@ -292,12 +319,10 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                     break;
                 }
                 case Arena : {
-                    static uint8_t Arena_ir_count = 0;
                     switch (Arena_ir_count){
                         case 0 : {
                             omni_ir_cmd_push.tx_data = CMD_ENTER_ARENA;
                             omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
-                            Arena_ir_count ++;
                             break;
                         }
                         case 1 : {
@@ -309,7 +334,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                                 }
                                 case 1 : {
                                     omni_ir_cmd_push.tx_data = CMD_AUTO_PUT_MIDDLE_MIDDLE;
-                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
+                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
                                     break;
                                 }
                                 case 2 : {
@@ -320,7 +345,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                                 default:
                                     break;
                             }
-                            Arena_ir_count ++;
+                            break;
                         }
                         case 2 : {
                             switch (control_rm_cmd.cursor){
@@ -330,28 +355,34 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                                     break;
                                 }
                                 case 1 : {
-                                    omni_ir_cmd_push.tx_data = CMD_RELEASE_KFS;
-                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
+                                    whisper_ir_cmd_push.tx_data = CMD_RELEASE_KFS;
+                                    whisper_ir_cmd_pub.Publish(whisper_ir_cmd_push);  
                                     break;
                                 }
                                 case 2 : {
-                                    omni_ir_cmd_push.tx_data = CMD_HOLD_KFS;
-                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
+                                    whisper_ir_cmd_push.tx_data = CMD_HOLD_KFS;
+                                    whisper_ir_cmd_pub.Publish(whisper_ir_cmd_push);  
                                     break;
                                 }
                                 default:
                                     break;
                             }
+                            break;
                         }
                     }
                 }
                 default:
                     break;
             }
-            // omni_ir_cmd_pub.Publish(omni_ir_cmd_push);   
+            ir_press_single_Flag = false;
         }
+    }else if(ir_press_double_Flag == true){
+        //双击功能
+        if(robot_mode == Arena)Arena_ir_count ++;
+        while(Arena_ir_count > 2)Arena_ir_count = Arena_ir_count - 3;
+        ir_press_double_Flag = false;
     }
-    
+
 
     switch (robot_case) {
         case RobotCase_t::Normal_case : {
@@ -492,6 +523,7 @@ void Normal_control_Process() {
 // =====================================================
 void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
     static bool mc_prepare_wrist_pending = false;
+    MC_mode_last = MC_mode;
 
     if (control_rm_cmd.trimLeft == RC_Trim_State_t::UP) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
@@ -507,39 +539,73 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         }
     }else if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-            MC_headless_mode = true;
+            MC_mode = true;
             upbody_ctrl.PrepareWeapon();
             mc_prepare_wrist_pending = true;
 
         }
-
-
     } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-            MC_headless_mode = false;
+            MC_mode = false;
         }
     }
 
-    
+    if (MC_mode) {
+        static bool MC_Traj_complete_Flag = false;
+        if(MC_mode_last != MC_mode){
+            MC_Traj_complete_Flag = false;
+        }
+        if(MC_Traj_complete_Flag == false){
+            state_target_cmd.linear_x_ = 0.90f*field_side;
+            state_target_cmd.linear_y_ = 2.67f;
+            state_target_cmd.omega_    = 0.0f;
+            MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
+            MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
+            position_close_x = MC_close_position_x;
+            position_close_y = MC_close_position_y;
+            Traject_chassis.Run(state_now_cmd);
+            robot_v_aim_cmd = Traject_chassis.Get_output_b();
+            Traject_chassis.Set_Ref(state_target_cmd,Normal,MC_speed);
 
-    if (MC_headless_mode) {
+            if(Traject_chassis.PointTrack_omega_complete_Flag == true && Traject_chassis.PointTrack_linear_complete_Flag == true){
+                MC_Traj_complete_Flag = true;
+            }
+        }else{
+            rm_angle_deg = atan2(rm_cmd.linear_y_, rm_cmd.linear_x_) / kDegToRad;
+            v_aim = sqrt(rm_cmd.linear_x_ * rm_cmd.linear_x_ + rm_cmd.linear_y_ * rm_cmd.linear_y_);
 
-        state_target_cmd.linear_x_ = 0.90f*field_side;
-        state_target_cmd.linear_y_ = 2.67f;
-        state_target_cmd.omega_    = 0.0f;
+            robot_v_aim_cmd.linear_x_ = v_aim * cos((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
+            robot_v_aim_cmd.linear_y_ = v_aim * sin((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
+
+            state_target_cmd.linear_x_ = state_now_cmd.linear_x_;
+            state_target_cmd.linear_y_ = state_now_cmd.linear_y_;
+
+            state_target_cmd.omega_ = 0.0f;
+            Aim_State_omega_Process();
+            
+            Traject_chassis.Set_Ref(state_now_cmd,Normal,Normal_speed);
+        }
+        
     } else {
         state_target_cmd.linear_x_ = robot_position_MC[MC_y][0];
         state_target_cmd.linear_y_ = robot_position_MC[MC_y][1];
         state_target_cmd.omega_    = robot_position_MC[MC_y][2];
+        Traject_chassis.Set_Ref(state_target_cmd,Normal,MC_speed);
+        MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
+        MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
+        position_close_x = MC_close_position_x;
+        position_close_y = MC_close_position_y;
+        Traject_chassis.Run(state_now_cmd);
+        robot_v_aim_cmd = Traject_chassis.Get_output_b();
     }
 
-    Traject_chassis.Set_Ref(state_target_cmd,Normal,MC_speed);
-    MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
-    MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
-    position_close_x = MC_close_position_x;
-    position_close_y = MC_close_position_y;
-    Traject_chassis.Run(state_now_cmd);
-    robot_v_aim_cmd = Traject_chassis.Get_output_b();
+    // Traject_chassis.Set_Ref(state_target_cmd,Normal,MC_speed);
+    // MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
+    // MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
+    // position_close_x = MC_close_position_x;
+    // position_close_y = MC_close_position_y;
+    // Traject_chassis.Run(state_now_cmd);
+    // robot_v_aim_cmd = Traject_chassis.Get_output_b();
 
         // ---- 武器手控制 ----
     // 上身：动作优先推进，空闲时手操
@@ -557,15 +623,6 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
     upbody_msg = {};
     upbody_msg.active = true;
 
-
-    // // 持续型：btnLB 缩 / btnRB 伸
-    // if (control_xbox_cmd.btnLB)
-    //     upbody_msg.weapon_extend_delta = -kWeaponExtendStep;
-    // if (control_xbox_cmd.btnRB)
-    //     upbody_msg.weapon_extend_delta = kWeaponExtendStep;
-
-
-    
     // 持续型：右摇杆水平推武器手伸缩（霍尔值线性映射速度，2倍速）
     {
         int32_t rhori_diff = (int32_t)control_rm_cmd.joyRHori - (int32_t)kJoyCenter;
@@ -576,7 +633,6 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
             upbody_msg.weapon_extend_delta = ratio * kWeaponExtendStep;
         }
     }
-
 
     // 持续型：右摇杆前推抬升 / 后拉下降（霍尔值线性映射速度）
     {
