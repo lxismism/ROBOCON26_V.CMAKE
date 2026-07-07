@@ -129,8 +129,6 @@ void ActionController::Start_(const ActionConfig& config) {
 
     ramp_.dwell_ms = config.dwell_ms;        
     ramp_.dwell_timer_ms = 0;
-    ramp_.done_stable_frames = config.done_stable_frames;
-    ramp_.done_stable_cnt = 0;
 
 
 }
@@ -138,107 +136,89 @@ void ActionController::Start_(const ActionConfig& config) {
 
 
 // ---- private: 每帧推进渐变 ----
-
 void ActionController::Step_(float dt) {
     if (!ramp_.active) return;
 
-    // ===== 轨迹到位判断（只给 RampOneAxis 用） =====
-    bool ramp_lift_done   = (fabsf(ramp_.cur_pick_lift_mm     - ramp_.end_pick_lift_mm)     <= 0.01f);
-    bool ramp_yaw_done    = (fabsf(ramp_.cur_pick_yaw_deg     - ramp_.end_pick_yaw_deg)     <= 0.1f);
-    bool ramp_extend_done = (fabsf(ramp_.cur_pick_extend_mm   - ramp_.end_pick_extend_mm)   <= 0.01f);
-    bool ramp_wlift_done  = (fabsf(ramp_.cur_weapon_lift_mm   - ramp_.end_weapon_lift_mm)   <= 0.01f);
-    bool ramp_wextend_done= (fabsf(ramp_.cur_weapon_extend_mm - ramp_.end_weapon_extend_mm) <= 0.01f);
-    bool ramp_elift_done  = (fabsf(ramp_.cur_lift_mm          - ramp_.end_lift_mm)          <= 0.01f);
+    // ---- 检查各轴是否到位 ----
+    bool pick_lift_done, pick_yaw_done, pick_extend_done;
+    bool weapon_lift_done, weapon_extend_done, lift_done;
 
-    // ===== 编码器到位判断（给 AxisBlocked 和 all_done 用） =====
-    float real_pick_lift   = -pick_hand.lift_motor_->getCurrentSumPos()
-                             * PickHand::kLiftMmPerDeg;
-    float real_pick_yaw    =  pick_hand.yaw_motor_->getCurrentSumPos();
-    float real_pick_extend = -pick_hand.extend_motor_->getCurrentSumPos()
-                             * PickHand::kExtendMmPerDeg;
-    float real_weapon_lift   = weapon_hand.lift_motor_->getCurrentSumPos()
-                               * WeaponHand::kLiftMmPerDeg;
-    float real_weapon_extend = weapon_hand.extend_motor_->getCurrentSumPos()
-                               * WeaponHand::kExtendMmPerDeg;
-    float cur_l = -lift.left_motor_->getCurrentSumPos();
-    float cur_r =  lift.right_motor_->getCurrentSumPos();
-    float real_lift = (cur_l + cur_r) * 0.5f * Lift::kMmPerDeg;
+    pick_lift_done   = (fabsf(ramp_.cur_pick_lift_mm   - ramp_.end_pick_lift_mm)   <= 0.01f);
+    pick_yaw_done    = (fabsf(ramp_.cur_pick_yaw_deg   - ramp_.end_pick_yaw_deg)   <= 0.1f);
+    pick_extend_done = (fabsf(ramp_.cur_pick_extend_mm - ramp_.end_pick_extend_mm) <= 0.01f);
+    weapon_lift_done   = (fabsf(ramp_.cur_weapon_lift_mm   - ramp_.end_weapon_lift_mm)   <= 0.01f);
+    weapon_extend_done = (fabsf(ramp_.cur_weapon_extend_mm - ramp_.end_weapon_extend_mm) <= 0.01f);
+    lift_done          = (fabsf(ramp_.cur_lift_mm          - ramp_.end_lift_mm)          <= 0.01f);
 
-    bool real_lift_done   = (fabsf(real_pick_lift     - ramp_.end_pick_lift_mm)     <= 5.1f);
-    bool real_yaw_done    = (fabsf(real_pick_yaw      - ramp_.end_pick_yaw_deg)     <= 5.5f);
-    bool real_extend_done = (fabsf(real_pick_extend   - ramp_.end_pick_extend_mm)   <= 5.1f);
-    bool real_wlift_done  = (fabsf(real_weapon_lift   - ramp_.end_weapon_lift_mm)   <= 5.1f);
-    bool real_wextend_done= (fabsf(real_weapon_extend - ramp_.end_weapon_extend_mm) <= 5.1f);
-    bool real_elift_done  = (fabsf(real_lift          - ramp_.end_lift_mm)          <= 5.5f);
-
-    // ===== 稳定过滤（只对编码器 done） =====
     bool done[6] = {
-        real_lift_done, real_yaw_done, real_extend_done,
-        real_wlift_done, real_wextend_done, real_elift_done
+        pick_lift_done, pick_yaw_done, pick_extend_done,
+        weapon_lift_done, weapon_extend_done, lift_done
     };
-    static uint8_t axis_stable[6] = {0};
-    for (int i = 0; i < 6; i++) {
-        if (done[i]) axis_stable[i]++; else axis_stable[i] = 0;
-        done[i] = (axis_stable[i] >= ramp_.done_stable_frames);
-    }
-
     int prios[6] = {
         ramp_.priorities.pick_lift, ramp_.priorities.pick_yaw,
         ramp_.priorities.pick_extend,
         ramp_.priorities.weapon_lift, ramp_.priorities.weapon_extend,
         ramp_.priorities.lift
-    };
+        };
 
-    // ===== RampOneAxis 用 ramp_*_done，AxisBlocked 用 done[] =====
-    if (!ramp_lift_done && !AxisBlocked(prios[0], done, prios, 6)) {
+
+    // ---- 吸取手抬升 ----
+    if (!pick_lift_done && !AxisBlocked(prios[0], done, prios, 6)) {
         RampOneAxis(ramp_.cur_pick_lift_mm, ramp_.end_pick_lift_mm,
-                    ramp_.speeds.pick_lift * dt, 0.01f, ramp_lift_done);
-    }
-    if (!ramp_yaw_done && !AxisBlocked(prios[1], done, prios, 6)) {
-        RampOneAxis(ramp_.cur_pick_yaw_deg, ramp_.end_pick_yaw_deg,
-                    ramp_.speeds.pick_yaw * dt, 0.1f, ramp_yaw_done);
-    }
-    if (!ramp_extend_done && !AxisBlocked(prios[2], done, prios, 6)) {
-        RampOneAxis(ramp_.cur_pick_extend_mm, ramp_.end_pick_extend_mm,
-                    ramp_.speeds.pick_extend * dt, 0.01f, ramp_extend_done);
-    }
-    if (!ramp_wlift_done && !AxisBlocked(prios[3], done, prios, 6)) {
-        RampOneAxis(ramp_.cur_weapon_lift_mm, ramp_.end_weapon_lift_mm,
-                    ramp_.speeds.weapon_lift * dt, 0.01f, ramp_wlift_done);
-    }
-    if (!ramp_wextend_done && !AxisBlocked(prios[4], done, prios, 6)) {
-        RampOneAxis(ramp_.cur_weapon_extend_mm, ramp_.end_weapon_extend_mm,
-                    ramp_.speeds.weapon_extend * dt, 0.01f, ramp_wextend_done);
-    }
-    if (!ramp_elift_done && !AxisBlocked(prios[5], done, prios, 6)) {
-        RampOneAxis(ramp_.cur_lift_mm, ramp_.end_lift_mm,
-                    ramp_.speeds.lift * dt, 0.01f, ramp_elift_done);
+                    ramp_.speeds.pick_lift * dt, 0.01f, pick_lift_done);
     }
 
-    // ===== all_done 用编码器 done[] =====
+    // ---- 吸取手云台 ----
+    if (!pick_yaw_done && !AxisBlocked(prios[1], done, prios, 6)) {
+        RampOneAxis(ramp_.cur_pick_yaw_deg, ramp_.end_pick_yaw_deg,
+                    ramp_.speeds.pick_yaw * dt, 0.1f, pick_yaw_done);
+    }
+
+    // ---- 吸取手伸缩 ----
+    if (!pick_extend_done && !AxisBlocked(prios[2], done, prios, 6)) {
+        RampOneAxis(ramp_.cur_pick_extend_mm, ramp_.end_pick_extend_mm,
+                    ramp_.speeds.pick_extend * dt, 0.01f, pick_extend_done);
+    }
+
+    // ---- 武器手抬升 ----
+    if (!weapon_lift_done && !AxisBlocked(prios[3], done, prios, 6)) {
+        RampOneAxis(ramp_.cur_weapon_lift_mm, ramp_.end_weapon_lift_mm,
+                    ramp_.speeds.weapon_lift * dt, 0.01f, weapon_lift_done);
+    }
+
+    // ---- 武器手伸缩 ----
+    if (!weapon_extend_done && !AxisBlocked(prios[4], done, prios, 6)) {
+        RampOneAxis(ramp_.cur_weapon_extend_mm, ramp_.end_weapon_extend_mm,
+                    ramp_.speeds.weapon_extend * dt, 0.01f, weapon_extend_done);
+    }
+
+    // ---- 电梯 ----
+    if (!lift_done && !AxisBlocked(prios[5], done, prios, 6)) {
+        RampOneAxis(ramp_.cur_lift_mm, ramp_.end_lift_mm,
+                    ramp_.speeds.lift * dt, 0.01f, lift_done);
+    }
+
+
+
+    // ---- 全部完成 ----
     bool all_done = true;
-    if (ramp_.step_done_mask & 0x01) all_done &= done[0];
-    if (ramp_.step_done_mask & 0x02) all_done &= done[1];
-    if (ramp_.step_done_mask & 0x04) all_done &= done[2];
-    if (ramp_.step_done_mask & 0x08) all_done &= done[3];
-    if (ramp_.step_done_mask & 0x10) all_done &= done[4];
-    if (ramp_.step_done_mask & 0x20) all_done &= done[5];
+    if (ramp_.step_done_mask & 0x01) all_done &= pick_lift_done;
+    if (ramp_.step_done_mask & 0x02) all_done &= pick_yaw_done;
+    if (ramp_.step_done_mask & 0x04) all_done &= pick_extend_done;
+    if (ramp_.step_done_mask & 0x08) all_done &= weapon_lift_done;
+    if (ramp_.step_done_mask & 0x10) all_done &= weapon_extend_done;
+    if (ramp_.step_done_mask & 0x20) all_done &= lift_done;
+
 
     if (all_done && ramp_.chassis_release_pending) {
         ramp_.chassis_released = true;
     }
 
     if (all_done) {
-        ramp_.done_stable_cnt++;
-        if (ramp_.done_stable_cnt >= ramp_.done_stable_frames) {
-            ramp_.dwell_timer_ms += (uint16_t)(dt * 1000.0f);
-            if (ramp_.dwell_timer_ms >= ramp_.dwell_ms) {
-                ramp_.active = false;
-            }
+        ramp_.dwell_timer_ms += (uint16_t)(dt * 1000.0f);   // dt=0.005s → +5ms
+        if (ramp_.dwell_timer_ms >= ramp_.dwell_ms) {
+            ramp_.active = false;
         }
-    } else {
-        ramp_.done_stable_cnt = 0;
-        ramp_.dwell_timer_ms = 0;
     }
 }
 
@@ -371,6 +351,7 @@ void ActionController::GrabKFS(const RobotPose& pose) {
     step1.pump_cmd  = 1;   // 开泵
     step1.valve_cmd = 1;   // 开阀
     step1.dwell_ms = 850;
+    step1.step_done_mask  = 0x03;
     AddStep(step1);
 
     //转到放置位置上方
