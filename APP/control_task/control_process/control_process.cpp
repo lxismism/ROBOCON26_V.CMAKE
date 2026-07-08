@@ -483,17 +483,12 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
             MC_headless_mode = true;
             upbody_ctrl.PrepareWeapon();
             mc_prepare_wrist_pending = true;
-
         }
-
-
     } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
             MC_headless_mode = false;
         }
     }
-
-    
 
     if (MC_headless_mode) {
 
@@ -527,19 +522,9 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
 
     if (upbody_ctrl.IsActive()) return;
 
-
     upbody_msg = {};
     upbody_msg.active = true;
 
-
-    // // 持续型：btnLB 缩 / btnRB 伸
-    // if (control_xbox_cmd.btnLB)
-    //     upbody_msg.weapon_extend_delta = -kWeaponExtendStep;
-    // if (control_xbox_cmd.btnRB)
-    //     upbody_msg.weapon_extend_delta = kWeaponExtendStep;
-
-
-    
     // 持续型：右摇杆水平推武器手伸缩（霍尔值线性映射速度，2倍速）
     {
         int32_t rhori_diff = (int32_t)control_rm_cmd.joyRHori - (int32_t)kJoyCenter;
@@ -904,7 +889,6 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     }
     last_swD_arena = control_rm_cmd.swD;
 
-
     // ===== 九宫格子模式切换 =====
     static bool arena_r2_floor = false;   // false=R2一楼, true=R2二楼
 
@@ -937,13 +921,6 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         }
     }
 
-    // //触发时吸取地上kfs
-    // if (!upbody_ctrl.IsActive() && control_rm_cmd.trimRight == RC_Trim_State_t::LEFT) {
-    //     if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
-    //         upbody_ctrl.GrabKFS(kPose_Pick[0]);
-    //     }
-    // }
-    
     if (Arena_mode == KFS) {
         state_target_cmd.linear_x_ = robot_position_Arena[Arena_x][0];
         state_target_cmd.linear_y_ = robot_position_Arena[Arena_x][1] + Arena_close_position_y;
@@ -1045,9 +1022,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 	    // 每帧推进渐变
 	    upbody_ctrl.Update(0.005f, upbody_pub);
 	}else if(Arena_mode == Challenge){
-        state_target_cmd.linear_x_ = (0.35f + 0.59f)*(-field_side);
-        state_target_cmd.linear_y_ = 3.375f;
-
+        state_target_cmd.linear_x_ = (0.35f + 0.505f)*(-field_side);
+        state_target_cmd.linear_y_ = 3.375f + 0.7f;
         state_target_cmd.omega_    = 90.0f;
 
         if (control_rm_cmd.swA != control_rm_cmd_last.swA) {
