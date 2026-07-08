@@ -126,7 +126,7 @@ extern float Arena_close_position_y_Max;
 extern float Arena_close_position_step;
 speed_data Arena_speed{0.9f,0.7f,1.8f,M_PI*0.45};
 
-extern const FieldSide_t field_side;
+extern FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
 
 extern PickHand pick_hand;
@@ -459,6 +459,16 @@ void Normal_control_Process() {
         headless_omega_mode = true;
     }
 
+    if (control_rm_cmd.trimRight == RC_Trim_State_t::LEFT) {
+        if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
+            field_side = Left;
+        }
+    }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
+        if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
+            field_side = right;
+        }
+    }
+
     if (headless_xy_mode) {
         // xy 手控模式：摇杆 → 速度，直接进入速度环 PID
         rm_angle_deg = atan2(rm_cmd.linear_y_, rm_cmd.linear_x_) / kDegToRad;
@@ -579,12 +589,12 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
             robot_v_aim_cmd.linear_x_ = v_aim * cos((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
             robot_v_aim_cmd.linear_y_ = v_aim * sin((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
 
+            robot_v_aim_cmd.omega_ = rm_cmd.omega_;
+
             state_target_cmd.linear_x_ = state_now_cmd.linear_x_;
             state_target_cmd.linear_y_ = state_now_cmd.linear_y_;
+            state_target_cmd.omega_ = control_position.yaw;
 
-            state_target_cmd.omega_ = 0.0f;
-            Aim_State_omega_Process();
-            
             Traject_chassis.Set_Ref(state_now_cmd,Normal,Normal_speed);
         }
         
@@ -965,18 +975,16 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         }
     }
 
-    
-
     // ===== 九宫格子模式切换 =====
-	    static bool arena_r2_floor = false;   // false=R2一楼, true=R2二楼
+    static bool arena_r2_floor = false;   // false=R2一楼, true=R2二楼
 
-	    if (control_rm_cmd.trimRight == RC_Trim_State_t::UP) {
-	        if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
-	            Arena_mode = WithR2;
-	            arena_r2_floor = false;   // 进入合体模式默认一楼
+    if (control_rm_cmd.trimRight == RC_Trim_State_t::UP) {
+        if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
+            Arena_mode = WithR2;
+            arena_r2_floor = false;   // 进入合体模式默认一楼
             last_arena_x = -1;
             weapon_hand.wrist_target_rad_ = 1.4835298f;   // ← 加这行，达妙竖杆
-	        }
+        }
 
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
