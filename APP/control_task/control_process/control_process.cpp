@@ -118,6 +118,7 @@ extern MF_plan_t MF_plan_zero;
 speed_data MF_speed{1.6f,1.0f,2.5f,M_PI*0.55};
 
 extern uint8_t MF_pick_count;
+extern uint8_t MF_pick_count_last;
 // Arena模式相关
 extern int8_t Arena_x;
 extern float Arena_close_position_y;
@@ -743,7 +744,8 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                         MF_plan_record_i++;
                         MF_pick_Flag = false;
 
-                        MF_pick_count ++;
+                        MF_pick_count ++;                     
+                        MF_pick_count_last = MF_pick_count;
                     }
                 }
             }
@@ -858,7 +860,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 //  if(true){
                      if(MF_plan[MF_plan_run_i].is_picking == true){
                         // 根据 MF_pick_count 选择放置姿态序列
-                        static const RobotPose kPlace_1[] = {kPose_Place[2]};
+                        static const RobotPose kPlace_1[] = {kPose_Place1_2};
                         static const RobotPose kPlace_2[] = {kPose_Place1_1, kPose_Place1_2};
                         const RobotPose* place_poses;
                         int place_max;
@@ -919,6 +921,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 MF_plan_run_i = 0;
                 MF_plan_run_Flag = false;
                 MF_pick_Flag = false;
+
                 MF_pick_count = 0;
                 mf_place_cycle = 0;
                 MF_action_Flag = false;
@@ -962,31 +965,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         }
     }
 
-    if(control_rm_cmd.swD == RC_2_POS_SW_State_t::DOWN){
-        if(Arena_close_position_y < Arena_close_position_y_Max)Arena_close_position_y = Arena_close_position_y + Arena_close_position_step;
-    }else{
-        if(control_rm_cmd_last.swD == RC_2_POS_SW_State_t::DOWN){
-            //按键下降沿
-        }
-        if(Arena_close_position_y > 0.0f){
-            Arena_close_position_y =  Arena_close_position_y - Arena_close_position_step;
-        }else {
-            Arena_close_position_y = 0.0f;
-        }
-    }
-
-    // swD 下降沿 → 关泵/阀（底盘退后，破除真空）
-    static RC_2_POS_SW_State_t last_swD_arena = RC_2_POS_SW_State_t::UP;
-    if (control_rm_cmd.swD == RC_2_POS_SW_State_t::UP
-        && last_swD_arena == RC_2_POS_SW_State_t::DOWN) {
-        pub_upbody_cmd pump_off = {};
-        pump_off.active = true;
-        pump_off.pump_cmd  = -1;
-        pump_off.valve_cmd = -1;
-        upbody_pub.Publish(pump_off);
-    }
-    last_swD_arena = control_rm_cmd.swD;
-
+    
 
     // ===== 九宫格子模式切换 =====
 	    static bool arena_r2_floor = false;   // false=R2一楼, true=R2二楼
@@ -1015,6 +994,26 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             //     arena_r2_floor = false;   // 进入合体模式默认一楼
             // }
             last_arena_x = -1;            // 强制刷新上身姿态
+        }
+    }
+
+    if(control_rm_cmd.swD == RC_2_POS_SW_State_t::DOWN){
+        if(Arena_close_position_y < Arena_close_position_y_Max)Arena_close_position_y = Arena_close_position_y + Arena_close_position_step;
+    }else{
+        if(control_rm_cmd_last.swD == RC_2_POS_SW_State_t::DOWN){
+            //按键下降沿
+            if(Arena_mode != Weapon){
+                pub_upbody_cmd pump_off = {};
+                pump_off.active = true;
+                pump_off.pump_cmd  = -1;
+                pump_off.valve_cmd = -1;
+                upbody_pub.Publish(pump_off);
+            }
+        }
+        if(Arena_close_position_y > 0.0f){
+            Arena_close_position_y =  Arena_close_position_y - Arena_close_position_step;
+        }else {
+            Arena_close_position_y = 0.0f;
         }
     }
     
@@ -1047,7 +1046,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         if (!upbody_ctrl.IsActive()) {
             if (control_rm_cmd.swA != control_rm_cmd_last.swA) {
                 if(control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN){
-                    const RobotPose& get_pose = (MF_pick_count == 2) ? kPose_2Get
+                    const RobotPose& get_pose = (MF_pick_count_last == 2) ? kPose_2Get
                                                 : (get_toggle ? kPose_Get1 : kPose_Get2);
                     upbody_ctrl.GetKFS(get_pose);
                     get_toggle = !get_toggle;

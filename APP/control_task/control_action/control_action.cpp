@@ -468,6 +468,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step6.priorities.pick_extend  = 0;
         step6.step_done_mask = 0x04;
         step6.skip_safety = true;
+        step6.dwell_ms    = 1000;
         AddStep(step6);
 
         // Step 7a: 吸取手降到放置高度 → 到位立即关泵关阀
@@ -571,6 +572,8 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step6.priorities.pick_extend  = 0;
         step6.step_done_mask = 0x04;
         step6.skip_safety = true;
+        step6.dwell_ms    = 1000;
+
         AddStep(step6);
 
         // Step 7a: 吸取手降到放置高度 → 到位立即关泵关阀
@@ -677,9 +680,10 @@ void ActionController::GetKFS(const RobotPose& pose) {
     config.priorities.pick_yaw    = 0;
     config.priorities.pick_lift   = 1;
     config.priorities.pick_extend = 2;
-    config.speeds.pick_extend     = 280.0f;
+    config.speeds.pick_extend     = 250.0f;
     config.pump_cmd  = 1;   // 自动开泵
     config.valve_cmd = 1;   // 自动开阀
+    config.dwell_ms  = 850;
     AddStep(config);
 
 
