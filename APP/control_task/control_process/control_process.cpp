@@ -114,7 +114,7 @@ extern int8_t Arena_x;
 extern float Arena_close_position_y;
 extern float Arena_close_position_y_Max;
 
-extern const FieldSide_t field_side;
+extern FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
 
 extern PickHand pick_hand;
@@ -412,6 +412,7 @@ void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub) {
     // swA 上升沿进入预装模式
     if (!upbody_ctrl.IsActive() && control_rm_cmd.swA != control_rm_cmd_last.swA) {
         if(control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN){
+            weapon_hand.wrist_target_rad_ = 1.57079633f;
             upbody_ctrl.PreLoad();
         }
     }
@@ -422,6 +423,16 @@ void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub) {
         headless_omega_mode = false;
     }else {
         headless_omega_mode = true;
+    }
+
+    if (control_rm_cmd.trimRight == RC_Trim_State_t::LEFT) {
+        if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
+            field_side = Left;
+        }
+    }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
+        if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
+            field_side = right;
+        }
     }
 
     // xy 手控模式：摇杆 → 速度，直接进入速度环 PID
@@ -869,6 +880,13 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     }else{
         if(control_rm_cmd_last.swD == RC_2_POS_SW_State_t::DOWN){
             //按键下降沿
+            if(Arena_mode != Weapon){
+                pub_upbody_cmd pump_off = {};
+                pump_off.active = true;
+                pump_off.pump_cmd  = -1;
+                pump_off.valve_cmd = -1;
+                upbody_pub.Publish(pump_off);
+            }
         }
         if(Arena_close_position_y > 0.0f){
             Arena_close_position_y =  Arena_close_position_y - 0.0015;
@@ -876,19 +894,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             Arena_close_position_y = 0.0f;
         }
     }
-
-    // swD 下降沿 → 关泵/阀（底盘退后，破除真空）
-    static RC_2_POS_SW_State_t last_swD_arena = RC_2_POS_SW_State_t::UP;
-    if (control_rm_cmd.swD == RC_2_POS_SW_State_t::UP
-        && last_swD_arena == RC_2_POS_SW_State_t::DOWN) {
-        pub_upbody_cmd pump_off = {};
-        pump_off.active = true;
-        pump_off.pump_cmd  = -1;
-        pump_off.valve_cmd = -1;
-        upbody_pub.Publish(pump_off);
-    }
-    last_swD_arena = control_rm_cmd.swD;
-
+    
     // ===== 九宫格子模式切换 =====
     static bool arena_r2_floor = false;   // false=R2一楼, true=R2二楼
 
@@ -897,6 +903,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             Arena_mode = WithR2;
             arena_r2_floor = false;   // 进入合体模式默认一楼
             last_arena_x = -1;        // 强制刷新上身姿态
+            weapon_hand.wrist_target_rad_ = 1.57079633f;
+
         }
 
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
@@ -906,6 +914,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             //     arena_r2_floor = false;   // 进入合体模式默认一楼
             // }
             last_arena_x = -1;            // 强制刷新上身姿态
+            weapon_hand.wrist_target_rad_ = 1.57079633f;
+
         }
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::DOWN) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
@@ -918,6 +928,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
     }else if (!upbody_ctrl.IsActive() && control_rm_cmd.trimRight == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
             Arena_mode = Challenge;
+            weapon_hand.wrist_target_rad_ = 1.57079633f;
+
         }
     }
 

@@ -22,7 +22,7 @@
 
 #include <array>
 
-const FieldSide_t field_side = Left;
+FieldSide_t field_side = Left;
 const float robot_center_to_gimbal = 0.4f;
 const float MC_position_correction_y = 0.03f;
 const float robot_R2_center_to_R1_center = 0.0465f;

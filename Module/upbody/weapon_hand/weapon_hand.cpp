@@ -36,6 +36,10 @@ void WeaponHand::init() {
   extend_pid_.IntegralLimit = 800.0f;  //3000
   extend_pid_.DeadBand = 0.1f;
   extend_pid_.Improve = Integral_Limit | Derivative_On_Measurement;
+
+  //让夹爪默认闭合
+  HAL_GPIO_WritePin(VALVE_CLAW_GPIO_Port, VALVE_CLAW_Pin, GPIO_PIN_SET);
+
 }
 
 void WeaponHand::update() {

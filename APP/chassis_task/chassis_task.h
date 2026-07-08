@@ -21,7 +21,7 @@
 #include "topics.hpp"
 #include "topic_pool.h"
 
-extern const FieldSide_t field_side;
+extern FieldSide_t field_side;
 extern const float robot_center_to_gimbal;
 extern const float MC_position_correction_y;
 extern const float robot_center_to_Weapon;
