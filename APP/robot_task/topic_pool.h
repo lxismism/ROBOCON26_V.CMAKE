@@ -30,7 +30,7 @@ typedef struct {
 
 typedef enum {
     Left = -1,
-    right = 1,
+    Right = 1,
 }FieldSide_t;
 
 typedef enum {

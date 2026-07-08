@@ -52,6 +52,9 @@ extern pub_chassis_cmd rm_cmd;
 extern TypedTopicPublisher<pub_ir_cmd> omni_ir_cmd_pub;                
 extern pub_ir_cmd omni_ir_cmd_push;
 
+extern TypedTopicPublisher<pub_ir_cmd> whisper_ir_cmd_pub;                
+extern pub_ir_cmd whisper_ir_cmd_push;
+
 // 订阅者
 extern TypedTopicSubscriber<pub_Xbox_Data> control_xbox_sub;
 extern pub_Xbox_Data control_xbox_cmd;
@@ -121,6 +124,7 @@ extern PickHand pick_hand;
 extern WeaponHand weapon_hand;
 extern Lift lift;
 
+uint8_t Arena_ir_count = 0;
 ArenaMode_t Arena_mode = KFS;
 
 // 目标状态
@@ -252,20 +256,41 @@ void Debug_Mode_Process(TypedTopicPublisher<pub_upbody_cmd>& pub, pub_upbody_cmd
 //  队友模式入口
 // =====================================================
 void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
+    static float Chassis_RM_Data_Process_dt = 0.0f;
+    static uint32_t Chassis_RM_Data_Process_DWT_CNT = 0;
+    Chassis_RM_Data_Process_dt = DWT_GetDeltaT(&Chassis_RM_Data_Process_DWT_CNT);
+
     rm_cmd.linear_x_ = JoyToVelocity(control_rm_cmd.joyLHori, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
     rm_cmd.linear_y_ = JoyToVelocity(control_rm_cmd.joyLVert, kJoyDeadZoneLeft, MAX_VELOCITY_LINEAR);
     rm_cmd.omega_    = -JoyToVelocity(control_rm_cmd.joyRHori, kJoyDeadZoneRight, MAX_VELOCITY_ANGULAR);
 
-    if (control_rm_cmd.swE != control_rm_cmd_last.swE) {
+    static bool ir_press_single_Flag = false;
+    static bool ir_press_double_Flag = false;
+    static float press_ir_since_last = 60.0f;
+    const  float DOUBLE_CLICK_TIME = 0.35f;
+    press_ir_since_last = press_ir_since_last + Chassis_RM_Data_Process_dt;
+    if(press_ir_since_last > 60.0f) press_ir_since_last = 60.0f;//过大计算无意义
+    if(control_rm_cmd.swE != control_rm_cmd_last.swE) {
         if(control_rm_cmd.swE == RC_2_POS_SW_State_t::DOWN) {
-            //在这里面配置红外发送
-            switch (robot_mode) { 
+            if(press_ir_since_last < DOUBLE_CLICK_TIME && ir_press_single_Flag == true){
+                ir_press_single_Flag = false;
+                ir_press_double_Flag = true;
+            }else{
+                ir_press_single_Flag = true;
+            }
+            press_ir_since_last = 0.0f;
+        }
+    }
+    if(ir_press_single_Flag == true){
+        if(press_ir_since_last >= DOUBLE_CLICK_TIME){
+            //单击功能
+            switch (robot_mode) {
                 case MC : {
                     //在这里面配置红外发送
                     switch (control_rm_cmd.cursor){
                         case 0 : {
                             omni_ir_cmd_push.tx_data = CMD_MC_RELEASE_CLAW;
-                            omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
+                            omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
                             break;
                         }
                         case 1 : {
@@ -286,12 +311,10 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                     break;
                 }
                 case Arena : {
-                    static uint8_t Arena_ir_count = 0;
                     switch (Arena_ir_count){
                         case 0 : {
                             omni_ir_cmd_push.tx_data = CMD_ENTER_ARENA;
                             omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
-                            Arena_ir_count ++;
                             break;
                         }
                         case 1 : {
@@ -303,7 +326,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                                 }
                                 case 1 : {
                                     omni_ir_cmd_push.tx_data = CMD_AUTO_PUT_MIDDLE_MIDDLE;
-                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
+                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);
                                     break;
                                 }
                                 case 2 : {
@@ -314,7 +337,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                                 default:
                                     break;
                             }
-                            Arena_ir_count ++;
+                            break;
                         }
                         case 2 : {
                             switch (control_rm_cmd.cursor){
@@ -324,26 +347,32 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
                                     break;
                                 }
                                 case 1 : {
-                                    omni_ir_cmd_push.tx_data = CMD_RELEASE_KFS;
-                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
+                                    whisper_ir_cmd_push.tx_data = CMD_RELEASE_KFS;
+                                    whisper_ir_cmd_pub.Publish(whisper_ir_cmd_push);  
                                     break;
                                 }
                                 case 2 : {
-                                    omni_ir_cmd_push.tx_data = CMD_HOLD_KFS;
-                                    omni_ir_cmd_pub.Publish(omni_ir_cmd_push);  
+                                    whisper_ir_cmd_push.tx_data = CMD_HOLD_KFS;
+                                    whisper_ir_cmd_pub.Publish(whisper_ir_cmd_push);  
                                     break;
                                 }
                                 default:
                                     break;
                             }
+                            break;
                         }
                     }
                 }
                 default:
                     break;
             }
-            // omni_ir_cmd_pub.Publish(omni_ir_cmd_push);   
+            ir_press_single_Flag = false;
         }
+    }else if(ir_press_double_Flag == true){
+        //双击功能
+        if(robot_mode == Arena)Arena_ir_count ++;
+        while(Arena_ir_count > 2)Arena_ir_count = Arena_ir_count - 3;
+        ir_press_double_Flag = false;
     }
     
 
@@ -398,7 +427,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
 //  普通手操 / 定位模式
 // =====================================================
 void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub) {
-    
+
     last_mf_action = -1;
     if (control_rm_cmd.swE != control_rm_cmd_last.swE) {
         if(control_rm_cmd.swE == RC_2_POS_SW_State_t::DOWN) {
@@ -417,7 +446,6 @@ void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub) {
         }
     }
 
-
     // swB 上升沿切换 omega 模式
     if (control_rm_cmd.swD == RC_2_POS_SW_State_t::DOWN) {
         headless_omega_mode = false;
@@ -428,10 +456,12 @@ void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub) {
     if (control_rm_cmd.trimRight == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
             field_side = Left;
+            chassis_Map_Set();
         }
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
-            field_side = right;
+            field_side = Right;
+            chassis_Map_Set();
         }
     }
 
@@ -894,7 +924,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             Arena_close_position_y = 0.0f;
         }
     }
-    
+
     // ===== 九宫格子模式切换 =====
     static bool arena_r2_floor = false;   // false=R2一楼, true=R2二楼
 
@@ -1035,8 +1065,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 	    upbody_ctrl.Update(0.005f, upbody_pub);
 	}else if(Arena_mode == Challenge){
         state_target_cmd.linear_x_ = (0.35f + 0.505f)*(-field_side);
-        state_target_cmd.linear_y_ = 3.375f + 0.7f;
-        state_target_cmd.omega_    = 90.0f;
+        state_target_cmd.linear_y_ = (3.375f + 0.7f - robot_center_to_gimbal) - robot_center_to_gimbal*field_side;
+        state_target_cmd.omega_    = -90.0f*field_side;
 
         if (control_rm_cmd.swA != control_rm_cmd_last.swA) {
             if(control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN){

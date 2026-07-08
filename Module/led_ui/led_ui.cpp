@@ -155,7 +155,7 @@ void LedUi::drawCursor(uint8_t x, uint8_t y) {
             led_matrix_.SetPixel(draw_x, draw_y, Ws2812::Color::Red);
             break;
         }
-        case FieldSide_t::right:
+        case FieldSide_t::Right:
             break;
     }
 }
