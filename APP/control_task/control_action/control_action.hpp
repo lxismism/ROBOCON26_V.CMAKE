@@ -147,7 +147,7 @@ inline constexpr RobotPose kPose_Place[3]   = {
     {370.0f, -220.5f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place2}
 };
 inline constexpr RobotPose kPose_Place1_1  =  {78.1f, -239.0f, 130.0f, 347.0f, 0.0f, 100.0f,Pose_Place1};
-inline constexpr RobotPose kPose_Place1_2  =  {365.0f, -239.0f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place1_2};
+inline constexpr RobotPose kPose_Place1_2  =  {360.0f, -239.0f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place1_2};
 
 
 inline constexpr RobotPose kPose_Pick[3] = {

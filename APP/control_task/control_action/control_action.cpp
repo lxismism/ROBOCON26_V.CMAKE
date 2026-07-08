@@ -409,7 +409,7 @@ void ActionController::PickKFS(const RobotPose& pose_Grab, const RobotPose& pose
         step2.priorities.pick_extend = 0;
         step2.step_done_mask = 0x04;
         step2.enable_chassis_approach = true;
-        step2.dwell_ms = 300;                    // ← 加：伸到头等200ms吸稳
+        step2.dwell_ms = 500;                    // ← 加：伸到头等200ms吸稳
         AddStep(step2);
 
         // Step 3: 电梯升到安全高度
