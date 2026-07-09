@@ -439,8 +439,9 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
 void Normal_control_Process() {
     
     last_mf_action = -1;
-    if (control_rm_cmd.swE != control_rm_cmd_last.swE) {
-        if(control_rm_cmd.swE == RC_2_POS_SW_State_t::DOWN) {
+
+    if (control_rm_cmd.trimLeft == RC_Trim_State_t::UP) {
+        if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
             upbody_ctrl.GoHome();
         }
     }
