@@ -21,12 +21,13 @@
 #include "topics.hpp"
 #include "topic_pool.h"
 
-extern const FieldSide_t field_side;
+extern FieldSide_t field_side;
 extern const float robot_center_to_gimbal;
 extern const float MC_position_correction_y;
 extern const float robot_center_to_Weapon;
 
 void chassisTask(void *argument);
+void chassis_Map_Set();
 
 typedef struct {
     uint8_t MF_x;
@@ -35,10 +36,10 @@ typedef struct {
     bool is_valid;
 } MF_plan_t;
 
-extern const float robot_position_MC[4][3];
-extern const float robot_position_MF[6][5][4];
-extern const float robot_position_Arena[3][3];
-extern const float robot_position_Arena_withR2[3][3];
-extern const float robot_position_Arena_useWeapon[3][3];
+extern float robot_position_MC[4][3];
+extern float robot_position_MF[6][5][4];
+extern float robot_position_Arena[3][3];
+extern float robot_position_Arena_withR2[3][3];
+extern float robot_position_Arena_useWeapon[3][3];
 extern MF_plan_t MF_plan[15] ;
 
