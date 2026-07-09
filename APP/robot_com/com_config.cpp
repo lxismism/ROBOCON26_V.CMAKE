@@ -614,13 +614,19 @@ void uart3SendTask(void *argument) {
   extern uint8_t MF_x;
   extern uint8_t MF_y;
   extern MF_plan_t MF_plan[15];
+  extern uint8_t Arena_ir_count;
   uint8_t send_buffer[64] = {};
   uint8_t motor_state[2] = {0};
 
   CRSF_broadcast_frame_t temp_frame = {
-    .length = 2 + 1 + 2 * 17,
+    .length = 2 + 1 + 2 * 18,
     .type = CRSF_TEMP_TYPE,
     .payload = {0}
+  };
+
+  auto int16_to_payload = [](int16_t value, uint8_t *temp_H) -> void {
+    *temp_H = (value >> 8) & 0xFF;
+    *(temp_H + 1) = value & 0xFF;
   };
 
   auto mf2temp = [](uint8_t x, uint8_t y, uint8_t *temp_H) -> void {
@@ -652,6 +658,7 @@ void uart3SendTask(void *argument) {
     }
     temp_frame.payload[33] = motor_state[0];
     temp_frame.payload[34] = motor_state[1];
+    int16_to_payload(static_cast<int16_t>(Arena_ir_count), &temp_frame.payload[35]);
     uint8_t len = rm_pocket.packFrame(send_buffer, temp_frame);
     uart3_port.writeDma(send_buffer, len);
     std::memset(temp_frame.payload, 0, sizeof(temp_frame.payload));

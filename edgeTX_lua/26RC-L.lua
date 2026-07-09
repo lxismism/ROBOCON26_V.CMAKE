@@ -5,24 +5,29 @@ local SCREEN_W = LCD_W or 128
 local SCREEN_H = LCD_H or 64
 local ORIGIN_X = math.floor((SCREEN_W - MATRIX_SIZE * CELL_SIZE) / 2)
 local ORIGIN_Y = math.floor((SCREEN_H - MATRIX_SIZE * CELL_SIZE) / 2)
-local TELEMETRY_OK_X = 10
-local TELEMETRY_OK_Y = 13
-local S1_X = ORIGIN_X + MATRIX_SIZE * CELL_SIZE + 8
-local S1_Y = 21
+local MF_MAP_Y_OFFSET = -2
+local MF_PIXEL_Y_OFFSET = 3
+local S1_VALUE_Y = 22
+local S1_IND_X = SCREEN_W - 17
+local S1_IND_Y = 32
+local IR_LABEL_Y = 42
+local IR_VALUE_Y = 50
 local S1_MIDDLE_LIMIT = 307
+local MOTOR_MARKER_SIZE = 5
+local PATH_OUTER_OFFSET = 2
 
 local motor_points = {
-    { x = 0,  y = 0,  byte = 0, mask = 128 }, -- chassis_motor1
-    { x = 15, y = 0,  byte = 0, mask = 64  }, -- chassis_motor2
-    { x = 15, y = 15, byte = 0, mask = 32  }, -- chassis_motor3
-    { x = 0,  y = 15, byte = 0, mask = 16  }, -- chassis_motor4
-    { x = 2,  y = 0,  byte = 0, mask = 8   }, -- picker_yaw_motor
-    { x = 2,  y = 2,  byte = 0, mask = 4   }, -- picker_extend_motor
-    { x = 13, y = 2,  byte = 0, mask = 2   }, -- weapon_extend_motor
-    { x = 0,  y = 12, byte = 0, mask = 1   }, -- lift_left_motor
-    { x = 15, y = 12, byte = 1, mask = 128 }, -- lift_right_motor
-    { x = 0,  y = 2,  byte = 1, mask = 64  }, -- picker_lift_motor
-    { x = 15, y = 2,  byte = 1, mask = 32  }, -- weapon_lift_motor
+    { px = 0,                 py = 0,                  byte = 0, mask = 128 }, -- chassis_motor1
+    { px = SCREEN_W - 5,      py = 0,                  byte = 0, mask = 64  }, -- chassis_motor2
+    { px = SCREEN_W - 5,      py = SCREEN_H - 5,       byte = 0, mask = 32  }, -- chassis_motor3
+    { px = 0,                 py = SCREEN_H - 5,       byte = 0, mask = 16  }, -- chassis_motor4
+    { px = 6,                 py = 0,                  byte = 0, mask = 8   }, -- picker_yaw_motor
+    { px = 6,                 py = 6,                  byte = 0, mask = 4   }, -- picker_extend_motor
+    { px = SCREEN_W - 11,     py = 6,                  byte = 0, mask = 2   }, -- weapon_extend_motor
+    { px = 0,                 py = SCREEN_H - 11,      byte = 0, mask = 1   }, -- lift_left_motor
+    { px = SCREEN_W - 5,      py = SCREEN_H - 11,      byte = 1, mask = 128 }, -- lift_right_motor
+    { px = 0,                 py = 6,                  byte = 1, mask = 64  }, -- picker_lift_motor
+    { px = SCREEN_W - 5,      py = 6,                  byte = 1, mask = 32  }, -- weapon_lift_motor
 }
 
 local function has_bit(value, mask)
@@ -43,6 +48,22 @@ local function read_raw_number(name)
         return value
     end
     return nil
+end
+
+local function read_telem_payload(name)
+    local value = read_raw_number(name)
+    if not value then
+        return 0
+    end
+    local scaled = value * 10
+    if scaled >= 0 then
+        return math.floor(scaled + 0.5)
+    end
+    return math.ceil(scaled - 0.5)
+end
+
+local function draw_text_right(x, y, text)
+    lcd.drawText(x - string.len(text) * 5, y, text, SMLSIZE)
 end
 
 local function decode_point(value)
@@ -76,7 +97,7 @@ end
 
 local function draw_mf_tile(x, y)
     local px = ORIGIN_X + x * CELL_SIZE
-    local py = ORIGIN_Y + y * CELL_SIZE
+    local py = ORIGIN_Y + y * CELL_SIZE + MF_PIXEL_Y_OFFSET
     local span = CELL_SIZE * 3 - 1
     local inner = math.floor(span / 2)
     local inner_offset = math.floor((span - inner) / 2)
@@ -86,7 +107,7 @@ local function draw_mf_tile(x, y)
 end
 
 local function draw_mf_map()
-    local y = 4
+    local y = 4 + MF_MAP_Y_OFFSET
     for _ = 1, 3 do
         local x = 2
         for _ = 1, 4 do
@@ -97,7 +118,7 @@ local function draw_mf_map()
     end
 end
 
-local function draw_mf_pos(mf_x, mf_y)
+local function map_mf_pos(mf_x, mf_y)
     local x = 15 - 3 * mf_x
     local y = 14 - 3 * mf_y
 
@@ -106,13 +127,90 @@ local function draw_mf_pos(mf_x, mf_y)
     if mf_y == 0 then y = 13 end
     if mf_y == 4 then y = 3 end
 
-    draw_pixel(x, y)
+    y = y + MF_MAP_Y_OFFSET
+
+    if x < 0 then x = 0 end
+    if x > 15 then x = 15 end
+    if y < 0 then y = 0 end
+    if y > 15 then y = 15 end
+
+    return x, y
 end
 
-local function draw_telem_point(name)
-    local x, y = decode_point(read_number(name))
+local function draw_matrix_marker(x, y, size, filled, offset_x, offset_y)
+    local px = ORIGIN_X + x * CELL_SIZE + math.floor((DOT_SIZE - size) / 2) + (offset_x or 0)
+    local py = ORIGIN_Y + y * CELL_SIZE + math.floor((DOT_SIZE - size) / 2) + MF_PIXEL_Y_OFFSET + (offset_y or 0)
+
+    if filled then
+        lcd.drawFilledRectangle(px, py, size, size)
+    else
+        lcd.drawRectangle(px, py, size, size)
+    end
+end
+
+local function draw_mf_cursor(mf_x, mf_y)
+    local x, y = map_mf_pos(mf_x, mf_y)
+    local offset_x = 0
+    local offset_y = 0
+
+    if mf_x == 0 then
+        offset_x = PATH_OUTER_OFFSET
+    elseif mf_x == 5 then
+        offset_x = -PATH_OUTER_OFFSET
+    end
+
+    if mf_y == 0 then
+        offset_y = PATH_OUTER_OFFSET
+    elseif mf_y == 4 then
+        offset_y = -PATH_OUTER_OFFSET
+    end
+
+    draw_matrix_marker(x, y, 7, false, offset_x, offset_y)
+end
+
+local function draw_mf_plan(mf_x, mf_y)
+    local x, y = map_mf_pos(mf_x, mf_y)
+    local offset_x = 0
+    local offset_y = 0
+
+    if mf_x == 0 then
+        offset_x = PATH_OUTER_OFFSET
+    elseif mf_x == 5 then
+        offset_x = -PATH_OUTER_OFFSET
+    end
+
+    if mf_y == 0 then
+        offset_y = PATH_OUTER_OFFSET
+    elseif mf_y == 4 then
+        offset_y = -PATH_OUTER_OFFSET
+    end
+
+    draw_matrix_marker(x, y, 3, true, offset_x, offset_y)
+end
+
+local function draw_telem_point(name, is_cursor)
+    local x, y = decode_point(read_telem_payload(name))
     if x and y then
-        draw_mf_pos(x, y)
+        if is_cursor then
+            draw_mf_cursor(x, y)
+        else
+            draw_mf_plan(x, y)
+        end
+    end
+end
+
+local function draw_mf_plans()
+    local seen = {}
+
+    for i = 17, 31 do
+        local x, y = decode_point(read_telem_payload("telem" .. i))
+        if x and y then
+            local key = x * 10 + y
+            if not seen[key] then
+                seen[key] = true
+                draw_mf_plan(x, y)
+            end
+        end
     end
 end
 
@@ -122,12 +220,12 @@ local function has_return_signal()
         return false
     end
 
-    local x, y = decode_point(math.floor(value + 0.5))
+    local x, y = decode_point(read_telem_payload("telem16"))
     return x ~= nil and y ~= nil
 end
 
 local function draw_motor_status()
-    local packed = read_number("telem32")
+    local packed = read_telem_payload("telem32")
     if packed < 0 then
         packed = packed + 65536
     end
@@ -135,26 +233,41 @@ local function draw_motor_status()
     local high = math.floor(packed / 256) % 256
     local low = packed % 256
 
+    local function draw_motor_marker(px, py, is_not_online)
+        if is_not_online then
+            lcd.drawFilledRectangle(px,     py,     1, 1)
+            lcd.drawFilledRectangle(px + 4, py,     1, 1)
+            lcd.drawFilledRectangle(px + 1, py + 1, 1, 1)
+            lcd.drawFilledRectangle(px + 3, py + 1, 1, 1)
+            lcd.drawFilledRectangle(px + 2, py + 2, 1, 1)
+            lcd.drawFilledRectangle(px + 1, py + 3, 1, 1)
+            lcd.drawFilledRectangle(px + 3, py + 3, 1, 1)
+            lcd.drawFilledRectangle(px,     py + 4, 1, 1)
+            lcd.drawFilledRectangle(px + 4, py + 4, 1, 1)
+        else
+            lcd.drawRectangle(px, py, MOTOR_MARKER_SIZE, MOTOR_MARKER_SIZE)
+        end
+    end
+
     for i = 1, #motor_points do
         local motor = motor_points[i]
         local state = motor.byte == 0 and high or low
         local is_not_online = has_bit(state, motor.mask)
-        if is_not_online then
-            draw_pixel(motor.x, motor.y)
-        end
+        draw_motor_marker(motor.px, motor.py, is_not_online)
     end
 end
 
 local function draw_return_signal()
-    lcd.drawText(1, 1, "TEL", SMLSIZE)
-
     if has_return_signal() then
-        lcd.drawFilledRectangle(TELEMETRY_OK_X, TELEMETRY_OK_Y, 8, 8)
-        lcd.drawText(2, 25, "OK", SMLSIZE)
+        lcd.drawText(41, SCREEN_H - 8, "connected", SMLSIZE)
     else
-        lcd.drawRectangle(TELEMETRY_OK_X, TELEMETRY_OK_Y, 8, 8)
-        lcd.drawText(2, 25, "--", SMLSIZE)
+        lcd.drawText(32, SCREEN_H - 8, "disconnected", SMLSIZE)
     end
+end
+
+local function draw_arena_ir_count()
+    draw_text_right(SCREEN_W - 1, IR_LABEL_Y, "IRCNT")
+    draw_text_right(SCREEN_W - 8, IR_VALUE_Y, string.format("%d", read_telem_payload("telem33")))
 end
 
 local function read_s1()
@@ -171,18 +284,15 @@ local function draw_s1_state()
         selected = 3
     end
 
-    lcd.drawText(S1_X, 1, "S1", SMLSIZE)
-    lcd.drawText(S1_X - 8, 9, string.format("%d", math.floor(raw_s1 + 0.5)), SMLSIZE)
+    draw_text_right(SCREEN_W - 1, S1_VALUE_Y, string.format("%d", math.floor(raw_s1 + 0.5)))
 
-    local labels = { "L", "M", "R" }
     for i = 1, 3 do
-        local y = S1_Y + (i - 1) * 15
+        local x = S1_IND_X + (i - 1) * 6
         if selected == i then
-            lcd.drawFilledRectangle(S1_X, y, 8, 8)
+            lcd.drawFilledRectangle(x, S1_IND_Y, 5, 5)
         else
-            lcd.drawRectangle(S1_X, y, 8, 8)
+            lcd.drawRectangle(x, S1_IND_Y, 5, 5)
         end
-        lcd.drawText(S1_X + 11, y - 1, labels[i], SMLSIZE)
     end
 end
 
@@ -196,13 +306,11 @@ local function my_run(event)
     lcd.clear()
 
     draw_mf_map()
-    draw_telem_point("telem16")
-
-    for i = 17, 31 do
-        draw_telem_point("telem" .. i)
-    end
+    draw_mf_plans()
+    draw_telem_point("telem16", true)
 
     draw_motor_status()
+    draw_arena_ir_count()
     draw_return_signal()
     draw_s1_state()
 
