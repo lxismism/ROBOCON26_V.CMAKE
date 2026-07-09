@@ -462,10 +462,12 @@ void Normal_control_Process() {
     if (control_rm_cmd.trimRight == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
             field_side = Left;
+            chassis_Map_Set();
         }
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
             field_side = right;
+            chassis_Map_Set();
         }
     }
 

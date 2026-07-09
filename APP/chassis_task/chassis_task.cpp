@@ -19,10 +19,9 @@
 #include "pid_controller.h"
 #include "topic_pool.h"
 #include "topics.hpp"
-
 #include <array>
 
-FieldSide_t field_side = Left;
+FieldSide_t field_side =  Left;
 const float robot_center_to_gimbal = 0.4f;
 const float MC_position_correction_y = 0.03f;
 const float robot_R2_center_to_R1_center = 0.0465f;
@@ -93,91 +92,136 @@ void chassisTask(void *argument) {
     }
 }
 
-const float robot_position_MF[6][5][4] = {//用于在梅林半自动控制车辆移动
-  //[MF_x][MF_y] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw, 云台高度}
-{
-        {2.1f*field_side, 0.1f                                      , 0.0f  , 2.0f},
-        {2.1f*field_side, 1.3f - field_side*robot_center_to_gimbal, -90.0f*field_side , 2.0f},
-        {2.1f*field_side, 2.5f - field_side*robot_center_to_gimbal, -90.0f*field_side , 1.0f},
-        {2.1f*field_side, 3.7f - field_side*robot_center_to_gimbal, -90.0f*field_side , 2.0f},
-        {2.1f*field_side, 4.9f                                      , 180.0f, 2.0f}
+float robot_position_MF[6][5][4] = {};
 
-    },
+float robot_position_Arena[3][3] = {};
+
+float robot_position_Arena_withR2[3][3] = {};
+
+float robot_position_Arena_useWeapon[3][3] = {};
+
+float robot_position_MC[4][3] = {};
+
+void chassis_Map_Set(){
+    const float robot_position_MF_tmp[6][5][4] = {//用于在梅林半自动控制车辆移动
+    //[MF_x][MF_y] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw, 云台高度}
     {
-        {3.3f*field_side + robot_center_to_gimbal, 0.1f, 0.0f, 2.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {3.3f*field_side - robot_center_to_gimbal, 4.9f, 180.0f, 2.0f}  
-    },
-    {
-        {4.5f*field_side + robot_center_to_gimbal, 0.1f, 0.0f, 1.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {4.5f*field_side - robot_center_to_gimbal, 4.9f, 180.0f, 3.0f}
-    },
-    {
-        {5.7f*field_side + robot_center_to_gimbal, 0.1f, 0.0f, 2.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {5.7f*field_side - robot_center_to_gimbal, 4.9f, 180.0f, 2.0f}
-    },
-    {
-        {6.9f*field_side + robot_center_to_gimbal, 0.1f, 0.0f, 1.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
-        {6.9f*field_side - robot_center_to_gimbal, 4.9f, 180.0f, 1.0f}
-    },
-    {
-        {8.1f*field_side, 0.1f                                      , 0.0f  , 2.0f},
-        {8.1f*field_side, 1.3f + field_side*robot_center_to_gimbal, 90.0f*field_side, 1.0f},
-        {8.1f*field_side, 2.5f + field_side*robot_center_to_gimbal, 90.0f*field_side, 2.0f},
-        {8.1f*field_side, 3.7f + field_side*robot_center_to_gimbal, 90.0f*field_side, 1.0f},
-        {8.1f*field_side, 4.9f                                      , 180.0f, 2.0f}
-    }
-};
+            {2.1f*field_side, 0.1f                                      , 0.0f  , 2.0f},
+            {2.1f*field_side, 1.3f - field_side*robot_center_to_gimbal, -90.0f*field_side , 2.0f},
+            {2.1f*field_side, 2.5f - field_side*robot_center_to_gimbal, -90.0f*field_side , 1.0f},
+            {2.1f*field_side, 3.7f - field_side*robot_center_to_gimbal, -90.0f*field_side , 2.0f},
+            {2.1f*field_side, 4.9f                                      , 180.0f, 2.0f}
+
+        },
+        {
+            {3.3f*field_side + robot_center_to_gimbal, 0.1f, 0.0f, 2.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {3.3f*field_side - robot_center_to_gimbal, 4.9f, 180.0f, 2.0f}  
+        },
+        {
+            {4.5f*field_side + robot_center_to_gimbal, 0.1f, 0.0f, 1.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {4.5f*field_side - robot_center_to_gimbal, 4.9f, 180.0f, 3.0f}
+        },
+        {
+            {5.7f*field_side + robot_center_to_gimbal, 0.1f, 0.0f, 2.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {5.7f*field_side - robot_center_to_gimbal, 4.9f, 180.0f, 2.0f}
+        },
+        {
+            {6.9f*field_side + robot_center_to_gimbal, 0.1f, 0.0f, 1.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {0.0f*field_side                           , 0.0f, 0.0f, 0.0f},
+            {6.9f*field_side - robot_center_to_gimbal, 4.9f, 180.0f, 1.0f}
+        },
+        {
+            {8.1f*field_side, 0.1f                                      , 0.0f  , 2.0f},
+            {8.1f*field_side, 1.3f + field_side*robot_center_to_gimbal, 90.0f*field_side, 1.0f},
+            {8.1f*field_side, 2.5f + field_side*robot_center_to_gimbal, 90.0f*field_side, 2.0f},
+            {8.1f*field_side, 3.7f + field_side*robot_center_to_gimbal, 90.0f*field_side, 1.0f},
+            {8.1f*field_side, 4.9f                                      , 180.0f, 2.0f}
+        }
+    };
 
 
-const float robot_position_Arena[3][3] = {//用于在九宫格自动控制车辆移动
-  //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
-    {-0.230f*field_side - field_side*robot_center_to_gimbal, 4.098f, -90.0f*( field_side + 1)/2},
+    const float robot_position_Arena_tmp[3][3] = {//用于在九宫格自动控制车辆移动
+    //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
+        {-0.230f*field_side - field_side*robot_center_to_gimbal, 4.098f, -90.0f*( field_side + 1)/2},
 
-    {-0.770f*field_side + robot_center_to_gimbal           , 4.098f, 0.0f},
+        {-0.770f*field_side + robot_center_to_gimbal           , 4.098f, 0.0f},
 
-    {-1.310f*field_side + field_side*robot_center_to_gimbal, 4.098f, -90.0f*(-field_side + 1)/2}
-};
+        {-1.310f*field_side + field_side*robot_center_to_gimbal, 4.098f, -90.0f*(-field_side + 1)/2}
+    };
 
-const float robot_position_Arena_withR2[3][3] = {//用于在九宫格自动控制车辆移动
-  //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
-    {-0.230f*field_side + robot_R2_center_to_R1_center, 4.098f, 0.0f},
+    const float robot_position_Arena_withR2_tmp[3][3] = {//用于在九宫格自动控制车辆移动
+    //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
+        {-0.230f*field_side + robot_R2_center_to_R1_center, 4.098f, 0.0f},
 
-    {-0.770f*field_side + robot_R2_center_to_R1_center, 4.098f, 0.0f},
+        {-0.770f*field_side + robot_R2_center_to_R1_center, 4.098f, 0.0f},
 
-    {-1.310f*field_side + robot_R2_center_to_R1_center, 4.098f, 0.0f}
-};
+        {-1.310f*field_side + robot_R2_center_to_R1_center, 4.098f, 0.0f}
+    };
 
-const float robot_position_Arena_useWeapon[3][3] = {//用于在九宫格自动控制车辆移动
-  //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
-    {-0.230f*field_side - robot_center_to_Weapon*(field_side + 1)/2  , 4.098f, 20.0f*(-field_side + 1)/2},
+    const float robot_position_Arena_useWeapon_tmp[3][3] = {//用于在九宫格自动控制车辆移动
+    //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
+        {-0.230f*field_side - robot_center_to_Weapon*(field_side + 1)/2  , 4.098f, 20.0f*(-field_side + 1)/2},
 
-    {-0.770f*field_side - robot_center_to_Weapon , 4.098f, 0.0f},
+        {-0.770f*field_side - robot_center_to_Weapon , 4.098f, 0.0f},
 
-    {-1.310f*field_side - robot_center_to_Weapon*(-field_side + 1)/2 , 4.098f, 20.0f*(field_side + 1)/2}
-};
+        {-1.310f*field_side - robot_center_to_Weapon*(-field_side + 1)/2 , 4.098f, 20.0f*(field_side + 1)/2}
+    };
 
-const float robot_position_MC[4][3] = {//用于在武馆自动控制车辆移动
-  //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
-    {0.5f*field_side, 1.8f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side},
+    const float robot_position_MC_tmp[4][3] = {//用于在武馆自动控制车辆移动
+    //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
+        {0.5f*field_side, 1.8f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side},
 
-    {0.5f*field_side, 2.0f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side},
+        {0.5f*field_side, 2.0f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side},
 
-    {0.5f*field_side, 2.2f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side},
+        {0.5f*field_side, 2.2f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side},
 
-    {0.5f*field_side, 2.4f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side}
-};
+        {0.5f*field_side, 2.4f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side}
+    };
+
+    for(uint8_t i=0; i<6 ; i++){
+        for(uint8_t j=0; j<5 ; j++){
+            for(uint8_t k=0; k<4 ; k++){
+                robot_position_MF[i][j][k] = robot_position_MF_tmp[i][j][k];
+            };
+        };
+    };
+
+    for(uint8_t i=0 ; i<3 ;i++){
+        for(uint8_t j=0 ; j<3 ;j++){
+            robot_position_Arena[i][j] = robot_position_Arena_tmp[i][j];
+        };
+    };
+    
+    for(uint8_t i=0 ; i<3 ;i++){
+        for(uint8_t j=0 ; j<3 ;j++){
+            robot_position_Arena_useWeapon[i][j] = robot_position_Arena_useWeapon_tmp[i][j];
+        };
+    };
+
+    for(uint8_t i=0 ; i<3 ;i++){
+        for(uint8_t j=0 ; j<3 ;j++){
+            robot_position_Arena_withR2[i][j] = robot_position_Arena_withR2_tmp[i][j];
+        };
+    };
+
+    for(uint8_t i=0 ; i<4 ;i++){
+        for(uint8_t j=0 ; j<3 ;j++){
+            robot_position_MC[i][j] = robot_position_MC_tmp[i][j];
+        };
+    };
+}
+
 
 
 
