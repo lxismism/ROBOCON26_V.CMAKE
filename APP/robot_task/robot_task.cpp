@@ -32,6 +32,7 @@
 extern osThreadId_t CAN1_Send_TaskHandle;
 extern osThreadId_t CAN2_Send_TaskHandle;
 extern osThreadId_t CAN3_Send_TaskHandle;
+extern osThreadId_t uart3SendTaskHandle;
 extern osThreadId_t uart2ProcessTaskHandle;
 extern osThreadId_t uart3ProcessTaskHandle;
 extern osThreadId_t uart4ProcessTaskHandle;
@@ -234,4 +235,12 @@ void osTaskInit(void) {
   };
   whisperIrSendTaskHandle =
       osThreadNew(whisperIrSendTask, NULL, &WhisperIrSendTaskHandle_attributes);
+
+  const osThreadAttr_t Uart3SendTaskHandle_attributes = {
+      .name = "Uart3Send_TaskHandle",
+      .stack_size = 256 * 4,
+      .priority = (osPriority_t)osPriorityNormal1,
+  };
+  uart3SendTaskHandle =
+      osThreadNew(uart3SendTask, NULL, &Uart3SendTaskHandle_attributes);
 }
