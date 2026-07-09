@@ -615,21 +615,34 @@ void uart3SendTask(void *argument) {
   extern uint8_t MF_y;
   extern MF_plan_t MF_plan[15];
   uint8_t send_buffer[64] = {};
+  uint8_t motor_state[2] = {0};
 
   CRSF_broadcast_frame_t temp_frame = {
-    .length = 2 + 1 + 2 * 16,
+    .length = 2 + 1 + 2 * 17,
     .type = CRSF_TEMP_TYPE,
     .payload = {0}
   };
 
   auto mf2temp = [](uint8_t x, uint8_t y, uint8_t *temp_H) -> void {
-    int16_t temp16 = 1000 + x * 100 + y * 10;
+    int16_t temp16 = 100 + x * 10 + y;
     *temp_H = (temp16 >> 8) & 0xFF;
     *(temp_H + 1) = temp16 & 0xFF;
   };
 
   for(;;)
   {
+    motor_state[0] = (chassis_motor1.isOffline()<<7)
+                      |(chassis_motor2.isOffline()<<6)
+                      |(chassis_motor3.isOffline()<<5)
+                      |(chassis_motor4.isOffline()<<4)
+                      |(picker_yaw_motor.isOffline()<<3)
+                      |(picker_extend_motor.isOffline()<<2)
+                      |(weapon_extend_motor.isOffline()<<1)
+                      |(lift_left_motor.isOffline()<<0);
+    motor_state[1] = (lift_right_motor.isOffline()<<7)
+                      |(picker_lift_motor.isOffline()<<6)
+                      |(weapon_lift_motor.isOffline()<<5);
+
     mf2temp(MF_x, MF_y, &temp_frame.payload[1]);
     int i = 3;
     for(auto &mf: MF_plan) {
@@ -637,6 +650,8 @@ void uart3SendTask(void *argument) {
         mf2temp(mf.MF_x, mf.MF_y, &temp_frame.payload[i]);
       i += 2;
     }
+    temp_frame.payload[33] = motor_state[0];
+    temp_frame.payload[34] = motor_state[1];
     uint8_t len = rm_pocket.packFrame(send_buffer, temp_frame);
     uart3_port.writeDma(send_buffer, len);
     std::memset(temp_frame.payload, 0, sizeof(temp_frame.payload));
