@@ -349,12 +349,6 @@ void ActionController::YawTo(float yaw_deg) {
 void ActionController::GoHome() {
     ActionConfig config;
     config.target = kPose_Home;
-    config.speeds.pick_lift     = 150.0f;
-    config.speeds.pick_yaw      = 150.0f;
-    config.speeds.pick_extend   = 100.0f;
-    config.speeds.weapon_lift   = 40.0f;
-    config.speeds.weapon_extend = 40.0f;
-    config.speeds.lift          = 40.0f;
     Start_(config);
 }
 

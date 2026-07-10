@@ -388,7 +388,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
 
     switch (robot_case) {
         case RobotCase_t::Normal_case : {
-            Normal_control_Process();
+            Normal_control_Process(upbody_pub);
             break;
         }
         case RobotCase_t::Special : {
@@ -436,7 +436,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
 // =====================================================
 //  普通手操 / 定位模式
 // =====================================================
-void Normal_control_Process() {
+void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub) {
     
     last_mf_action = -1;
 
@@ -445,6 +445,8 @@ void Normal_control_Process() {
             upbody_ctrl.GoHome();
         }
     }
+    // 上身动作推进
+    upbody_ctrl.Update(0.005f, upbody_pub);
 
     // swA 上升沿切换 xy 模式
     if (control_rm_cmd.swA == RC_2_POS_SW_State_t::DOWN) {
@@ -592,7 +594,7 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
             robot_v_aim_cmd.linear_x_ = v_aim * cos((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
             robot_v_aim_cmd.linear_y_ = v_aim * sin((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
 
-            robot_v_aim_cmd.omega_ = rm_cmd.omega_;
+            robot_v_aim_cmd.omega_ = 0.0f;
 
             state_target_cmd.linear_x_ = state_now_cmd.linear_x_;
             state_target_cmd.linear_y_ = state_now_cmd.linear_y_;
