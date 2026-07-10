@@ -305,6 +305,7 @@ end
 local function my_run(event)
     lcd.clear()
 
+    lcd.drawText(0, math.floor(SCREEN_H / 2) - 8, "L", DBLSIZE)
     draw_mf_map()
     draw_mf_plans()
     draw_telem_point("telem16", true)
