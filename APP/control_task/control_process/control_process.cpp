@@ -556,14 +556,24 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         }
     }else if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-            MC_mode = true;
-            upbody_ctrl.PrepareWeapon();
-            mc_prepare_wrist_pending = true;
-
+            if(field_side == -1){
+                MC_mode = true;
+                upbody_ctrl.PrepareWeapon();
+                mc_prepare_wrist_pending = true;    
+            }else {
+                MC_mode = false;
+            }
         }
     } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
             MC_mode = false;
+            if(field_side == 1){
+                MC_mode = true;
+                upbody_ctrl.PrepareWeapon();
+                mc_prepare_wrist_pending = true;    
+            }else {
+                MC_mode = false;
+            }
         }
     }
 
@@ -573,9 +583,9 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
             MC_Traj_complete_Flag = false;
         }
         if(MC_Traj_complete_Flag == false){
-            state_target_cmd.linear_x_ = 0.90f*field_side;
-            state_target_cmd.linear_y_ = 2.67f;
-            state_target_cmd.omega_    = 0.0f;
+            state_target_cmd.linear_x_ = 1.0f*field_side;
+            state_target_cmd.linear_y_ = 2.3f;
+            state_target_cmd.omega_    = 0.0f + 180.0f*(field_side + 1)/2.0f;
             MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
             MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
             position_close_x = MC_close_position_x;
