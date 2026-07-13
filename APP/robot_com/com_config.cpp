@@ -774,6 +774,19 @@ void DebugSerialTask(void *argument) {
     motor_status_data.weapon_lift_motor = weapon_lift_motor.isOffline();
     motor_status_pub.Publish(motor_status_data);
 
+    int len = snprintf(debug_buffer, sizeof(debug_buffer), "motor_current:%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", 
+                                                  chassis_motor1.current_,
+                                                  chassis_motor2.current_,
+                                                  chassis_motor3.current_,
+                                                  chassis_motor4.current_,
+                                                  picker_yaw_motor.current_,
+                                                  picker_extend_motor.current_,
+                                                  weapon_extend_motor.current_,
+                                                  lift_left_motor.current_,
+                                                  lift_right_motor.current_,
+                                                  picker_lift_motor.current_,
+                                                  weapon_lift_motor.current_);
+
     // int len = snprintf(debug_buffer, sizeof(debug_buffer), "%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%02d,%d.%03d,%d.%03d,%d.%02d\n",
     //                                           static_cast<int>(pid_LU.Ref), (static_cast<int>(abs(pid_LU.Ref * 100)))%100,
     //                                           static_cast<int>(pid_LU.Measure), (static_cast<int>(abs(pid_LU.Measure * 100)))%100,
@@ -800,15 +813,7 @@ void DebugSerialTask(void *argument) {
 
 
     // // );
-    int len = snprintf(debug_buffer, sizeof(debug_buffer), "%splatform: %d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
-                                              title,
-                                              static_cast<int>(lift.platfrom_pos_pid_.Ref), (static_cast<int>(abs(lift.platfrom_pos_pid_.Ref * 100)))%100,
-                                              static_cast<int>(lift.platfrom_pos_pid_.Measure), (static_cast<int>(abs(lift.platfrom_pos_pid_.Measure * 100)))%100,
-                                              static_cast<int>(lift.left_v_pid_.Ref), (static_cast<int>(abs(lift.left_v_pid_.Ref * 100)))%100,
-                                              static_cast<int>(lift.left_v_pid_.Measure), (static_cast<int>(abs(lift.left_v_pid_.Measure * 100)))%100,
-                                              static_cast<int>(lift.right_v_pid_.Ref), (static_cast<int>(abs(lift.right_v_pid_.Ref * 100)))%100,
-                                              static_cast<int>(lift.right_v_pid_.Measure), (static_cast<int>(abs(lift.right_v_pid_.Measure * 100)))%100
-    );
+    
     // int len = snprintf(debug_buffer, sizeof(debug_buffer), "platform: %d.%02d,%d.%02d,%d.%02d,%d.%02d\n",
     //                                           static_cast<int>(lift.platfrom_pos_pid_.Ref), (static_cast<int>(abs(lift.platfrom_pos_pid_.Ref * 100)))%100,
     //                                           static_cast<int>(lift.platfrom_pos_pid_.Measure), (static_cast<int>(abs(lift.platfrom_pos_pid_.Measure * 100)))%100,
