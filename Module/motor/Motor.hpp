@@ -77,7 +77,7 @@ public:
   float single_pos_{0};  // 单圈位置
   float sum_pos_{0};     // 多圈累加
   float speed_{0};       // 速度
-  float current_{0};     // 电流
+  int current_{0};       // 电流，单位 mA
   float torque_{0};      // 力矩
   float temperature_{0}; // 温度
 };
@@ -142,11 +142,10 @@ public:
     raw_speed_ = static_cast<float>(raw_speed) * RPM_2_RAD_PER_SEC;
     speed_ = raw_speed_ / reduction_ratio_;
 
-    // byte 4-5: 实际电流 (int16, 单位: 0.1A, 范围 -2000~2000 = -200~200A)
-    // 电流(A) = value * 0.1
+    // byte 4-5: 实际电流，C610 的 -10000~10000 对应 -10~10 A
     int16_t raw_current = (int16_t)((data[4] << 8) | data[5]);
-    current_ = static_cast<float>(raw_current) * 0.1f;              // A
-    raw_torque_ = current_;                                         // A
+    current_ = static_cast<int>(raw_current);                        // mA
+    raw_torque_ = static_cast<float>(current_) * 0.001f;             // A
     torque_ = raw_torque_ * current_to_torque_ * reduction_ratio_; // 输出端力矩
 
     // byte 6: 电机温度 (uint8, 单位: °C)
@@ -239,11 +238,11 @@ public:
     raw_speed_ = static_cast<float>(raw_speed) * RPM_2_RAD_PER_SEC;
     speed_ = raw_speed_ / reduction_ratio_;
 
-    // byte 4-5: 实际电流
-    // 电流(A) = value * 0.1
+    // byte 4-5: 实际电流，C620 的 -16384~16384 对应 -20~20 A
     int16_t raw_current = (int16_t)((data[4] << 8) | data[5]);
-    current_ = static_cast<float>(raw_current) * 0.1f;              // A
-    raw_torque_ = current_;                                         // A
+    current_ = static_cast<int>(std::lround(
+        static_cast<float>(raw_current) * 20000.0f / 16384.0f));     // mA
+    raw_torque_ = static_cast<float>(current_) * 0.001f;             // A
     torque_ = raw_torque_ * current_to_torque_ * reduction_ratio_; // 输出端力矩
 
     // byte 6: 电机温度 (uint8, 单位: °C)
