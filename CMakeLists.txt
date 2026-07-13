@@ -73,6 +73,7 @@ file(GLOB_RECURSE SOURCES
     "Algorithm/*.c"
     "Algorithm/*.cpp"
 )
+list(FILTER SOURCES EXCLUDE REGEX "\\.lua$")
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE

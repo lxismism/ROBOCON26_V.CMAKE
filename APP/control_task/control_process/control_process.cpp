@@ -34,8 +34,8 @@ static constexpr float kLiftStep = 0.2f;
 static constexpr float kPickLiftStep = 0.4f;
 static constexpr float kPickYawStep = 1.0f;
 static constexpr float kPickExtendStep = 0.5f;
-static constexpr float kWeaponLiftStep = 0.5f;
-static constexpr float kWeaponExtendStep = 0.8f;
+static constexpr float kWeaponLiftStep = 0.75f;
+static constexpr float kWeaponExtendStep = 1.2f;
 static constexpr uint16_t kTriggerThreshold = 512;
 
 // ===== MF 自动逼近参数（可配） =====
@@ -89,11 +89,15 @@ extern bool headless_omega_mode;
 bool headless_mode = true;
 
 extern bool Normal_control_mode;
+
+speed_data Normal_speed{1.2f,0.9f,1.5f,M_PI*0.5};
 // MC 模式相关
 extern int8_t MC_y;
 extern float MC_close_position_x;
 extern float MC_close_position_y;
-extern bool MC_headless_mode;
+extern bool MC_mode;
+extern bool MC_mode_last;
+speed_data MC_speed{1.2f,0.9f,1.5f,M_PI*0.5};
 // MF 模式相关
 extern uint8_t MF_x;
 extern uint8_t MF_y;
@@ -110,12 +114,16 @@ extern int8_t MF_omega_control_Flag;
 extern uint8_t MF_plan_record_i;
 extern uint8_t MF_plan_run_i;
 extern MF_plan_t MF_plan_zero;
+speed_data MF_speed{1.6f,1.0f,2.5f,M_PI*0.55};
 
 extern uint8_t MF_pick_count;
+extern uint8_t MF_pick_count_last;
 // Arena模式相关
 extern int8_t Arena_x;
 extern float Arena_close_position_y;
 extern float Arena_close_position_y_Max;
+extern float Arena_close_position_step;
+speed_data Arena_speed{0.9f,0.7f,1.8f,M_PI*0.45};
 
 extern FieldSide_t field_side;
 extern const float robot_center_to_gimbal_x;
@@ -374,7 +382,7 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
         while(Arena_ir_count > 2)Arena_ir_count = Arena_ir_count - 3;
         ir_press_double_Flag = false;
     }
-    
+
 
     switch (robot_case) {
         case RobotCase_t::Normal_case : {
@@ -427,14 +435,14 @@ void Chassis_RM_Data_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pu
 //  普通手操 / 定位模式
 // =====================================================
 void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub) {
+    
+    last_mf_action = -1;
 
-    // last_mf_action = -1;
-    // if (control_rm_cmd.swE != control_rm_cmd_last.swE) {
-    //     if(control_rm_cmd.swE == RC_2_POS_SW_State_t::DOWN) {
-    //         upbody_ctrl.GoHome();
-    //     }
-    // }
-
+    if (control_rm_cmd.trimLeft == RC_Trim_State_t::UP) {
+        if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
+            upbody_ctrl.GoHome();
+        }
+    }
     // 上身动作推进
     upbody_ctrl.Update(0.005f, upbody_pub);
 
@@ -497,7 +505,7 @@ void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub) {
         Aim_State_omega_Process();
     }
 
-    Traject_chassis.Set_Ref(state_now_cmd,Normal);
+    Traject_chassis.Set_Ref(state_now_cmd,Normal,Normal_speed);
 }
 
 
@@ -506,6 +514,7 @@ void Normal_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub) {
 // =====================================================
 void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upbody_cmd& upbody_msg) {
     static bool mc_prepare_wrist_pending = false;
+    MC_mode_last = MC_mode;
 
     if (control_rm_cmd.trimLeft == RC_Trim_State_t::UP) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
@@ -521,35 +530,83 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
         }
     }else if (control_rm_cmd.trimLeft == RC_Trim_State_t::LEFT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-            MC_headless_mode = true;
-            upbody_ctrl.PrepareWeapon();
-            mc_prepare_wrist_pending = true;
+            if(field_side == -1){
+                MC_mode = true;
+                upbody_ctrl.PrepareWeapon();
+                mc_prepare_wrist_pending = true;    
+            }else {
+                MC_mode = false;
+            }
         }
     } else if (control_rm_cmd.trimLeft == RC_Trim_State_t::RIGHT) {
         if (control_rm_cmd_last.trimLeft == RC_Trim_State_t::MIDDLE) {
-            MC_headless_mode = false;
+            MC_mode = false;
+            if(field_side == 1){
+                MC_mode = true;
+                upbody_ctrl.PrepareWeapon();
+                mc_prepare_wrist_pending = true;    
+            }else {
+                MC_mode = false;
+            }
         }
     }
 
-    if (MC_headless_mode) {
+    if (MC_mode) {
+        static bool MC_Traj_complete_Flag = false;
+        if(MC_mode_last != MC_mode){
+            MC_Traj_complete_Flag = false;
+        }
+        if(MC_Traj_complete_Flag == false){
+            state_target_cmd.linear_x_ = 1.0f*field_side;
+            state_target_cmd.linear_y_ = 2.3f;
+            state_target_cmd.omega_    = 0.0f + 180.0f*(field_side + 1)/2.0f;
+            MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
+            MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
+            position_close_x = MC_close_position_x;
+            position_close_y = MC_close_position_y;
+            Traject_chassis.Run(state_now_cmd);
+            robot_v_aim_cmd = Traject_chassis.Get_output_b();
+            Traject_chassis.Set_Ref(state_target_cmd,Normal,MC_speed);
 
-        state_target_cmd.linear_x_ = 0.90f*field_side;
-        state_target_cmd.linear_y_ = 2.67f;
-        state_target_cmd.omega_    = 0.0f;
+            if(Traject_chassis.PointTrack_omega_complete_Flag == true && Traject_chassis.PointTrack_linear_complete_Flag == true){
+                MC_Traj_complete_Flag = true;
+            }
+        }else{
+            rm_angle_deg = atan2(rm_cmd.linear_y_, rm_cmd.linear_x_) / kDegToRad;
+            v_aim = sqrt(rm_cmd.linear_x_ * rm_cmd.linear_x_ + rm_cmd.linear_y_ * rm_cmd.linear_y_);
+
+            robot_v_aim_cmd.linear_x_ = v_aim * cos((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
+            robot_v_aim_cmd.linear_y_ = v_aim * sin((rm_angle_deg - state_now_cmd.omega_) * kDegToRad);
+
+            robot_v_aim_cmd.omega_ = 0.0f;
+
+            state_target_cmd.linear_x_ = state_now_cmd.linear_x_;
+            state_target_cmd.linear_y_ = state_now_cmd.linear_y_;
+            state_target_cmd.omega_ = control_position.yaw;
+
+            Traject_chassis.Set_Ref(state_now_cmd,Normal,Normal_speed);
+        }
+        
     } else {
         state_target_cmd.linear_x_ = robot_position_MC[MC_y][0];
         state_target_cmd.linear_y_ = robot_position_MC[MC_y][1];
         state_target_cmd.omega_    = robot_position_MC[MC_y][2];
+        Traject_chassis.Set_Ref(state_target_cmd,Normal,MC_speed);
+        MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
+        MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
+        position_close_x = MC_close_position_x;
+        position_close_y = MC_close_position_y;
+        Traject_chassis.Run(state_now_cmd);
+        robot_v_aim_cmd = Traject_chassis.Get_output_b();
     }
-    Traject_chassis.Set_Ref(state_target_cmd,Normal);
-    MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
-    MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
-    position_close_x = MC_close_position_x;
-    position_close_y = MC_close_position_y;
-    // position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
-    // position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
-    Traject_chassis.Run(state_now_cmd);
-    robot_v_aim_cmd = Traject_chassis.Get_output_b();
+
+    // Traject_chassis.Set_Ref(state_target_cmd,Normal,MC_speed);
+    // MC_close_position_x = MC_close_position_x + 0.001f * rm_cmd.linear_x_;
+    // MC_close_position_y = MC_close_position_y + 0.001f * rm_cmd.linear_y_;
+    // position_close_x = MC_close_position_x;
+    // position_close_y = MC_close_position_y;
+    // Traject_chassis.Run(state_now_cmd);
+    // robot_v_aim_cmd = Traject_chassis.Get_output_b();
 
         // ---- 武器手控制 ----
     // 上身：动作优先推进，空闲时手操
@@ -576,7 +633,6 @@ void MC_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
             upbody_msg.weapon_extend_delta = ratio * kWeaponExtendStep;
         }
     }
-
 
     // 持续型：右摇杆前推抬升 / 后拉下降（霍尔值线性映射速度）
     {
@@ -686,7 +742,8 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                         MF_plan_record_i++;
                         MF_pick_Flag = false;
 
-                        MF_pick_count ++;
+                        MF_pick_count ++;                     
+                        MF_pick_count_last = MF_pick_count;
                     }
                 }
             }
@@ -784,7 +841,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 state_target_cmd.linear_x_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][0];
                 state_target_cmd.linear_y_ = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][1];
                 state_target_cmd.omega_    = robot_position_MF[MF_plan[MF_plan_run_i].MF_x][MF_plan[MF_plan_run_i].MF_y][2];
-                Traject_chassis.Set_Ref(state_target_cmd,MF);
+                Traject_chassis.Set_Ref(state_target_cmd,MF,MF_speed);
  
                 // 上身保持行进姿态（每个新路径点仅触发一次）
                 if (last_moving_pose_i != MF_plan_run_i
@@ -798,11 +855,11 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 }
                 
                 if(Traject_chassis.PointTrack_omega_complete_Flag == true && Traject_chassis.PointTrack_linear_complete_Flag == true){
-                // if(true){
+                //  if(true){
                      if(MF_plan[MF_plan_run_i].is_picking == true){
                         // 根据 MF_pick_count 选择放置姿态序列
-                        static const RobotPose kPlace_1[] = {kPose_Place[2]};
-                        static const RobotPose kPlace_2[] = {kPose_Place[1], kPose_Place1_2};
+                        static const RobotPose kPlace_1[] = {kPose_Place1_2};
+                        static const RobotPose kPlace_2[] = {kPose_Place1_1, kPose_Place1_2};
                         const RobotPose* place_poses;
                         int place_max;
                         switch (MF_pick_count) {
@@ -862,6 +919,7 @@ void MF_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_upb
                 MF_plan_run_i = 0;
                 MF_plan_run_Flag = false;
                 MF_pick_Flag = false;
+
                 MF_pick_count = 0;
                 mf_place_cycle = 0;
                 MF_action_Flag = false;
@@ -933,9 +991,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
         if (control_rm_cmd.trimRight_last == RC_Trim_State_t::MIDDLE) {
             Arena_mode = WithR2;
             arena_r2_floor = false;   // 进入合体模式默认一楼
-            last_arena_x = -1;        // 强制刷新上身姿态
-            weapon_hand.wrist_target_rad_ = 1.57079633f;
-
+            last_arena_x = -1;
+            weapon_hand.wrist_target_rad_ = 1.4835298f;   // ← 加这行，达妙竖杆
         }
 
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::RIGHT) {
@@ -944,9 +1001,8 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
             // if (arena_r2_mode) {
             //     arena_r2_floor = false;   // 进入合体模式默认一楼
             // }
-            last_arena_x = -1;            // 强制刷新上身姿态
-            weapon_hand.wrist_target_rad_ = 1.57079633f;
-
+            last_arena_x = -1;
+            weapon_hand.wrist_target_rad_ = 1.4835298f;   // ← 加这行，达妙竖杆
         }
     }else if (control_rm_cmd.trimRight == RC_Trim_State_t::DOWN) {
         if (control_rm_cmd_last.trimRight == RC_Trim_State_t::MIDDLE) {
@@ -1087,7 +1143,7 @@ void Arena_control_Process(TypedTopicPublisher<pub_upbody_cmd>& upbody_pub, pub_
 	    upbody_ctrl.Update(0.005f, upbody_pub);
     }
     
-    Traject_chassis.Set_Ref(state_target_cmd,Normal);
+    Traject_chassis.Set_Ref(state_target_cmd,Normal,Arena_speed);
     position_correction_x = position_correction_x + 0.001f * rm_cmd.linear_x_;
     position_correction_y = position_correction_y + 0.001f * rm_cmd.linear_y_;
     Traject_chassis.Run(state_now_cmd);

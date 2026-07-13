@@ -19,7 +19,7 @@
 UartPort *UartPort::map_[UartPort::kMaxMap] = {nullptr, nullptr, nullptr,
                                                nullptr};
 
-UartPort::UartPort(UART_HandleTypeDef *huart, DMA_USE_t dma_use, uint8_t *rx_dma_buf,
+UartPort::UartPort(UART_HandleTypeDef *huart, DMA_USE dma_use, uint8_t *rx_dma_buf,
                    size_t rx_dma_buf_size, uint8_t *tx_dma_buf,
                    size_t tx_dma_buf_size, RxCallback cb, void *cb_user)
     : dma_use_(dma_use), huart_(huart), rx_dma_buf_(rx_dma_buf), rx_dma_buf_size_(rx_dma_buf_size),
@@ -44,7 +44,7 @@ UartPort::UartPort(UART_HandleTypeDef *huart, DMA_USE_t dma_use, uint8_t *rx_dma
 }
 
 HAL_StatusTypeDef UartPort::startRx() {
-  if(dma_use_ == DMA_USE_t::DMA_off) {
+  if(dma_use_ == DMA_USE::DMA_off) {
     return HAL_OK;
   }
   if (huart_ == nullptr || rx_dma_buf_ == nullptr || rx_dma_buf_size_ == 0) {
@@ -67,6 +67,7 @@ HAL_StatusTypeDef UartPort::write(const uint8_t *data, size_t len,
 }
 
 HAL_StatusTypeDef UartPort::writeDma(const uint8_t *data, size_t len) {
+  // HAL UART DMA 接口不接受空数据，且传输长度参数为 uint16_t。
   if (huart_ == nullptr || data == nullptr || len == 0) {
     return HAL_ERROR;
   }
@@ -74,19 +75,25 @@ HAL_StatusTypeDef UartPort::writeDma(const uint8_t *data, size_t len) {
     return HAL_ERROR;
   }
 
+  // 未配置双缓冲区时直接发送调用方提供的数据。
+  // DMA 传输完成前调用方必须保证 data 指向的内存持续有效。
   if (!tx_use_double_buffer_) {
     if (tx_busy_) {
       return HAL_BUSY;
     }
+
+    // 在启动 DMA 前置忙，避免前一次发送尚未结束时重复启动。
     tx_busy_ = true;
     HAL_StatusTypeDef ret = HAL_UART_Transmit_DMA(
         huart_, const_cast<uint8_t *>(data), static_cast<uint16_t>(len));
     if (ret != HAL_OK) {
+      // DMA 未成功启动，不会产生发送完成回调，因此在此恢复空闲状态。
       tx_busy_ = false;
     }
     return ret;
   }
 
+  // 当前没有发送任务：将数据复制到活动缓冲区并立即启动 DMA。
   if (!tx_busy_) {
     if (!tx_dma_buffer_.FillActive(data, len)) {
       return HAL_ERROR;
@@ -97,19 +104,24 @@ HAL_StatusTypeDef UartPort::writeDma(const uint8_t *data, size_t len) {
         huart_, tx_dma_buffer_.ActiveBuffer(),
         static_cast<uint16_t>(tx_dma_buffer_.GetActiveLength()));
     if (ret != HAL_OK) {
+      // 启动失败时释放忙状态，允许调用方稍后重试。
       tx_busy_ = false;
     }
     return ret;
   }
 
+  // DMA 正在发送活动缓冲区；待发送缓冲区也已占用时无法继续排队。
   if (tx_dma_buffer_.HasPending()) {
     return HAL_BUSY;
   }
 
+  // 将本次数据复制到待发送缓冲区。当前 DMA 完成后，onTxCplt()
+  // 会切换双缓冲区并自动启动这笔发送。
   if (!tx_dma_buffer_.FillPending(data, len)) {
     return HAL_BUSY;
   }
 
+  // 数据已成功排队，并不表示 DMA 已经完成发送。
   return HAL_OK;
 }
 

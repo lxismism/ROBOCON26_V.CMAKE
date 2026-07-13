@@ -180,13 +180,13 @@ void chassis_Map_Set(){
 
     const float robot_position_MC_tmp[4][3] = {//用于在武馆自动控制车辆移动
     //[Arena_x] = {aim_real_position_x, aim_real_position_y, aim_real_position_yaw}
-        {0.5f*field_side, 1.8f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side},
+        {0.5f*field_side, 1.8f - robot_center_to_Weapon*field_side - MC_position_correction_y, 90.0f*field_side},
 
-        {0.5f*field_side, 2.0f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side},
+        {0.5f*field_side, 2.0f - robot_center_to_Weapon*field_side - MC_position_correction_y, 90.0f*field_side},
 
-        {0.5f*field_side, 2.2f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side},
+        {0.5f*field_side, 2.2f - robot_center_to_Weapon*field_side - MC_position_correction_y, 90.0f*field_side},
 
-        {0.5f*field_side, 2.4f + robot_center_to_Weapon - MC_position_correction_y, 90.0f*field_side}
+        {0.5f*field_side, 2.4f - robot_center_to_Weapon*field_side - MC_position_correction_y, 90.0f*field_side}
     };
 
     for(uint8_t i=0; i<6 ; i++){

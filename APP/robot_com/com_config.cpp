@@ -49,11 +49,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <stdint.h>
 #include <stdio.h>
 
 osThreadId_t CAN1_Send_TaskHandle;
 osThreadId_t CAN2_Send_TaskHandle;
 osThreadId_t CAN3_Send_TaskHandle;
+osThreadId_t uart3SendTaskHandle;
 osThreadId_t uart2ProcessTaskHandle;
 osThreadId_t uart3ProcessTaskHandle;
 osThreadId_t uart4ProcessTaskHandle;
@@ -123,9 +125,9 @@ extern UART_HandleTypeDef huart5;
 extern UART_HandleTypeDef huart8;
 extern UART_HandleTypeDef huart10;
 
-DMA_BUFFER_ATTR static uint8_t uart3_rx_dma[64];
-DMA_BUFFER_ATTR static uint8_t uart3_tx_dma[64];
-UartPort uart3_port(&huart3, DMA_USE_t::DMA_on, uart3_rx_dma, sizeof(uart3_rx_dma), uart3_tx_dma,
+DMA_BUFFER_ATTR static uint8_t uart3_rx_dma[128];
+DMA_BUFFER_ATTR static uint8_t uart3_tx_dma[128];
+UartPort uart3_port(&huart3, DMA_USE::DMA_on, uart3_rx_dma, sizeof(uart3_rx_dma), uart3_tx_dma,
                     sizeof(uart3_tx_dma), onUart3RxCb, nullptr);
 osSemaphoreId_t uart3_rx_semphore = NULL;
 
@@ -134,7 +136,7 @@ void onUart2RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart2_rx_dma[128];
 DMA_BUFFER_ATTR static uint8_t uart2_tx_dma[64];
-UartPort uart2_port(&huart2, DMA_USE_t::DMA_on, uart2_rx_dma, sizeof(uart2_rx_dma), uart2_tx_dma,
+UartPort uart2_port(&huart2, DMA_USE::DMA_on, uart2_rx_dma, sizeof(uart2_rx_dma), uart2_tx_dma,
                     sizeof(uart2_tx_dma), onUart2RxCb, nullptr);
 osSemaphoreId_t uart2_rx_semphore = NULL;
 
@@ -143,7 +145,7 @@ void onUart4RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart4_rx_dma[128];
 DMA_BUFFER_ATTR static uint8_t uart4_tx_dma[64];
-UartPort uart4_port(&huart4, DMA_USE_t::DMA_on, uart4_rx_dma, sizeof(uart4_rx_dma), uart4_tx_dma,
+UartPort uart4_port(&huart4, DMA_USE::DMA_on, uart4_rx_dma, sizeof(uart4_rx_dma), uart4_tx_dma,
                     sizeof(uart4_tx_dma), onUart4RxCb, nullptr);
 osSemaphoreId_t uart4_rx_semphore = NULL;
 
@@ -152,14 +154,14 @@ void onUart5RxCb(const uint8_t *data, size_t len, void *user); //仅用于实例
 
 DMA_BUFFER_ATTR static uint8_t uart5_rx_dma[64];
 DMA_BUFFER_ATTR static uint8_t uart5_tx_dma[512];
-UartPort uart5_port(&huart5, DMA_USE_t::DMA_on, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
+UartPort uart5_port(&huart5, DMA_USE::DMA_on, uart5_rx_dma, sizeof(uart5_rx_dma), uart5_tx_dma,
                     sizeof(uart5_tx_dma), onUart5RxCb, nullptr);
 osSemaphoreId_t uart5_rx_semphore = NULL;
 
 void onUart8RxCb(const uint8_t *data, size_t len, void *user);
 DMA_BUFFER_ATTR static uint8_t uart8_rx_dma[16];
 DMA_BUFFER_ATTR static uint8_t uart8_tx_dma[16];
-UartPort uart8_port(&huart8, DMA_USE_t::DMA_off, uart8_rx_dma, sizeof(uart8_rx_dma), uart8_tx_dma,
+UartPort uart8_port(&huart8, DMA_USE::DMA_off, uart8_rx_dma, sizeof(uart8_rx_dma), uart8_tx_dma,
                     sizeof(uart8_tx_dma), onUart8RxCb, nullptr);
 osSemaphoreId_t uart8_rx_semphore = NULL;
 
@@ -168,7 +170,7 @@ void onUart10RxCb(const uint8_t *data, size_t len, void *user); //仅用于实�
 
 DMA_BUFFER_ATTR static uint8_t uart10_rx_dma[16];
 DMA_BUFFER_ATTR static uint8_t uart10_tx_dma[16];
-UartPort uart10_port(&huart10, DMA_USE_t::DMA_off, uart10_rx_dma, sizeof(uart10_rx_dma), uart10_tx_dma,
+UartPort uart10_port(&huart10, DMA_USE::DMA_off, uart10_rx_dma, sizeof(uart10_rx_dma), uart10_tx_dma,
                      sizeof(uart10_tx_dma), onUart10RxCb, nullptr);
 osSemaphoreId_t uart10_rx_semphore = NULL;
 
@@ -177,7 +179,7 @@ void onUart1RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart1_rx_dma[16];
 DMA_BUFFER_ATTR static uint8_t uart1_tx_dma[16];
-UartPort uart1_port(&huart1, DMA_USE_t::DMA_off, uart1_rx_dma, sizeof(uart1_rx_dma), uart1_tx_dma,
+UartPort uart1_port(&huart1, DMA_USE::DMA_off, uart1_rx_dma, sizeof(uart1_rx_dma), uart1_tx_dma,
                     sizeof(uart1_tx_dma), onUart1RxCb, nullptr);
 osSemaphoreId_t uart1_rx_semphore = NULL;
 
@@ -186,7 +188,7 @@ void onUart6RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart6_rx_dma[16];
 DMA_BUFFER_ATTR static uint8_t uart6_tx_dma[16];
-UartPort uart6_port(&huart6, DMA_USE_t::DMA_off, uart6_rx_dma, sizeof(uart6_rx_dma), uart6_tx_dma,
+UartPort uart6_port(&huart6, DMA_USE::DMA_off, uart6_rx_dma, sizeof(uart6_rx_dma), uart6_tx_dma,
                     sizeof(uart6_tx_dma), onUart6RxCb, nullptr);
 osSemaphoreId_t uart6_rx_semphore = NULL;
 
@@ -195,7 +197,7 @@ void onUart9RxCb(const uint8_t *data, size_t len, void *user);
 
 DMA_BUFFER_ATTR static uint8_t uart9_rx_dma[16];
 DMA_BUFFER_ATTR static uint8_t uart9_tx_dma[16];
-UartPort uart9_port(&huart9, DMA_USE_t::DMA_off, uart9_rx_dma, sizeof(uart9_rx_dma), uart9_tx_dma,
+UartPort uart9_port(&huart9, DMA_USE::DMA_off, uart9_rx_dma, sizeof(uart9_rx_dma), uart9_tx_dma,
                      sizeof(uart9_tx_dma), onUart9RxCb, nullptr);
 osSemaphoreId_t uart9_rx_semphore = NULL;
 
@@ -598,11 +600,69 @@ void uart3RxProcessTask(void *argument) {
           rc_msg.cursor = rc_data.cursor;
           rc_msg.trimLeft = rc_data.trimLeft;
           rc_msg.trimRight = rc_data.trimRight;
+          
 
           rc_data_pub.Publish(rc_msg);
         }
       }
     }
+  }
+}
+//航模回传
+void uart3SendTask(void *argument) {
+  (void)argument;
+  extern uint8_t MF_x;
+  extern uint8_t MF_y;
+  extern MF_plan_t MF_plan[15];
+  extern uint8_t Arena_ir_count;
+  uint8_t send_buffer[64] = {};
+  uint8_t motor_state[2] = {0};
+
+  CRSF_broadcast_frame_t temp_frame = {
+    .length = 2 + 1 + 2 * 18,
+    .type = CRSF_TEMP_TYPE,
+    .payload = {0}
+  };
+
+  auto int16_to_payload = [](int16_t value, uint8_t *temp_H) -> void {
+    *temp_H = (value >> 8) & 0xFF;
+    *(temp_H + 1) = value & 0xFF;
+  };
+
+  auto mf2temp = [](uint8_t x, uint8_t y, uint8_t *temp_H) -> void {
+    int16_t temp16 = 100 + x * 10 + y;
+    *temp_H = (temp16 >> 8) & 0xFF;
+    *(temp_H + 1) = temp16 & 0xFF;
+  };
+
+  for(;;)
+  {
+    motor_state[0] = (chassis_motor1.isOffline()<<7)
+                      |(chassis_motor2.isOffline()<<6)
+                      |(chassis_motor3.isOffline()<<5)
+                      |(chassis_motor4.isOffline()<<4)
+                      |(picker_yaw_motor.isOffline()<<3)
+                      |(picker_extend_motor.isOffline()<<2)
+                      |(weapon_extend_motor.isOffline()<<1)
+                      |(lift_left_motor.isOffline()<<0);
+    motor_state[1] = (lift_right_motor.isOffline()<<7)
+                      |(picker_lift_motor.isOffline()<<6)
+                      |(weapon_lift_motor.isOffline()<<5);
+
+    mf2temp(MF_x, MF_y, &temp_frame.payload[1]);
+    int i = 3;
+    for(auto &mf: MF_plan) {
+      if(mf.is_valid)
+        mf2temp(mf.MF_x, mf.MF_y, &temp_frame.payload[i]);
+      i += 2;
+    }
+    temp_frame.payload[33] = motor_state[0];
+    temp_frame.payload[34] = motor_state[1];
+    int16_to_payload(static_cast<int16_t>(Arena_ir_count), &temp_frame.payload[35]);
+    uint8_t len = rm_pocket.packFrame(send_buffer, temp_frame);
+    uart3_port.writeDma(send_buffer, len);
+    std::memset(temp_frame.payload, 0, sizeof(temp_frame.payload));
+    osDelay(100);
   }
 }
 

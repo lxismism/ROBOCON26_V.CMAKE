@@ -36,16 +36,6 @@ enum Height : size_t{
 };
 
 // ===== 动作速度配置 =====
-// struct ActionSpeeds {
-//     float pick_lift     = 350.0f;   // 吸取手抬升 mm/s
-//     float pick_yaw      = 500.0f;   // 云台旋转 °/s
-//     float pick_extend   = 280.0f;   // 吸取手伸缩 mm/s
-//     float weapon_lift   = 180.0f;   // 武器手抬升 mm/s
-//     float weapon_extend = 180.0f;   // 武器手伸缩 mm/s
-//     float lift          = 70.0f;    // 电梯 mm/s
-// };
-
-// ===== 动作速度配置 =====
 struct ActionSpeeds {
     float pick_lift     = 525.0f;   // 吸取手抬升 mm/s
     float pick_yaw      = 600.0f;   // 云台旋转 °/s
@@ -70,6 +60,9 @@ struct ActionPriorities {
 struct RampState {
     bool  active = false;
     uint8_t step_done_mask = 0x3F;
+    uint8_t done_stable_cnt = 0;
+    uint8_t done_stable_frames = 3;    // 默认3帧
+
 
     ActionSpeeds    speeds;
     ActionPriorities priorities;
@@ -148,11 +141,12 @@ inline constexpr RobotPose kPose_Moving_In_MF = {352.6f, 0.0f, 0.0f, 347.0f, 0.0
 inline constexpr RobotPose kPose_Home     = {0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 0.0f};
 
 inline constexpr RobotPose kPose_Place[3]   = {
-    {78.1f, -302.0f, 150.59f, 347.0f, 0.0f, 100.0f,Pose_Place0},
-    {78.1f, -139.0f, 140.0f, 347.0f, 0.0f, 100.0f,Pose_Place1},
+    {78.1f, -305.0f, 150.59f, 347.0f, 0.0f, 100.0f,Pose_Place0},
+    {78.1f, -129.0f, 130.0f, 347.0f, 0.0f, 100.0f,Pose_Place1},
     {370.0f, -220.5f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place2}
 };
-inline constexpr RobotPose kPose_Place1_2  =  {370.0f, -139.0f, 50.0f, 347.0f, 0.0f, 0.0f,Pose_Place1_2};
+inline constexpr RobotPose kPose_Place1_1  =  {78.1f, -239.0f, 130.0f, 347.0f, 0.0f, 100.0f,Pose_Place1};
+inline constexpr RobotPose kPose_Place1_2  =  {365.0f, -239.0f, 0.0f, 347.0f, 0.0f, 0.0f,Pose_Place1_2};
 
 inline constexpr RobotPose kPose_PreLode   = {462.80f, -239.0f, 0.0f, 347.0f, 0.0f, 0.0f};
 
@@ -166,8 +160,10 @@ inline constexpr RobotPose kPose_Pick[3] = {
 inline constexpr RobotPose kPose_Grid9_Bot12 = {432.80f, 403.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot12};
 inline constexpr RobotPose kPose_Grid9_Bot3  = {432.80f, 778.0f, 0.0f, 347.0f, 0.0f, 0.0f, Pose_Grid9_Bot3};
 
-inline constexpr RobotPose kPose_Get1   = {98.1f, -312.0f, 201.6f, 347.0f, 0.0f, 140.0f};
-inline constexpr RobotPose kPose_Get2   = {98.1f, -139.0f, 201.6f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get1   = {98.1f, -305.0f, 201.6f, 347.0f, 0.0f, 140.0f};
+inline constexpr RobotPose kPose_Get2   = {98.1f, -129.0f, 201.6f, 347.0f, 0.0f, 140.0f};
+
+inline constexpr RobotPose kPose_2Get   = {98.1f, -239.0f, 236.6f, 347.0f, 0.0f, 140.0f};
 
 inline constexpr RobotPose kPose_Poke1  = {430.80f, 778.0f, 0.0f, 317.0f, 200.0f, 0.0f, -1};       // 腕部0°朝上，戳第一层
 inline constexpr RobotPose kPose_Poke2  = {430.80f, 778.0f, 0.0f, 347.0f, 200.0f, 0.0f, -1};    // 腕部60°下翻，戳第二层
@@ -198,6 +194,8 @@ struct ActionConfig {
     bool enable_chassis_approach = false;  // 本步期间触发底盘逼近
     bool release_chassis = false;
     uint16_t dwell_ms = 0;
+    uint8_t done_stable_frames = 4;    // 连续稳定帧数，默认4帧
+
 
 
 };

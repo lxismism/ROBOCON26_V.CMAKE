@@ -83,11 +83,12 @@ public:
     // =====================================================
     //  设置目标值
     // =====================================================
-    void Set_Ref(pub_chassis_cmd Ref,RobotMode_t mode){
+    void Set_Ref(pub_chassis_cmd Ref,RobotMode_t mode,speed_data speed_In){
         if(fabsf(Ref.linear_x_ - ref.x) > 0.0015f || fabsf(Ref.linear_y_ - ref.y) > 0.0015f ||fabsf(Ref.omega_ - ref.yaw) > 0.001f){
             ref.x = Ref.linear_x_;
             ref.y = Ref.linear_y_;
             ref.yaw = Ref.omega_;
+            Traject = speed_In;
             Traj_complete_Flag = false;
             PointTrack_omega_complete_Flag = false;
             PointTrack_linear_complete_Flag = false;
@@ -207,8 +208,13 @@ public:
     float_t Update_s_ref(RobotMode_t mode){
         float s_ref_last = s_ref;
         float Traj_s_ref_yaw_last = Traj_s_ref.yaw;
-        s_ref = s_ref + v_output*dt;
 
+        if(Traj_complete_Flag == true){
+            s_ref = L;
+        }else {
+            s_ref = s_ref + v_output*dt;
+        }
+        
         if(s_ref > s_now + 0.35f){
             s_ref = s_now + 0.35f;
         }
@@ -248,19 +254,19 @@ public:
     // =====================================================
     void Update_TarjSpeed(){
 
-        v_Acc = v_output + Acc_linear*dt;
-        v_Dec = sqrt(2.0f*Dec_linear*(L - s_now));
+        v_Acc = v_output + Traject.Acc_linear*dt;
+        v_Dec = sqrt(2.0f*Traject.Dec_linear*(L - s_now));
 
-        if(v_Max < v_Acc && v_Max < v_Dec){
-            v_output = v_Max;
+        if(Traject.v_Max < v_Acc && Traject.v_Max < v_Dec){
+            v_output = Traject.v_Max;
         }else if(v_Acc > v_Dec){
             v_output = v_Dec;
         }else {
             v_output = v_Acc;
         };
 
-        if(fabsf(dyaw_ds)*kDegToRad*v_output > w_Max && fabsf(dyaw_ds) > 0.01f){
-            v_output = w_Max/(fabsf(dyaw_ds)*kDegToRad);
+        if(fabsf(dyaw_ds)*kDegToRad*v_output > Traject.w_Max && fabsf(dyaw_ds) > 0.01f){
+            v_output = Traject.w_Max/(fabsf(dyaw_ds)*kDegToRad);
         }
 
         Traj_wff.vx = dx_ds*v_output;
@@ -394,14 +400,16 @@ public:
     float_t dy_ds;
     float_t dyaw_ds;
 
-    const float_t Acc_linear = 1.2f;
-    const float_t Dec_linear = 0.9f;
-    const float_t v_Max = 2.1f;
+    speed_data Traject{1.2f,0.9f,2.1f,M_PI*0.6f};
+
+    // float_t Acc_linear = 1.2f;
+    // float_t Dec_linear = 0.9f;
+    // float_t v_Max = 2.1f;
+    // float_t w_Max = M_PI*0.6f;
+
     float_t v_Acc;
     float_t v_Dec;
 
-    const float_t Acc_omega = M_PI*0.75f;
-    const float_t w_Max = M_PI*0.6f;
     float_t w_Acc;
     float_t w_Dec;
 
@@ -417,7 +425,7 @@ public:
 
     PID_t track_path_xy{.Kp = 4.88f,.Ki = 0.01f,.Kd = 0.55f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
     PID_t track_lateral_xy{.Kp = 3.0f,.Ki = 0.03f,.Kd = 0.35f,.MaxOut = 0.95*MAX_VELOCITY_LINEAR,.DeadBand = 0.005f,.Improve = NONE};
-    PID_t track_omega{.Kp = 5.30f,.Ki = 0.1f,.Kd = 0.55f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
+    PID_t track_omega{.Kp = 5.30f,.Ki = 0.3f,.Kd = 0.55f,.MaxOut = MAX_VELOCITY_ANGULAR*0.75*180.0/M_PI,.IntegralLimit = 50000.0f,.DeadBand = 0.1f,.Improve = Integral_Limit};
 
     
 private:

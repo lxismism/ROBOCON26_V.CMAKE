@@ -29,9 +29,9 @@ void PickHand::init() {
 
   // ---- 云台旋转电机 PID (2006) ----
   PID_Init(&yaw_pid_);
-  yaw_pid_.Kp = 900.0f;
-  yaw_pid_.Ki = 70.0f;
-  yaw_pid_.Kd = 45.0f;
+  yaw_pid_.Kp = 1000.0f;
+  yaw_pid_.Ki = 50.0f;
+  yaw_pid_.Kd = 105.0f;
   yaw_pid_.MaxOut = 5000.0f;
   yaw_pid_.IntegralLimit = 700.0f;
   yaw_pid_.DeadBand = 0.05f;
@@ -39,7 +39,7 @@ void PickHand::init() {
 
   // ---- 伸缩电机 PID (2006) ----
   PID_Init(&extend_pid_);
-  extend_pid_.Kp = 330.0f;
+  extend_pid_.Kp = 630.0f;
   extend_pid_.Ki = 40.0f;
   extend_pid_.Kd = 15.0f;
   extend_pid_.MaxOut = 5000.0f;
