@@ -184,6 +184,13 @@ void controlInit() {
 
 void controlTask(void *argument) {
     TickType_t currentTime = xTaskGetTickCount();
+    TickType_t rcUpdateTime = currentTime;
+    constexpr TickType_t kRemoteInputTimeout = pdMS_TO_TICKS(500);
+
+    control_rm_cmd.joyLHori = kJoyCenter;
+    control_rm_cmd.joyLVert = kJoyCenter;
+    control_rm_cmd.joyRHori = kJoyCenter;
+    control_rm_cmd.joyRVert = kJoyCenter;
 
     PID_Init(&lateral);
     PID_Init(&path);
@@ -198,10 +205,10 @@ void controlTask(void *argument) {
         // static uint32_t controlTask_DWT_CNT = 0;
         // controlTask_dt = DWT_GetDeltaT(&controlTask_DWT_CNT);
         //test begin
-        if(control_rc_sub.TryGet(&control_rm_cmd)) {
-            // if(control_rc_cmd.swA == RC_2_POS_SW_State_t::UP) {
-            //     // 处理 swA 按钮按下
-            // }
+        const TickType_t now = xTaskGetTickCount();
+        if (control_rc_sub.TryGet(&control_rm_cmd)) {
+            rcUpdateTime = now;
+
             switch (control_rm_cmd.swB){
                 case RC_3_POS_SW_State_t::UP : {
                     robot_case = Normal_case;
@@ -238,7 +245,11 @@ void controlTask(void *argument) {
                 }    
             }
             robot_mode_last = robot_mode;
-            
+        } else if (now - rcUpdateTime > kRemoteInputTimeout) {
+            control_rm_cmd.joyLHori = kJoyCenter;
+            control_rm_cmd.joyLVert = kJoyCenter;
+            control_rm_cmd.joyRHori = kJoyCenter;
+            control_rm_cmd.joyRVert = kJoyCenter;
         }
         Chassis_RM_Data_Process(upbody_cmd_pub, upbody_cmd_msg);
         control_rm_cmd_last = control_rm_cmd;
