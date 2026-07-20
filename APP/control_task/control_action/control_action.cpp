@@ -149,8 +149,11 @@ void ActionController::Step_(float dt) {
     bool weapon_lift_done, weapon_extend_done, lift_done;
 
     pick_lift_done   = (fabsf(ramp_.cur_pick_lift_mm   - ramp_.end_pick_lift_mm)   <= 1.01f);
-    pick_yaw_done    = (fabsf(ramp_.cur_pick_yaw_deg   - ramp_.end_pick_yaw_deg)   <= 1.1f);
+    // yaw 到位用编码器实际值
+    float real_yaw = pick_hand.yaw_motor_->getCurrentSumPos();
+    pick_yaw_done    = (fabsf(real_yaw - ramp_.end_pick_yaw_deg) <= 5.5f);
     pick_extend_done = (fabsf(ramp_.cur_pick_extend_mm - ramp_.end_pick_extend_mm) <= 1.01f);
+
     weapon_lift_done   = (fabsf(ramp_.cur_weapon_lift_mm   - ramp_.end_weapon_lift_mm)   <= 1.01f);
     weapon_extend_done = (fabsf(ramp_.cur_weapon_extend_mm - ramp_.end_weapon_extend_mm) <= 1.01f);
     lift_done          = (fabsf(ramp_.cur_lift_mm          - ramp_.end_lift_mm)          <= 1.01f);
