@@ -14,7 +14,6 @@
 #include "control_task.h"
 #include "topic_pool.h"
 #include "topics.hpp"
-#include "bsp_usart.h"
 #include "tracking.h"
 
 osThreadId_t ControlTaskHandle;

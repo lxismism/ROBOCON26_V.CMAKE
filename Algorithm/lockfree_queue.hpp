@@ -59,12 +59,22 @@ public:
   MpscQueue(const MpscQueue &) = delete;
   MpscQueue &operator=(const MpscQueue &) = delete;
 
+/*
+  TryPush和TryPop的核心四元组：
+  数组编号 i
+  单元格次序 sequence
+  队列数据data item
+  要入的数组编号 enqueue_pos_
+  出队处的数组编号 dequeue_pos_
+
+*/
+
   template <typename T> QueueError TryPush(T &&item) noexcept {
     size_t pos = enqueue_pos_.load(std::memory_order_relaxed);
 
     for (;;) {
       Slot &slot = slots_[pos & kMask];
-      const size_t seq = slot.sequence.load(std::memory_order_acquire);
+      const size_t seq = slot.sequence.load(std::memory_order_acquire);   //这行代码是在判断：现在在处理的是队列里次序为几的单元格
       const intptr_t diff =
           static_cast<intptr_t>(seq) - static_cast<intptr_t>(pos);
 
